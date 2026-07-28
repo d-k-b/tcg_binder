@@ -1,0 +1,12 @@
+.DS_Store
+.idea/
+.vscode/
+.env
+.data/
+node_modules/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.log
+*.swp
+generators/*.pdf

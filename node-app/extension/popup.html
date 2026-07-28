@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { width: 300px; margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #1f1b32; }
+  .h { background: #3a2d6b; color: #fff; padding: 12px 14px; }
+  .h b { font-size: 14px; } .h p { margin: 2px 0 0; font-size: 11px; opacity: .8; }
+  .b { padding: 14px; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; }
+  .sw { width: 38px; height: 22px; border-radius: 20px; background: #d9d4ec; position: relative; cursor: pointer; transition: .2s; }
+  .sw.on { background: #6a4fb0; } .sw i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: .2s; }
+  .sw.on i { left: 18px; }
+  input, select { width: 100%; padding: 7px 9px; border: 1px solid #e0dcef; border-radius: 7px; font-size: 12px; box-sizing: border-box; }
+  label { font-size: 11px; color: #6b6680; display: block; margin: 8px 0 4px; }
+  button { width: 100%; padding: 9px; border: none; border-radius: 8px; background: #6a4fb0; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+  button:hover { background: #5a40a0; }
+  button.ghost { background: #f1eefb; color: #4b3a86; }
+  .stat { font-size: 11.5px; color: #6b6680; margin-top: 12px; line-height: 1.6; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ccc; margin-right: 5px; vertical-align: middle; }
+  .dot.ok { background: #34c27a; } .dot.bad { background: #e05c5c; }
+  .sec { border-top: 1px solid #eee; margin-top: 14px; padding-top: 12px; }
+  .sectitle { font-size: 12px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; }
+  .panel { display: none; margin-top: 8px; }
+  .panel.open { display: block; }
+  .hint { font-size: 10.5px; color: #8a85a0; margin: 6px 0 0; line-height: 1.45; }
+  .ksstat { font-size: 10.5px; color: #6b6680; margin-top: 8px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <div class="h"><b>Binder Price Helper</b><p>TCGplayer → your local binder</p></div>
+  <div class="b">
+    <div class="row"><span>Auto-sync (1&nbsp;min)</span><div class="sw" id="sw"><i></i></div></div>
+    <label>Binder server URL</label>
+    <input id="server" placeholder="http://localhost:3000">
+    <div style="height:10px"></div>
+    <button id="sync">Sync now</button>
+    <div class="stat" id="stat"><span class="dot"></span>Checking…</div>
+
+    <div class="sec">
+      <div class="sectitle" id="keysToggle"><span>⚙ API keys (saved to your server)</span><span id="keysChevron">▸</span></div>
+      <div class="panel" id="keysPanel">
+        <p class="hint">These are sent to your local binder server and stored there (in <code>.data/secrets.json</code>) — <b>not</b> kept in this extension. Use this if you'd rather not edit the <code>.env</code> file by hand.</p>
+
+        <label>eBay environment</label>
+        <select id="EBAY_ENV"><option value="">production</option><option value="sandbox">sandbox</option></select>
+        <label>eBay App ID (Client ID)</label>
+        <input id="EBAY_CLIENT_ID" placeholder="DustynBl-...">
+        <label>eBay Cert ID (Client Secret)</label>
+        <input id="EBAY_CLIENT_SECRET" type="password" placeholder="SBX-… / PRD-…">
+
+        <label>AI provider</label>
+        <select id="AI_PROVIDER"><option value="">auto-detect</option><option value="openai">openai</option><option value="anthropic">anthropic</option></select>
+        <label>OpenAI API key</label>
+        <input id="OPENAI_API_KEY" type="password" placeholder="sk-…">
+        <label>Anthropic API key</label>
+        <input id="ANTHROPIC_API_KEY" type="password" placeholder="sk-ant-…">
+
+        <div style="height:10px"></div>
+        <button id="saveKeys">Save keys to server</button>
+        <div class="ksstat" id="ksstat"></div>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,336 @@
+{
+  "schema_version": 1,
+  "policy": "Exact sealed-product images only; card-art and set-icon fallbacks excluded.",
+  "images": [
+    {
+      "checklist": "boxes",
+      "code": "ATQ",
+      "name": "Antiquities",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27263_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "ARN",
+      "name": "Arabian Nights",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27265_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "CHR",
+      "name": "Chronicles",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27269_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "FEM",
+      "name": "Fallen Empires",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27276_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "5ED",
+      "name": "Fifth Edition",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27278_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "4ED",
+      "name": "Fourth Edition",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27279_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "HML",
+      "name": "Homelands",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27282_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "LEG",
+      "name": "Legends",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27286_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "LEA",
+      "name": "Limited Edition Alpha",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27262_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "LEB",
+      "name": "Limited Edition Beta",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27266_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "3ED",
+      "name": "Revised Edition (3rd)",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27303_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "STH",
+      "name": "Stronghold",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27307_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "TMP",
+      "name": "Tempest",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27308_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "DRK",
+      "name": "The Dark",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27309_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "2ED",
+      "name": "Unlimited Edition",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27313_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "boxes",
+      "code": "WTH",
+      "name": "Weatherlight",
+      "slot_key": "Box",
+      "caption": "Booster display",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27318_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "packs",
+      "code": "ATQ",
+      "name": "Antiquities",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/Antiquities_booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "ARN",
+      "name": "Arabian Nights",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/Arabian_Nights_booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "CHR",
+      "name": "Chronicles",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/CHR_Booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "FEM",
+      "name": "Fallen Empires",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/Fallen_Empires_booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "5ED",
+      "name": "Fifth Edition",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27340_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "packs",
+      "code": "4ED",
+      "name": "Fourth Edition",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/4ED_booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "HML",
+      "name": "Homelands",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/HML_booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "LEG",
+      "name": "Legends",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/Legends_booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "LEA",
+      "name": "Limited Edition Alpha",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/Alpha_booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "LEB",
+      "name": "Limited Edition Beta",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27328_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "packs",
+      "code": "3ED",
+      "name": "Revised Edition (3rd)",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27365_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "packs",
+      "code": "STH",
+      "name": "Stronghold",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27369_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "packs",
+      "code": "TMP",
+      "name": "Tempest",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/TMP_booster_1.jpeg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "DRK",
+      "name": "The Dark",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://files.mtg.wiki/The_Dark_booster.jpg",
+      "source": "MTG Wiki",
+      "source_kind": "mtg_wiki"
+    },
+    {
+      "checklist": "packs",
+      "code": "2ED",
+      "name": "Unlimited Edition",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27375_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "packs",
+      "code": "WTH",
+      "name": "Weatherlight",
+      "slot_key": "Booster",
+      "caption": "Booster pack",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/27380_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    },
+    {
+      "checklist": "prerelease",
+      "code": "M15",
+      "name": "Magic 2015",
+      "slot_key": "Variant",
+      "caption": "Prerelease kit",
+      "url": "https://tcgplayer-cdn.tcgplayer.com/product/199941_in_1000x1000.jpg",
+      "source": "TCGplayer",
+      "source_kind": "tcgplayer"
+    }
+  ]
+}
