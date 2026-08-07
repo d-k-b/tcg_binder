@@ -222,6 +222,7 @@ app.put('/api/progress', async (req, res) => {
   if (backend() === 'gist') {
     try { return res.json(Object.assign({ ok: true }, await gist.write(req.body.checks || {}, {
       keyVersion: req.body.keyVersion || 2,
+      extras: req.body.extras || {},
       legacyChecksV1: req.body.legacyChecksV1 || {},
       keyMigration: req.body.keyMigration || null,
     }))); }
@@ -233,6 +234,7 @@ app.put('/api/progress', async (req, res) => {
     const drive = google.drive({ version: 'v3', auth: client });
     const payload = JSON.stringify({
       checks: req.body.checks || {},
+      extras: req.body.extras || {},
       keyVersion: req.body.keyVersion || 2,
       legacyChecksV1: req.body.legacyChecksV1 || {},
       keyMigration: req.body.keyMigration || null,

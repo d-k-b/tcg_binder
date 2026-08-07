@@ -9,8 +9,47 @@ with compact quantity controls that sync to GitHub Gists.
 
 **Status:** working and in use. Static dashboard deployed to GitHub Pages; it is the
 copy that matters and the only one with the current UI. The Node app runs locally and
-its frontend is a version behind (see backlog #11). Live pricing is built but only
-partially verified (see Caveats).
+its frontend is a version behind (see backlog #11). Its historical pricing frontend
+is not the dashboard integration described below.
+
+**Browser extension:** `browser-extension/` is the current Manifest V3 dashboard
+launcher for Chrome and Edge. It opens the canonical GitHub Pages app in the browser
+side panel, so the iframe and full-page dashboard share the same origin, local state,
+and Gist connection. Its reload control requests the latest published build with a
+cache-busting query. Version 1.1.0 bridges generated ProductRef v1 requests to TCG
+Comps API v1/provider 2.34.0 without exposing its capability token to the iframe.
+This is separate from the older TCGplayer-only helper in `node-app/extension/`;
+never replace the current dashboard with the stale Node frontend.
+
+Extension 1.2.1 treats the API version as the compatibility boundary, includes the
+direct collection page-decoration action for TCG Comps 2.40.0. A newer compatible
+TCG Comps release remains a green connected state, with an informational release
+note instead of an error-styled warning. Page discovery, exact matching, and DOM
+decoration remain provider-owned; the Tracker supplies only the on-demand v2
+ProductRef/count snapshot described below.
+
+Page-check errors include an error-only copy icon. The copied diagnostic report
+identifies dashboard snapshot versus provider/response failure, versions, source
+origin, schema/product count, error code, and timing while explicitly excluding and
+redacting the capability token. A missing/stale published snapshot bridge reports
+`DASHBOARD_SNAPSHOT_TIMEOUT` rather than an unclassified error.
+
+**Workstream boundary:** dashboard development owns `generators/`, `data/`, generated
+HTML, responsive collection UI, state, and GitHub Pages publishing. Extension
+development owns `browser-extension/`, browser surfaces, permissions, packaging, and
+the privileged TCG Comps bridge. Dashboard changes should continue to treat a narrow
+side panel as a supported viewport, but extension work must not fork or patch the
+generated dashboard. See `browser-extension/HANDOFF.md` for the full interface and
+ownership contract.
+
+**Current pricing boundary:** `gen_data.py` adds 686 unique, contract-valid pricing
+products outside ownership slots. `build_app.py` renders per-product refresh/value,
+lowest verified ask, confidence, observation time, explicit unavailable/error, and
+static fallback states. Watches appear only after an exact returned `productId`
+matches the requested ProductRef. The extension alone stores the TCG Comps extension
+ID/token in `chrome.storage.local`; generated HTML, page `localStorage`, Gist state,
+and debug state contain no pricing token. TCG Comps owns all marketplace fetches,
+matching, prompts, valuation math, and watch persistence.
 
 **Read first:** §1 (the collecting rules — they are the product), §2's data-model note
 on `slots[].g` and checkbox keys, then §4. §4 is not boilerplate; almost every entry
@@ -39,6 +78,16 @@ from the older Cursor project appear only inside opened row drawers. Card-art an
 set-icon fallbacks are excluded, images load only when the drawer opens, desktop and
 390x844 layouts have no horizontal overflow, and all 888 required targets plus all
 saved key formats remain unchanged.
+The repeated quantity-adjustment focus fix was rebuilt and browser-verified on build
+`2026-07-31 17:20`: after each row render, focus moves to the replacement plus or
+minus button, allowing uninterrupted `0 → 1 → 2` clicks at desktop and 390x844.
+Decrementing to zero focuses the count because the disabled minus button is hidden.
+The TCG Comps API v1 consumer was regenerated and HTTP-browser-verified on build
+`2026-07-31 23:25`: 686 ProductRefs validate and remain outside all ownership keys;
+the desktop and 390x844 layouts have no horizontal overflow; the missing-extension
+state shows a labeled static fallback and no watch controls. Offline generated-code
+tests also prove exact-origin/frame rejection, unauthorized and no-price handling,
+exact-product watch gating, and absence of the capability token from dashboard HTML.
 
 ---
 
@@ -52,12 +101,12 @@ change them without asking. Everything else is implementation detail.
 | **MTG Collector Boxes** (`collector`) | One of each Collector Booster display ever made, incl. premium/all-foil/VIP boxes | 54 | 54 | 54 |
 | **MTG Booster Boxes** (`boxes`) | One preferred non-Collector display per set/distinct edition; other display types are bonus inventory | 202 (180 goal + 22 bonus) | 180 | 220 |
 | **MTG Booster Packs** (`packs`) | **Two** of every booster pack, per pack type per set | 176 | 488 | 488 |
-| **MTG Prerelease Packs** (`prerelease`) | One of every prerelease pack **variant** | 65 | 126 | 126 |
+| **MTG Prerelease Packs** (`prerelease`) | One of every distinct sealed prerelease pack/kit **variant** | 69 | 148 | 148 |
 | **Lorcana Booster Boxes** (`lorcana`) | One booster box **per kid** (2 kids) | 15 | 30 | 30 |
 | **Lorcana Prerelease Boxes** (`lorcana_pre`) | One prerelease box per kid | 4 | 8 | 8 |
 | **Lorcana Collector Boxes** (`lorcana_coll`) | One collector box per kid | 1 | 2 | 2 |
 
-**888 required targets and 928 inventory slots total.** The 40 optional slots are
+**910 required targets and 950 inventory slots total.** The 40 optional slots are
 non-Collector Theme, Draft, set-attached Jumpstart, and LTR Jumpstart Vol. 2
 displays. They persist quantities but never affect progress or Hide completed.
 Sparse specialties no longer make the chronological eras excessively wide:
@@ -109,6 +158,38 @@ DMU, BRO, ONE, MOM, LTR, CMM, WOE, LCI.
   Sets 1–11 had prerelease *events* but no retail box
 - **Lorcana Collector Boosters** debut with **Into the Inkdark (Set 15, Q1 2027)** —
   column exists, dashed for all earlier sets
+
+### 1c. Prerelease variant identity
+
+Prerelease completion is based on distinct sealed variants, never raw copy count.
+Guild, clan, faction, color/path, character, college, and other differently named
+packs are separate required slots. A second copy of the same named product does not
+advance completion. `build_prerelease.py::VARIANT_NAMES` is authoritative and
+`gen_data.py` emits both `items[].variants` and matching named `slots[].l` entries.
+
+Multi-variant rows show the aggregate number of physical kits owned and a separate
+`3/5 variants` completion tag. Their detail drawer exposes an always-visible
+minus/count/plus control for every named slot. The first copy stays represented by
+the existing v2 check key; duplicate copies live in `state.extras` under stable
+`checklist|slot-extra|fingerprint` keys. Aggregate plus fills the least-owned named
+variant (therefore every missing variant first); aggregate minus removes a copy from
+the most-owned variant (therefore duplicates before required first copies).
+Completion still requires at least one of every named variant, regardless of total
+copy count. Single-variant rows retain the compact aggregate interaction and may
+also record duplicates.
+
+The Packs checklist uses `progressMode:"group_variants"`. Every pack type is emitted
+in `items[].variants` with an explicit name, group, and target of two. Rows with more
+than one pack type show those quantities again in the detail drawer and show their
+sum as a `N total` tag. Pack completion remains two of every type; extra Draft packs,
+for example, cannot substitute for a missing Set or Collector pack. Wrapper artwork
+is intentionally outside this model.
+
+When a previously generic row expands, its original v2 slot remains ordinal zero.
+Only that first named variant inherits the old v1 positional migration key; every
+newly introduced slot has `legacy:null`. The four newly added supplemental rows live
+in an appended era so all historical era/item positions remain stable. See
+`PRERELEASE_VARIANT_AUDIT.md` for the verified names, additions, and exclusions.
 
 ---
 
@@ -180,8 +261,8 @@ copies cannot silently drift from one another.
 } ] } ] } ] }
 ```
 
-**`slots[].g` is the column group and it is required.** `l` is the checkbox's own
-label ("Draft #1"), `g` is the column it belongs to ("Draft"). The UI groups by `g`
+**`slots[].g` is the column group and it is required.** `l` is the slot's explicit
+label ("Draft Booster Pack copy 1"), `g` is the column it belongs to ("Draft"). The UI groups by `g`
 to build aligned columns. This used to be inferred by regex-stripping trailing
 digits off `l`, which silently merged Lorcana's "Kid 1" and "Kid 2" into one column
 labelled "Kid". Never infer grouping from label text again — emit `g` in
@@ -192,10 +273,11 @@ For Booster Boxes, `slots[].r` marks whether the slot counts toward completion
 checklist. `slots[].k` is the stable key-group identity. The required box slot uses
 `k:"Box"` even though its visible `g` is `Set`, `Draft`, etc.; this preserves every
 existing v2 check and extra-quantity key while allowing truthful product columns.
-`slots[].legacy` is used only by Booster Boxes: required slots pin their original
-v1 positional key, while bonus slots use `null` because no corresponding v1 slot
-ever existed. Other checklists omit the field and retain position-derived migration.
-Keep this pinning if rows move between display sections again.
+`slots[].legacy` can pin or suppress a v1 positional mapping. Booster Boxes pin
+moved required slots and set new bonus slots to `null`. Prerelease expansions keep
+the old ordinal-zero slot position-derived and set every newly introduced named slot
+to `null`; wholly new rows also use `null`. Other historical slots omit the field.
+Keep these choices if rows move or expand again.
 
 Checkbox state keys are content-based v2 keys:
 `` `${checklistId}|v2|${contentFingerprint}` ``. The deterministic fingerprint covers
@@ -255,7 +337,7 @@ The whole page is three sticky layers plus a flowing body:
 
 ```
 header.top           sticky top:0    brand · build stamp │ sync LED · ◐ · ⋯ · progress ring
-.controls            sticky top:62px picker ▾ │ (spacer) │ 🔍 · ⌄⌄ · ⌃⌃ · ⚙ View
+.controls            sticky top:62px picker ▾ │ (spacer) │ 🔍 · ↻ · ⌄⌄ · ⌃⌃ · ⚙ View
 .era-cols            sticky --stickytop        column headings + era name (per era)
 #content             CSS multi-column, 1–3 columns via the View menu
 ```
@@ -277,9 +359,10 @@ Beyond → Epilogue → Theme → Jumpstart → …), and gives every row those 
 (`--gcol`), leaving a hidden blank cell where a set lacks that product. Ordering by
 rank rather than first-appearance still matters in mixed eras. Booster Boxes are
 deliberately capped at two columns per era; sparse product types live in the focused
-sections described above. Single-group
-eras with a varying box count (prerelease, 1–10 variants) instead reserve `--onew`
-and wrap past 5 per line, so names still start on one x.
+sections described above. Single-group eras reserve `--onew`, so names still start
+on one x. Prerelease rows use one aggregate physical-copy count regardless of
+variant count; named-variant completion is shown separately in the row tag and
+detail drawer.
 
 **Rows are `.item` wrappers**, each containing a `.row` (checkboxes · name+code+tags
 on one line · value · chevron) and a collapsed `.rowdet` drawer holding the note and,
@@ -295,13 +378,21 @@ button. Hovering the control, or focusing it on touch/keyboard, slides minus and
 buttons out to the sides without widening the row at rest. The count receives the
 group color when `owned >= target`; target is the number of underlying slots, so a
 standard box needs 1, MTG pack types need 2, and Lorcana's `Kid 1`/`Kid 2` slots are
-displayed together as `Copies` with target 2. Quantities may exceed target. Those
-extra copies live in `state.extras` under stable `checklist|extra|fingerprint` keys;
+displayed together as `Copies` with target 2. Quantities may exceed target,
+including on the `distinct_variants` prerelease checklist. Ordinary group extras
+live in `state.extras` under stable `checklist|extra|fingerprint` keys; named
+prerelease duplicates use the parallel `checklist|slot-extra|fingerprint` form so
+each variant retains its own quantity.
 decrement removes extras before clearing the underlying v2 slot keys. Gist payloads
 include both `checks` and `extras`. Preserve this split: slot checks keep existing
 progress/migration semantics while extras allow an unbounded owned count. Preserve
 the `.qtyctrl::before` hover bridge too: it spans the 2px visual gap to each translated
 button so the control does not collapse while the pointer travels from the count.
+Each quantity control also carries a stable transient `data-qty-key`. A quantity
+change rebuilds the visible rows, then restores focus to the replacement same-side
+button; this keeps `:focus-within` active so repeated plus/minus clicks do not make
+the tray disappear. If decrement disables the minus button at zero, focus falls back
+to the count. This focus state is UI-only and is never persisted.
 On Booster Boxes, the required control has a gold ring and star; optional controls
 use a dashed outline and fill with their product color only when owned. Optional
 groups have target zero, are excluded by `clProgress`, `eraProgress`, and `overall`.
@@ -309,7 +400,9 @@ groups have target zero, are excluded by `clProgress`, `eraProgress`, and `overa
 done; optional controls also remain fully opaque when the required part of a mixed row is complete.
 With **Hide completed** enabled, `completionLinger` keeps a row visible for four
 seconds after its latest quantity change once it reaches target. Each further +/-
-click restarts the countdown, while dropping below target cancels it. This state is
+click restarts the countdown, while dropping below target cancels it. Multi-variant
+prerelease drawers list named, independently adjustable quantities and stay open across
+their row re-render. This state is
 deliberately transient and must not be added to localStorage or Gist payloads.
 
 **Expanding controls.** Two elements collapse to an icon and expand *leftward* by
@@ -324,6 +417,38 @@ clears it).
 closes the others, plus outside-click and Escape. `closeOnItem` is true for one-shot
 action menus (⋯, picker) and false for the View menu, which holds a toggle and a
 select you may want to change together.
+
+**Pricing refresh controls.** Every priced row has a compact circular-arrow button
+that refreshes all of that row's `pricingProducts`; the existing per-product buttons
+remain in the detail drawer. The control-bar arrow opens choices for every priced
+item or unfinished goal items on the active checklist. “Unfinished” means a row has
+at least one required ownership slot and is not complete, so bonus-only inventory is
+not perpetually swept into that mode. “All” includes completed and bonus-only rows.
+Batch work is memory-only, deduplicates `productId`, and runs at four concurrent
+requests. It calls the same `refreshPrice()`/`pricingRequest()` path, preserving exact
+origin/frame/channel/request/product validation and all unavailable/error/watch
+gates. Never persist batch or valuation state in collection state, Gists, or exports.
+
+**Collection page-decoration snapshot.** The extension parent may send
+`{channel:"tcg-collection/v1", type:"collectionSnapshot", requestId}` to the
+dashboard. `buildCollectionSnapshot()` rebuilds one atomic
+`tcg.collection-snapshot/v2` response from the current in-memory ownership state;
+`postCollectionSnapshot()` returns it as `collectionSnapshotResult` only to
+`pricingConsumerOrigin`. The listener requires the exact origin, the exact
+`window.parent` source, the exact channel/type, and a bounded nonempty request ID,
+and never posts to `*`.
+
+Every one of the 686 unique `pricingProducts` becomes a catalog entry keyed by its
+canonical `ProductRef.productId`. `collectionOwnership()` uses `slotOrdinal` for a
+named prerelease variant (including that variant's duplicate quantity); all other
+products match `slotGroup` to `groupedSlots(item).n`, which preserves pack targets,
+optional box inventory, and Lorcana's displayed `Copies` target. Each entry carries
+the full validated `tcg.product/v1` ProductRef plus integer `target`, `owned`,
+`missing`, `requirement`, and `status`. An unmapped group, invalid/duplicate
+ProductRef, invalid quantity, empty catalog, or catalog over 1,200 products fails the
+whole request instead of silently omitting a product. Snapshot generation is
+read-only and must never call `save()`, change state, or include v2/legacy keys,
+GitHub or provider credentials, Gist IDs, pricing values, watches, or other state.
 
 **Diagnostics.** The header subtitle carries a build stamp (`const BUILD`, stamped by
 `build_app.py` at build time) — the fastest way to tell whether a browser is running
@@ -341,8 +466,10 @@ lib/ai.js              provider-agnostic listing filter (Anthropic OR OpenAI)
 public/                dashboard (same UI; talks to server instead of GitHub)
 extension/             MV3 Chrome extension — TCGplayer price scraper
 tools/check-gist.js    live round-trip diagnostic (never prints the token)
-tools/test-gist-logic.js  offline Gist tests, mocked GitHub — 17 passing
-tools/test-key-migration.js generated-dashboard key/migration and catalog tests — 30 passing
+tools/test-gist-logic.js  offline Gist tests, mocked GitHub — 26 passing
+tools/test-key-migration.js generated-dashboard key/migration/catalog/ProductRef tests — 48 passing
+tools/test-browser-extension.js MV3, credential boundary, exact vendored-artifact tests
+tools/test-pricing-dashboard.js generated bridge/state/batch/error/watch-gate tests
 ```
 - Storage backend: `GITHUB_TOKEN` → gist, else Google Drive OAuth (`drive.file` scope)
 - `APP_PASSWORD` puts basic auth in front of everything (**required if deployed**)
@@ -523,7 +650,7 @@ generators/build_lorcana.py   Lorcana (all 3, combined) → PDF
 generators/gen_data.py        imports all 5 → binder_data.json (7 checklists)
 generators/import_cursor_product_images.py  trusted image-cache adapter
 generators/build_app.py       binder_data.json → all 3 dashboard HTML copies (UI lives here)
-data/binder_data.json         unified data model — 7 checklists, 888 required / 928 inventory slots
+data/binder_data.json         unified data model — 7 checklists, 910 required / 950 inventory slots
 data/product_images.json      reviewed image metadata (33 exact products initially)
 pdfs/*.pdf                    5 printable checklists
 lists/mtg_booster_box_names.txt   180 box names for label printing
@@ -531,6 +658,11 @@ index.html                    generated GitHub Pages entry point
 apps/static/index.html        identical static-app staging copy
 serve_binder.command          double-click: serves the folder on localhost:8765
 node-app/                     Express app + Chrome extension + tools (UI is stale)
+browser-extension/            current Chrome/Edge side-panel dashboard launcher
+  README.md                    user install and update workflow
+  HANDOFF.md                   extension ownership and dashboard/pricing contracts
+  vendor/tcg-comps-2.40.0/     active unmodified API v1 + collection-snapshot v2 consumer artifacts
+  vendor/tcg-comps-2.34.0/     retained historical API v1 consumer artifacts
 ```
 
 **Where the UI actually lives:** `build_app.py` holds the entire dashboard — HTML,

@@ -49,6 +49,52 @@ class MultiCheck(Flowable):
             x=col*(s+g); y=self.height - s - r*(s+g)
             c.roundRect(x,y,s,s,1.2,stroke=1,fill=0)
 
+# Explicit names are the collection identity presented to the user.  The numeric
+# field in ERAS is retained for the printable checklist layout, but every value is
+# validated against this map before dashboard data is generated.
+VARIANT_NAMES = {
+    "MBS": ("Mirran Faction Pack", "Phyrexian Faction Pack"),
+    "RTR": ("Azorius", "Izzet", "Rakdos", "Golgari", "Selesnya"),
+    "GTC": ("Orzhov", "Dimir", "Gruul", "Boros", "Simic"),
+    "DGM": ("Azorius", "Izzet", "Rakdos", "Golgari", "Selesnya",
+            "Orzhov", "Dimir", "Gruul", "Boros", "Simic"),
+    "THS": ("Path of Honor", "Path of Wisdom", "Path of Ambition",
+            "Path of Battle", "Path of Might"),
+    "BNG": ("Destined to Lead", "Destined to Outwit", "Destined to Dominate",
+            "Destined to Conquer", "Destined to Thrive"),
+    "JOU": ("Forged in Glory", "Forged in Intellect", "Forged in Tyranny",
+            "Forged in War", "Forged in Pursuit"),
+    "M15": ("Hunt with Valor", "Hunt with Guile", "Hunt with Ambition",
+            "Hunt with Ferocity", "Hunt with Strength"),
+    "KTK": ("Abzan", "Jeskai", "Sultai", "Mardu", "Temur"),
+    "FRF": ("Abzan", "Jeskai", "Sultai", "Mardu", "Temur"),
+    "DTK": ("Dromoka", "Ojutai", "Silumgar", "Kolaghan", "Atarka"),
+    "ORI": ("Gideon", "Jace", "Liliana", "Chandra", "Nissa"),
+    "GRN": ("Selesnya", "Golgari", "Izzet", "Dimir", "Boros"),
+    "RNA": ("Azorius", "Orzhov", "Rakdos", "Gruul", "Simic"),
+    "STX": ("Silverquill", "Prismari", "Witherbloom", "Lorehold", "Quandrix"),
+    "SNC": ("Obscura", "Maestros", "Riveteers", "Cabaretti", "Brokers"),
+    "BRO": ("Mishra's Burnished Banner", "Urza's Iron Alliance"),
+    "TDM": ("Abzan", "Jeskai", "Sultai", "Mardu", "Temur"),
+    "ATL": ("Aang", "Azula", "Katara", "Toph", "Zuko"),
+    "SOS": ("Silverquill", "Prismari", "Witherbloom", "Lorehold", "Quandrix"),
+}
+
+
+def variant_names(code, count):
+    names = VARIANT_NAMES.get(code, ("Standard Prerelease Pack",))
+    if len(names) != count:
+        raise ValueError("%s declares %d variants but names %d" % (code, count, len(names)))
+    return names
+
+
+# Counts in the last published positional-key schema.  New positions are
+# explicitly left unmapped so an old saved check can never claim a new variant.
+LEGACY_VARIANT_COUNTS = {
+    "M15": 1, "DTK": 1, "BRO": 1, "TDM": 1, "ATL": 1,
+    "MBS": 0, "MH2": 0, "CLB": 0, "MH3": 0,
+}
+
 # (set, code, year, variants, est, note)
 ERAS = [
 ("Ravnica & Theros Blocks — 2012–2014", [
@@ -59,12 +105,12 @@ ERAS = [
  ("Theros","THS","'13",5,False,"5 Hero's Path (colors)"),
  ("Born of the Gods","BNG","'14",5,False,"5 Hero packs"),
  ("Journey into Nyx","JOU","'14",5,False,"5 Hero packs"),
- ("Magic 2015","M15","'14",1,False,"Garruk challenge card"),
+ ("Magic 2015","M15","'14",5,False,"5 color-themed Hunt packs; Garruk challenge card"),
  ("Khans of Tarkir","KTK","'14",5,False,"5 clan packs"),
 ]),
 ("Tarkir, Origins & Battle for Zendikar — 2015–2017", [
  ("Fate Reforged","FRF","'15",5,False,"5 clan packs"),
- ("Dragons of Tarkir","DTK","'15",1,False,"Dragonfury event"),
+ ("Dragons of Tarkir","DTK","'15",5,False,"5 dragonlord/clan packs; Dragonfury event"),
  ("Magic Origins","ORI","'15",5,False,"5 planeswalker colors"),
  ("Battle for Zendikar","BFZ","'15",1,False,""),
  ("Oath of the Gatewatch","OGW","'16",1,False,""),
@@ -101,7 +147,7 @@ ERAS = [
  ("Kamigawa: Neon Dynasty","NEO","'22",1,False,""),
  ("Streets of New Capenna","SNC","'22",5,False,"5 family packs"),
  ("Dominaria United","DMU","'22",1,False,""),
- ("The Brothers' War","BRO","'22",1,False,""),
+ ("The Brothers' War","BRO","'22",2,False,"Mishra and Urza themed packs"),
  ("Phyrexia: All Will Be One","ONE","'23",1,False,""),
  ("March of the Machine","MOM","'23",1,False,""),
  ("LotR: Tales of Middle-earth","LTR","'23",1,False,"UB"),
@@ -117,20 +163,26 @@ ERAS = [
 ]),
 ("Aetherdrift to Avatar — 2025", [
  ("Aetherdrift","DFT","'25",1,False,""),
- ("Tarkir: Dragonstorm","TDM","'25",1,False,""),
+ ("Tarkir: Dragonstorm","TDM","'25",5,False,"5 clan packs"),
  ("Final Fantasy","FIN","'25",1,False,"UB"),
  ("Edge of Eternities","EOE","'25",1,False,""),
- ("Marvel's Spider-Man","SPM","'25",1,True,"UB"),
- ("Avatar: The Last Airbender","ATL","'25",1,True,"UB"),
+ ("Marvel's Spider-Man","SPM","'25",1,False,"UB"),
+ ("Avatar: The Last Airbender","ATL","'25",5,False,"5 character packs • UB"),
 ]),
 ("Lorwyn Eclipsed & Beyond — 2026  (some projected)", [
  ("Lorwyn Eclipsed","ECL","'26",1,False,""),
- ("Teenage Mutant Ninja Turtles","TMT","'26",1,True,"UB"),
- ("Secrets of Strixhaven","SOS","'26",5,True,"5 college packs (projected)"),
- ("Marvel Super Heroes","MSH","'26",1,True,"UB; late Jun"),
+ ("Teenage Mutant Ninja Turtles","TMT","'26",1,False,"UB"),
+ ("Secrets of Strixhaven","SOS","'26",5,False,"5 college packs"),
+ ("Marvel Super Heroes","MSH","'26",1,False,"UB; Jun 2026"),
  ("The Hobbit","TBA","'26",1,True,"Aug 2026 • UB • projected"),
  ("Reality Fracture","TBA","'26",1,True,"Oct 2026 • projected"),
  ("Star Trek","TBA","'26",1,True,"Nov 2026 • UB • projected"),
+]),
+("Exceptional & Supplemental Prerelease Products — 2011–2024", [
+ ("Mirrodin Besieged","MBS","'11",2,False,"Prerelease-only Mirran and Phyrexian faction packs"),
+ ("Modern Horizons 2","MH2","'21",1,False,"First non-Standard set with a full Prerelease Pack"),
+ ("Commander Legends: Battle for Baldur's Gate","CLB","'22",1,False,"Commander Draft Prerelease Pack"),
+ ("Modern Horizons 3","MH3","'24",1,False,"Modern Horizons Prerelease Pack"),
 ]),
 ]
 
@@ -168,7 +220,7 @@ def draw_header(canvas, doc):
         canvas.drawCentredString(x, sy-9, lbl)
     ly = sy-21
     canvas.setFont("Helvetica",6.5)
-    msg=("Most sets = 1 generic pack (1 box).  Faction sets have one variant per guild/clan/color/college — e.g. Dragon's Maze had 10.  Excludes pre-2012 sets (events only), Masters/reprint/Commander/supplemental sets, and Collector-only UB sets — none had purchasable Prerelease Packs.")
+    msg=("Most sets = 1 generic pack. Named guild/clan/color/college/character versions each count once; duplicate copies do not. Mirrodin Besieged is the verified pre-2012 faction-pack exception.")
     canvas.setFillColor(GREY); canvas.drawCentredString(cx, ly, msg)
     canvas.setStrokeColor(PURPLE); canvas.setLineWidth(1.5)
     canvas.line(LM, PAGE_H-TM-H1+6, PAGE_W-RM, PAGE_H-TM-H1+6)
@@ -222,8 +274,8 @@ notes_html=("<b>How to use this.</b> Each set lists how many distinct Prerelease
  "<b>Faction breakdowns:</b> guild sets = the 5 (or 10) Ravnica guilds; Tarkir = the 5 clans (Abzan, Jeskai, Sultai, Mardu, Temur); "
  "Theros block = 5 colors/Hero paths; Origins = 5 planeswalker colors; Strixhaven / Secrets of Strixhaven = 5 colleges; New Capenna = "
  "5 crime families; Dragon's Maze = all 10 guilds. &bull; <b>Scope:</b> the modern, purchasable Prerelease Pack began with Return to "
- "Ravnica (Sept 2012). Earlier sets held prerelease events with promo cards but no standardized take-home box. &bull; <b>Excluded</b> "
- "(no Prerelease Pack): Masters/reprint sets, Commander sets, supplemental/Jumpstart sets, Modern Horizons, and Collector-only UB sets "
+ "Ravnica (Sept 2012), with Mirrodin Besieged faction packs as a verified exception. &bull; <b>Excluded</b> "
+ "(no distinct sealed Prerelease Pack): most Masters/reprint, Commander, supplemental/Jumpstart, and Collector-only UB releases "
  "(Doctor Who, Fallout, Warhammer 40K, Assassin's Creed). &bull; 2025–2026 UB and unreleased sets marked 'projected' — confirm at release.")
 nb=Table([[Paragraph(notes_html,note_box_st)]],colWidths=[TBLW])
 nb.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#f5f2fc")),
