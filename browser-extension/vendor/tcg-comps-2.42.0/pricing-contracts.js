@@ -12,6 +12,10 @@
   const ALERT_SCHEMA = "tcg.alert/v1";
   const COLLECTION_SNAPSHOT_SCHEMA = "tcg.collection-snapshot/v2";
   const COLLECTION_DECORATION_RESULT_SCHEMA = "tcg.collection-decoration-result/v2";
+  const MONITOR_SUBSCRIPTION_SCHEMA = "tcg.collection-monitor-subscription/v1";
+  const MONITOR_SYNC_RESULT_SCHEMA = "tcg.collection-monitor-sync-result/v1";
+  const MONITOR_STATUS_SCHEMA = "tcg.collection-monitor-status/v1";
+  const MONITOR_RUN_RESULT_SCHEMA = "tcg.collection-monitor-run-result/v1";
   const MAX_COLLECTION_PRODUCTS = 1200;
 
   const GAMES = new Set(["mtg", "pokemon", "lorcana", "yugioh", "other"]);
@@ -183,6 +187,77 @@
     };
   }
 
+  function validateMonitorSubscription(input) {
+    const errors = [];
+    if (!isObject(input)) return { ok: false, errors: ["subscription must be an object"], value: null };
+    const schema = cleanText(input.schema, 80);
+    const namespace = cleanText(input.namespace, 80).toLowerCase();
+    const revision = cleanText(input.revision, 200).toLowerCase();
+    const generatedAt = cleanText(input.generatedAt, 60);
+    if (schema !== MONITOR_SUBSCRIPTION_SCHEMA) errors.push("schema must be " + MONITOR_SUBSCRIPTION_SCHEMA);
+    if (!/^[a-z0-9][a-z0-9._:-]{1,79}$/.test(namespace)) errors.push("namespace is invalid");
+    if (!/^[a-z0-9][a-z0-9:._-]{7,199}$/.test(revision)) errors.push("revision is invalid");
+    if (!generatedAt || !Number.isFinite(Date.parse(generatedAt))) errors.push("generatedAt must be an ISO date-time");
+
+    const rawPreferences = isObject(input.preferences) ? input.preferences : {};
+    const rawDigest = isObject(rawPreferences.dailyDigest) ? rawPreferences.dailyDigest : {};
+    ["enabled", "includeOptional", "instantFixedPriceEmail"].forEach((field) => {
+      if (rawPreferences[field] != null && typeof rawPreferences[field] !== "boolean") errors.push("preferences." + field + " must be boolean");
+    });
+    if (rawDigest.enabled != null && typeof rawDigest.enabled !== "boolean") errors.push("preferences.dailyDigest.enabled must be boolean");
+    const sources = Array.isArray(rawPreferences.sources)
+      ? [...new Set(rawPreferences.sources.map((source) => cleanText(source, 30).toLowerCase()))]
+      : ["ebay", "tcgplayer", "heritage", "store"];
+    const minimumConfidence = cleanText(rawPreferences.minimumConfidence || "medium", 20).toLowerCase();
+    const maxMarketRatio = finiteRatio(rawPreferences.maxMarketRatio == null ? 0.8 : rawPreferences.maxMarketRatio);
+    const digestTime = cleanText(rawDigest.time || "07:00", 5);
+    const timezone = cleanText(rawDigest.timezone || "America/Chicago", 80);
+    if (!maxMarketRatio) errors.push("preferences.maxMarketRatio must be greater than 0 and no more than 1");
+    if (!CONFIDENCE.has(minimumConfidence)) errors.push("preferences.minimumConfidence is invalid");
+    if (!sources.length || sources.some((source) => !SOURCES.has(source))) errors.push("preferences.sources contain an unsupported value");
+    if (!/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(digestTime)) errors.push("preferences.dailyDigest.time is invalid");
+    if (timezone !== "America/Chicago") errors.push("preferences.dailyDigest.timezone must be America/Chicago for v1");
+
+    const collection = validateCollectionSnapshot(input.collection);
+    if (!collection.ok) errors.push(...collection.errors.map((error) => "collection: " + error));
+    if (collection.ok && collection.value.namespace !== namespace) errors.push("collection.namespace must equal subscription namespace");
+
+    const preferences = {
+      enabled: rawPreferences.enabled !== false,
+      maxMarketRatio: maxMarketRatio || 0.8,
+      minimumConfidence,
+      sources,
+      includeOptional: rawPreferences.includeOptional === true,
+      instantFixedPriceEmail: rawPreferences.instantFixedPriceEmail !== false,
+      dailyDigest: {
+        enabled: rawDigest.enabled !== false,
+        time: digestTime,
+        timezone
+      }
+    };
+    return {
+      ok: errors.length === 0,
+      errors,
+      value: errors.length ? null : {
+        schema: MONITOR_SUBSCRIPTION_SCHEMA,
+        namespace,
+        revision,
+        generatedAt: new Date(generatedAt).toISOString(),
+        preferences,
+        collection: collection.value
+      }
+    };
+  }
+
+  function activeMonitorTargets(subscription) {
+    const checked = validateMonitorSubscription(subscription);
+    if (!checked.ok || !checked.value.preferences.enabled) return [];
+    const includeOptional = checked.value.preferences.includeOptional;
+    return Object.values(checked.value.collection.products).filter((status) =>
+      status.missing > 0 && (status.requirement === "required" || includeOptional)
+    );
+  }
+
   function apiError(code, message, requestId) {
     return {
       apiVersion: API_VERSION,
@@ -199,6 +274,10 @@
     ALERT_SCHEMA,
     COLLECTION_SNAPSHOT_SCHEMA,
     COLLECTION_DECORATION_RESULT_SCHEMA,
+    MONITOR_SUBSCRIPTION_SCHEMA,
+    MONITOR_SYNC_RESULT_SCHEMA,
+    MONITOR_STATUS_SCHEMA,
+    MONITOR_RUN_RESULT_SCHEMA,
     MAX_COLLECTION_PRODUCTS,
     GAMES,
     PRODUCT_TYPES,
@@ -209,6 +288,8 @@
     validateWatchRule,
     validateApiEnvelope,
     validateCollectionSnapshot,
+    validateMonitorSubscription,
+    activeMonitorTargets,
     apiError,
     finitePositive
   };

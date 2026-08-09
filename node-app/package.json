@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node tools/test-gist-logic.js && node tools/test-key-migration.js && node tools/test-browser-extension.js && node tools/test-pricing-dashboard.js",
+    "test": "node tools/test-gist-logic.js && node tools/test-key-migration.js && node tools/test-dashboard-monitor-gist.js && node tools/test-browser-extension.js && node tools/test-browser-extension-monitor.js && node tools/test-pricing-dashboard.js",
     "check:gist": "node tools/check-gist.js"
   },
   "engines": {

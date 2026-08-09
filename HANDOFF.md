@@ -450,6 +450,29 @@ whole request instead of silently omitting a product. Snapshot generation is
 read-only and must never call `save()`, change state, or include v2/legacy keys,
 GitHub or provider credentials, Gist IDs, pricing values, watches, or other state.
 
+**Deal-monitor subscription.** The More menu opens a generator-owned Monitoring
+dialog. Its defaults are enabled, a maximum Market ratio of `0.80`, medium
+confidence, eBay/TCGplayer/Heritage/supported stores, required products only,
+instant fixed-price email, and a daily `07:00 America/Chicago` digest. Only these
+non-secret preferences and their conflict-resolution timestamp are stored in the
+dashboard state/export and canonical `collector` Gist. Older saved states and
+Gists safely receive defaults; collection keys, quantities, extras, and recovery
+metadata are unchanged. Provider/bridge status is deliberately memory-only.
+
+The Tracker extension requests the current bundle with
+`{channel:"tcg-collection-monitor/v1",type:"monitorSubscription",requestId}`.
+`buildMonitorSubscription()` returns an on-demand
+`tcg.collection-monitor-subscription/v1` containing normalized preferences and a
+fresh full `tcg.collection-snapshot/v2`. Its 16-hex FNV-1a revision hashes a
+canonical key-sorted representation of preferences plus collection; `generatedAt`
+is excluded, so time alone cannot change the revision. Ownership or preference
+edits debounce to one `monitorStateChanged` hint containing only channel, type, and
+request ID. The same exact-origin/exact-parent validation accepts the agreed
+versioned `monitorSyncStatus` envelope, whitelists its non-secret fields, paints the
+dialog status, and returns `monitorSyncStatusResult`; it never persists the status.
+No monitor message uses `*`, and no bundle/hint/status contains GitHub/provider
+credentials, checklist/extras keys, valuations, watches, listing history, or email.
+
 **Diagnostics.** The header subtitle carries a build stamp (`const BUILD`, stamped by
 `build_app.py` at build time) — the fastest way to tell whether a browser is running
 the copy you just deployed. `window.__binderDebug()` returns build, storage health,
@@ -467,9 +490,10 @@ public/                dashboard (same UI; talks to server instead of GitHub)
 extension/             MV3 Chrome extension — TCGplayer price scraper
 tools/check-gist.js    live round-trip diagnostic (never prints the token)
 tools/test-gist-logic.js  offline Gist tests, mocked GitHub — 26 passing
-tools/test-key-migration.js generated-dashboard key/migration/catalog/ProductRef tests — 48 passing
+tools/test-key-migration.js generated-dashboard key/migration/catalog/ProductRef/monitor-preference tests
+tools/test-dashboard-monitor-gist.js exact generated dashboard preference pull/push/round-trip tests
 tools/test-browser-extension.js MV3, credential boundary, exact vendored-artifact tests
-tools/test-pricing-dashboard.js generated bridge/state/batch/error/watch-gate tests
+tools/test-pricing-dashboard.js generated pricing/collection/monitor bridge, revision, leakage, status, batch, and watch-gate tests
 ```
 - Storage backend: `GITHUB_TOKEN` → gist, else Google Drive OAuth (`drive.file` scope)
 - `APP_PASSWORD` puts basic auth in front of everything (**required if deployed**)
@@ -546,8 +570,8 @@ tools/test-pricing-dashboard.js generated bridge/state/batch/error/watch-gate te
   a bottleneck. (Chrome's devtools/extension script injection does time out while
   driving that tab hard — that is tooling, not the app.)
 - `window.__binderDebug()` in the console reports build, storage health, connection
-  shape, boot state and check counts. It never returns the token, only its length
-  and first four characters, so its output is safe to paste anywhere.
+  shape, boot state and check counts. It never returns the token or even a token
+  prefix, so its output is safe to paste anywhere.
 
 ---
 
@@ -661,7 +685,7 @@ node-app/                     Express app + Chrome extension + tools (UI is stal
 browser-extension/            current Chrome/Edge side-panel dashboard launcher
   README.md                    user install and update workflow
   HANDOFF.md                   extension ownership and dashboard/pricing contracts
-  vendor/tcg-comps-2.40.0/     active unmodified API v1 + collection-snapshot v2 consumer artifacts
+  vendor/tcg-comps-2.42.0/     active unmodified API v1 + collection/monitor consumer artifacts
   vendor/tcg-comps-2.34.0/     retained historical API v1 consumer artifacts
 ```
 
