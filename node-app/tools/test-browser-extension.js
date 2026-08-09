@@ -10,7 +10,7 @@ const EXT = path.join(ROOT, 'browser-extension');
 const manifest = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
 
 assert.strictEqual(manifest.manifest_version, 3, 'extension must use Manifest V3');
-assert.strictEqual(manifest.version, '1.2.1', 'copyable page-check diagnostics must bump the tracker extension version');
+assert.strictEqual(manifest.version, '1.3.2', 'collection monitor integration, frame-readiness, and run-status retention fixes must bump the tracker extension version');
 assert.strictEqual(manifest.side_panel.default_path, 'sidepanel.html');
 assert.deepStrictEqual(manifest.permissions.slice().sort(), ['sidePanel', 'storage']);
 assert.ok(!manifest.host_permissions, 'launcher should not request host permissions');
@@ -33,9 +33,9 @@ for (const relativePath of new Set(referenced)) {
 const html = fs.readFileSync(path.join(EXT, 'sidepanel.html'), 'utf8');
 assert.match(html, /<script src="sidepanel\.js"><\/script>/);
 const vendorScripts = [
-  'vendor/tcg-comps-2.40.0/pricing-contracts.js',
-  'vendor/tcg-comps-2.40.0/pricing-client.js',
-  'vendor/tcg-comps-2.40.0/pricing-bridge.js',
+  'vendor/tcg-comps-2.42.0/pricing-contracts.js',
+  'vendor/tcg-comps-2.42.0/pricing-client.js',
+  'vendor/tcg-comps-2.42.0/pricing-bridge.js',
 ];
 let priorScript = -1;
 for (const script of vendorScripts) {
@@ -46,6 +46,8 @@ for (const script of vendorScripts) {
 }
 assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, 'inline scripts are forbidden in MV3 extension pages');
 assert.doesNotMatch(html, /\son(?:click|load|error)=/i, 'inline event handlers are forbidden');
+assert.ok(html.indexOf('<script src="monitor-bridge.js"></script>') > html.indexOf('pricing-bridge.js'),
+  'the exact dashboard monitor bridge must load before sidepanel.js');
 
 const panelJs = fs.readFileSync(path.join(EXT, 'sidepanel.js'), 'utf8');
 const workerJs = fs.readFileSync(path.join(EXT, 'background.js'), 'utf8');
@@ -73,14 +75,18 @@ assert.doesNotMatch(panelJs, /versionNote\s*\?\s*['"]error['"]\s*:\s*['"]ok['"]/
 assert.match(html, /id="scanPage"/, 'the side panel must expose a direct page-decoration button');
 assert.match(html, /id="copyPageScanDiagnostics"[^>]*hidden/,
   'page-check diagnostics copy control must stay hidden until an error occurs');
+assert.match(html, /id="syncMonitor"/, 'settings must expose an explicit collection monitor sync control');
+assert.match(html, /id="refreshMonitorStatus"/, 'settings must expose provider monitor status');
+assert.match(html, /id="runMonitor"/, 'settings must expose an explicit manual monitor run');
+assert.match(html, /id="copyMonitorDiagnostics"/, 'monitor failures must expose copyable sanitized diagnostics');
 assert.match(panelJs, /COLLECTION_SNAPSHOT_SCHEMA\s*=\s*'tcg\.collection-snapshot\/v2'/,
   'the Tracker must require the canonical ProductRef collection snapshot');
 assert.match(panelJs, /COLLECTION_RESULT_SCHEMA\s*=\s*'tcg\.collection-decoration-result\/v2'/,
   'the Tracker must require the corrected canonical result schema');
 assert.match(panelJs, /decorateCollectionPage\(snapshot, \{ observe: true, userInitiated: true \}\)/,
   'page decoration must be a direct user-initiated provider call');
-assert.strictEqual((panelJs.match(/userInitiated:\s*true/g) || []).length, 1,
-  'only the direct page-decoration button may assert a user action');
+assert.strictEqual((panelJs.match(/userInitiated:\s*true/g) || []).length, 2,
+  'only direct page-decoration and monitor-sync buttons may assert a user action in the panel; packaged runMonitor adds its own direct-action flag');
 assert.doesNotMatch(panelJs, /targetTabId/, 'the provider should select the active tab without new Tracker tab permissions');
 assert.match(panelJs, /event\.origin !== pending\.targetOrigin/,
   'collection snapshots must reject responses from a different origin');
@@ -102,17 +108,38 @@ assert.match(panelJs, /The capability token is intentionally excluded\./,
   'copied diagnostics must explicitly confirm the credential boundary');
 assert.doesNotMatch(panelJs, /['"]Capability token:\s*['"]\s*\+/,
   'copied diagnostics must never append the capability token');
+assert.match(panelJs, /syncMonitorCollection/, 'Tracker must call the packaged monitor collection client method');
+assert.match(panelJs, /monitorStatus/, 'Tracker must call the packaged monitor status client method');
+assert.match(panelJs, /runMonitor/, 'Tracker must call the packaged explicit monitor run client method');
+assert.match(panelJs, /monitorRevisionGate\.shouldForward/, 'automatic duplicate revisions must be idempotent');
+assert.match(panelJs, /dashboardMonitorBridge\.scheduleStateChanged/, 'dashboard changes must use debounced monitor resync');
+assert.match(panelJs, /document\.visibilityState === 'visible'/, 'debounced resync must run only while the side panel is active');
+assert.match(panelJs, /tcg\.collection-monitor-sync-status\/v1/, 'Tracker must report bounded monitor sync status to the dashboard');
+assert.match(panelJs, /No subscription body, GitHub\/Gist credential, provider capability token, monitor bearer token, or email address is included/,
+  'monitor diagnostics must explicitly document every excluded secret category');
+assert.doesNotMatch(panelJs, /mtgBinder_gh|legacyChecksV1|githubToken|gistToken/,
+  'the privileged extension must not read dashboard or Gist credentials/state');
 
 const expectedHashes = {
-  'pricing-contracts.js': '68dff912a54f855a742bba49ec536ee64a8a9fb9fda67c7d198aa91fbde7aea4',
-  'pricing-client.js': '1e1557772c0609cdc081167e50dc4531570c2b9d3cdd10f52a3d06f29cb320a4',
-  'pricing-bridge.js': '740544aa8d059d2e69521c4fcdc68200da6fc9df08a6aebddb14d36b7aa8e74b',
+  'pricing-contracts.js': 'a7e232200c6ea4209992ddd7bfeefa8791f0a80f95a33ce8203cc45ef1d8ff00',
+  'pricing-client.js': 'a23d545c4fe12cae8f2bb64db91853c776145607071a08a96779cf82b3e96f67',
+  'pricing-bridge.js': '4cd9dd0e71692807e2f796febe61144eb48760bd71c6118de283139fdd8bad1d',
 };
 for (const [file, expected] of Object.entries(expectedHashes)) {
-  const actual = crypto.createHash('sha256').update(fs.readFileSync(path.join(EXT, 'vendor', 'tcg-comps-2.40.0', file))).digest('hex');
-  assert.strictEqual(actual, expected, `${file} must remain the exact provider 2.40.0 artifact`);
+  const actual = crypto.createHash('sha256').update(fs.readFileSync(path.join(EXT, 'vendor', 'tcg-comps-2.42.0', file))).digest('hex');
+  assert.strictEqual(actual, expected, `${file} must remain the exact provider 2.42.0 artifact`);
 }
-const contracts = require(path.join(EXT, 'vendor', 'tcg-comps-2.40.0', 'pricing-contracts.js'));
+const contracts = require(path.join(EXT, 'vendor', 'tcg-comps-2.42.0', 'pricing-contracts.js'));
+const clientSource = fs.readFileSync(path.join(EXT, 'vendor', 'tcg-comps-2.42.0', 'pricing-client.js'), 'utf8');
+assert.match(clientSource, /syncMonitorCollection:\s*\(subscription\)\s*=>\s*send\("pricing\.monitor\.syncCollection"/,
+  'packaged client must expose the canonical atomic monitor sync');
+assert.match(clientSource, /monitorStatus:\s*\(\)\s*=>\s*send\("pricing\.monitor\.status"\)/,
+  'packaged client must expose the canonical monitor status method');
+assert.match(clientSource, /runMonitor:\s*\(\)\s*=>\s*send\("pricing\.monitor\.run",\s*\{ options:\s*\{ userInitiated:\s*true \} \}\)/,
+  'packaged client must add userInitiated only for the explicit run method');
+assert.strictEqual(contracts.MONITOR_SYNC_RESULT_SCHEMA, 'tcg.collection-monitor-sync-result/v1');
+assert.strictEqual(contracts.MONITOR_STATUS_SCHEMA, 'tcg.collection-monitor-status/v1');
+assert.strictEqual(contracts.MONITOR_RUN_RESULT_SCHEMA, 'tcg.collection-monitor-run-result/v1');
 const binder = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'binder_data.json'), 'utf8'));
 const catalogProducts = {};
 for (const checklist of binder.checklists || []) {

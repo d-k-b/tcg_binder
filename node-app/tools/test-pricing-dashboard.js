@@ -41,10 +41,24 @@ function createContext(search, initialData = { checklists: [] }) {
     parent,
     addEventListener: (type, listener) => { (listeners[type] ||= []).push(listener); },
   };
+  const monitorDefaults = { enabled: true, maxMarketRatio: 0.8, minimumConfidence: 'medium',
+    sources: ['ebay', 'tcgplayer', 'heritage', 'store'], includeOptional: false,
+    instantFixedPriceEmail: true,
+    dailyDigest: { enabled: true, time: '07:00', timezone: 'America/Chicago' } };
+  const normalizeMonitorPreferences = input => JSON.parse(JSON.stringify(input || monitorDefaults));
+  const hash = value => {
+    let h = 0xcbf29ce484222325n;
+    for (let index = 0; index < value.length; index++) {
+      h ^= BigInt(value.charCodeAt(index));
+      h = BigInt.asUintN(64, h * 0x100000001b3n);
+    }
+    return h.toString(16).padStart(16, '0');
+  };
   const context = vm.createContext({
     console, window, location: { search }, URL, URLSearchParams, Map, Date,
     setTimeout, clearTimeout,
-    contentHash: value => '0123456789abcdef',
+    contentHash: hash, normalizeMonitorPreferences,
+    state: { monitorPreferences: JSON.parse(JSON.stringify(monitorDefaults)) },
     renderContent: () => {},
     closeMenus: () => {},
     toast: message => notices.push(message),
@@ -130,6 +144,50 @@ const product = {
   assert.strictEqual(JSON.stringify(snapshotBridge.ownership), ownershipBefore, 'snapshot generation must not mutate ownership state');
   assert.strictEqual(snapshotBridge.ownership.persistWrites, 0, 'snapshot generation must not persist state');
 
+  const firstSubscription = JSON.parse(JSON.stringify(vm.runInContext('buildMonitorSubscription()', snapshotBridge.context)));
+  const repeatSubscription = JSON.parse(JSON.stringify(vm.runInContext('buildMonitorSubscription()', snapshotBridge.context)));
+  assert.strictEqual(firstSubscription.schema, 'tcg.collection-monitor-subscription/v1');
+  assert.strictEqual(firstSubscription.namespace, 'collection-tracker');
+  assert.deepStrictEqual(firstSubscription.preferences, {
+    enabled: true, maxMarketRatio: 0.8, minimumConfidence: 'medium',
+    sources: ['ebay', 'tcgplayer', 'heritage', 'store'], includeOptional: false,
+    instantFixedPriceEmail: true,
+    dailyDigest: { enabled: true, time: '07:00', timezone: 'America/Chicago' },
+  }, 'monitor subscription must use the conservative contract defaults');
+  assert.strictEqual(firstSubscription.revision, repeatSubscription.revision,
+    'generatedAt alone must not change the deterministic monitor revision');
+  assert.ok(/^[0-9a-f]{16}$/.test(firstSubscription.revision), 'monitor revision must be a stable content hash');
+  assert.ok(!Number.isNaN(Date.parse(firstSubscription.generatedAt)), 'monitor bundle must carry a valid generatedAt timestamp');
+  assert.strictEqual(Object.keys(firstSubscription.collection.products).length, 686,
+    'monitor subscription must atomically carry all 686 collection ProductRefs');
+  assert.deepStrictEqual(firstSubscription.collection, snapshot,
+    'monitor subscription must reuse the authoritative collection snapshot schema and ownership mapping');
+  const monitorJson = JSON.stringify(firstSubscription);
+  assert.doesNotMatch(monitorJson, /checklist\|v2|ghp_|"(?:checks|extras|legacyChecksV1|legacyChecks|keyVersion|github|gist|gistId|apiToken|capability|watch|valuation|pricingStates|price|email|token)"\s*:/i,
+    'monitor subscriptions must contain no collection keys, Gist/GitHub/provider credentials, pricing, watches, or email');
+  assert.strictEqual(JSON.stringify(snapshotBridge.ownership), ownershipBefore,
+    'monitor subscription generation must not mutate ownership');
+  assert.strictEqual(snapshotBridge.ownership.persistWrites, 0,
+    'monitor subscription generation must not persist state');
+
+  const monitorRequest = { channel: 'tcg-collection-monitor/v1', type: 'monitorSubscription', requestId: 'monitor-1' };
+  const postedBeforeMonitor = snapshotBridge.posted.length;
+  snapshotBridge.listener()({ origin: 'chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', source: snapshotBridge.parent, data: monitorRequest });
+  snapshotBridge.listener()({ origin, source: {}, data: monitorRequest });
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: { ...monitorRequest, channel: 'tcg-collection/v1' } });
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: { ...monitorRequest, type: 'wrongType' } });
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: { ...monitorRequest, requestId: '' } });
+  assert.strictEqual(snapshotBridge.posted.length, postedBeforeMonitor,
+    'monitor bundle requests with a wrong origin, frame, channel, type, or requestId must be ignored');
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: monitorRequest });
+  const monitorResponse = snapshotBridge.posted.at(-1);
+  assert.strictEqual(monitorResponse.origin, origin, 'monitor bundle responses must use the exact extension origin');
+  assert.deepStrictEqual({ channel: monitorResponse.message.channel, type: monitorResponse.message.type,
+    requestId: monitorResponse.message.requestId, schema: monitorResponse.message.result.schema }, {
+    channel: 'tcg-collection-monitor/v1', type: 'monitorSubscriptionResult', requestId: 'monitor-1',
+    schema: 'tcg.collection-monitor-subscription/v1',
+  }, 'exact monitor requests must receive the versioned subscription result envelope');
+
   const catalogRecords = [];
   binderData.checklists.forEach(checklist => checklist.eras.forEach(era => era.items.forEach(item =>
     (item.pricingProducts || []).forEach(record => catalogRecords.push({ checklist, item, record })))));
@@ -187,13 +245,65 @@ const product = {
   assert.strictEqual(changedEntry(prerelease).missing, 0);
   assert.strictEqual(snapshotBridge.ownership.persistWrites, 0, 'updated snapshot reads must remain persistence-free');
   assert.strictEqual(firstEntry(required).owned, 0, 'previous snapshots must remain immutable after ownership changes');
+  const collectionResponsesBefore=snapshotBridge.posted.filter(entry=>entry.message.type==='collectionSnapshotResult').length;
   snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: { ...snapshotMessage, requestId: 'collection-2' } });
-  assert.strictEqual(snapshotBridge.posted.length, 2, 'a later request must receive a newly computed snapshot');
-  const refreshedSnapshot = snapshotBridge.posted[1].message.result;
+  const collectionResponses=snapshotBridge.posted.filter(entry=>entry.message.type==='collectionSnapshotResult');
+  assert.strictEqual(collectionResponses.length, collectionResponsesBefore+1,
+    'a later collection request must receive exactly one newly computed snapshot despite concurrent monitor traffic');
+  const refreshedSnapshot = collectionResponses.at(-1).message.result;
   assert.strictEqual(refreshedSnapshot.products[prerelease.record.ref.productId].owned, 3,
     'request-time snapshots must observe named-variant quantity changes');
   assert.strictEqual(refreshedSnapshot.products[optional.record.ref.productId].owned, 2,
     'request-time snapshots must observe optional inventory changes');
+
+  const ownershipChangedSubscription = JSON.parse(JSON.stringify(vm.runInContext('buildMonitorSubscription()', snapshotBridge.context)));
+  assert.notStrictEqual(ownershipChangedSubscription.revision, firstSubscription.revision,
+    'an ownership quantity change must create a new monitor subscription revision');
+  const ownershipRevision = ownershipChangedSubscription.revision;
+  vm.runInContext(`state.monitorPreferences=Object.assign({},state.monitorPreferences,{includeOptional:true})`, snapshotBridge.context);
+  const preferenceChangedSubscription = JSON.parse(JSON.stringify(vm.runInContext('buildMonitorSubscription()', snapshotBridge.context)));
+  assert.notStrictEqual(preferenceChangedSubscription.revision, ownershipRevision,
+    'a normalized preference change must create a new monitor subscription revision');
+  assert.strictEqual(preferenceChangedSubscription.preferences.includeOptional, true);
+  assert.strictEqual(snapshotBridge.ownership.persistWrites, 0,
+    'ownership and preference revision builds must remain read-only');
+
+  const statusRequest = { channel: 'tcg-collection-monitor/v1', type: 'monitorSyncStatus', requestId: 'status-1', status: {
+    schema: 'tcg.collection-monitor-sync-status/v1', state: 'synced', revision: preferenceChangedSubscription.revision,
+    productCount: 686, activeTargetCount: 321, monitorConfigured: true,
+    syncedAt: '2026-08-09T12:00:01.000Z', message: 'Monitor accepted the current collection.', errorCode: null,
+  } };
+  const postedBeforeStatus = snapshotBridge.posted.length;
+  snapshotBridge.listener()({ origin: 'chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', source: snapshotBridge.parent, data: statusRequest });
+  snapshotBridge.listener()({ origin, source: {}, data: statusRequest });
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: { ...statusRequest, requestId: '' } });
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: { ...statusRequest,
+    status: { ...statusRequest.status, schema: 'wrong' } } });
+  assert.strictEqual(snapshotBridge.posted.length, postedBeforeStatus,
+    'wrong-origin/frame/requestId/schema monitor statuses must be ignored and unacknowledged');
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: statusRequest });
+  const statusResponse = snapshotBridge.posted.at(-1);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(statusResponse.message)), {
+    channel: 'tcg-collection-monitor/v1', type: 'monitorSyncStatusResult', requestId: 'status-1',
+    result: { schema: 'tcg.collection-monitor-sync-status-ack/v1', accepted: true },
+  }, 'valid memory-only monitor status must receive the exact versioned acknowledgement');
+  assert.strictEqual(statusResponse.origin, origin, 'monitor status acknowledgement must target the exact extension origin');
+  assert.strictEqual(vm.runInContext('monitorSyncStatus.state', snapshotBridge.context), 'synced');
+  assert.strictEqual(vm.runInContext('monitorSyncStatus.activeTargetCount', snapshotBridge.context), 321);
+  assert.strictEqual(snapshotBridge.ownership.persistWrites, 0, 'painting monitor status must never persist dashboard state');
+
+  const postedBeforeHint = snapshotBridge.posted.length;
+  vm.runInContext('scheduleMonitorStateChanged();scheduleMonitorStateChanged()', snapshotBridge.context);
+  await new Promise(resolve => setTimeout(resolve, 425));
+  const hints = snapshotBridge.posted.slice(postedBeforeHint);
+  assert.strictEqual(hints.length, 1, 'rapid state changes must debounce to one monitorStateChanged hint');
+  assert.strictEqual(hints[0].origin, origin, 'monitor state-change hints must use the exact extension origin');
+  assert.deepStrictEqual(Object.keys(hints[0].message).sort(), ['channel', 'requestId', 'type']);
+  assert.strictEqual(hints[0].message.channel, 'tcg-collection-monitor/v1');
+  assert.strictEqual(hints[0].message.type, 'monitorStateChanged');
+  assert.ok(/^monitor-change-/.test(hints[0].message.requestId));
+  assert.doesNotMatch(JSON.stringify(hints[0].message), /products|preferences|checklist|credential|token|gist/i,
+    'state-change hints must contain no snapshot, preferences, keys, or credentials');
 
   snapshotBridge.context.invalidCatalog = { checklists: [{ id: 'bad', eras: [{ items: [{ name: 'Bad', code: 'BAD', slots: [{ g: 'Display' }],
     pricingProducts: [{ slotGroup: 'Missing group', ref: product }] }] }] }] };
@@ -275,6 +385,8 @@ const product = {
   const standalone = createContext('');
   assert.strictEqual(vm.runInContext('pricingDefaultState().code', standalone.context), 'MISSING_EXTENSION');
   assert.strictEqual(vm.runInContext('pricingConsumerOrigin', standalone.context), '', 'full-page dashboard must not invent a consumer origin');
+  vm.runInContext('emitMonitorStateChanged()', standalone.context);
+  assert.strictEqual(standalone.posted.length, 0, 'standalone dashboards must never emit monitor bridge messages');
 
   assert.doesNotMatch(html, /tcgCompsApiToken|apiToken\s*:/, 'generated dashboard must contain no pricing capability token field');
   assert.match(html, /Live value/);
@@ -284,7 +396,12 @@ const product = {
   assert.match(html, /id="priceRefreshBtn"/, 'toolbar refresh menu must be generated');
   assert.match(html, /rowpricebtn/, 'each priced row must generate a refresh icon');
   assert.match(html, /PRICING_BATCH_CONCURRENCY=4/, 'bulk refresh must use a bounded queue');
-  console.log('pricing dashboard tests: exact pricing bridge, 686-product collection snapshot, batch scopes, and watch gate passing');
+  assert.match(html, /id="monitorModal"/, 'generator must emit the monitoring preferences dialog');
+  assert.match(html, /id="monitorDiscount"/, 'monitoring UI must expose the Market discount threshold');
+  assert.match(html, /data-monitor-source="ebay"/, 'monitoring UI must expose the contract source choices');
+  assert.match(html, /@media\(max-width:480px\)[\s\S]*\.monitor-grid\{grid-template-columns:1fr\}/,
+    'monitoring preferences must collapse to one column at narrow side-panel widths');
+  console.log('pricing dashboard tests: exact pricing/collection/monitor bridges, deterministic 686-product subscription, batch scopes, status, hint, and watch gate passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);

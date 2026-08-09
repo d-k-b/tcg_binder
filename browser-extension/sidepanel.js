@@ -4,11 +4,13 @@ const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
 const PRICING_EXTENSION_KEY = 'tcgCompsExtensionId';
 const PRICING_TOKEN_KEY = 'tcgCompsApiToken';
 const EXPECTED_PRICING_API_VERSION = 1;
-const VENDORED_PROVIDER_VERSION = '2.40.0';
+const VENDORED_PROVIDER_VERSION = '2.42.0';
 const COLLECTION_CHANNEL = 'tcg-collection/v1';
 const COLLECTION_SNAPSHOT_SCHEMA = 'tcg.collection-snapshot/v2';
 const COLLECTION_RESULT_SCHEMA = 'tcg.collection-decoration-result/v2';
 const COLLECTION_REQUEST_TIMEOUT_MS = 10000;
+const MONITOR_REQUEST_TIMEOUT_MS = 10000;
+const MONITOR_DEBOUNCE_MS = 900;
 
 const dashboard = document.getElementById('dashboard');
 const status = document.getElementById('status');
@@ -29,6 +31,18 @@ const pageScanTitle = document.getElementById('pageScanTitle');
 const pageScanMessage = document.getElementById('pageScanMessage');
 const copyPageScanDiagnosticsButton = document.getElementById('copyPageScanDiagnostics');
 const pageScanCopyFeedback = document.getElementById('pageScanCopyFeedback');
+const syncMonitorButton = document.getElementById('syncMonitor');
+const refreshMonitorStatusButton = document.getElementById('refreshMonitorStatus');
+const runMonitorButton = document.getElementById('runMonitor');
+const monitorStatus = document.getElementById('monitorStatus');
+const monitorDetails = document.getElementById('monitorDetails');
+const monitorRevision = document.getElementById('monitorRevision');
+const monitorProductCount = document.getElementById('monitorProductCount');
+const monitorTargetCount = document.getElementById('monitorTargetCount');
+const monitorSyncedAt = document.getElementById('monitorSyncedAt');
+const monitorDiagnosticActions = document.getElementById('monitorDiagnosticActions');
+const copyMonitorDiagnosticsButton = document.getElementById('copyMonitorDiagnostics');
+const monitorCopyFeedback = document.getElementById('monitorCopyFeedback');
 
 let currentUrl = DEFAULT_DASHBOARD_URL;
 let loadTimer = null;
@@ -40,6 +54,28 @@ let collectionRequestSerial = 0;
 let pageScanRunning = false;
 let pageScanDiagnostics = '';
 let dashboardLoadedAt = null;
+let dashboardMonitorBridge = null;
+const monitorRevisionGate = globalThis.TCGCollectionMonitorBridge.createRevisionGate();
+let monitorSyncRunning = false;
+let lastForwardedMonitorRevision = '';
+let lastMonitorSubscriptionProductCount = 0;
+let lastMonitorDetails = {
+  revision: '',
+  productCount: null,
+  activeTargetCount: null,
+  syncedAt: ''
+};
+let monitorDiagnostics = '';
+
+function dashboardFrameIsReady() {
+  if (!dashboard.getAttribute('src') || !dashboard.contentWindow) return false;
+  const targetOrigin = new URL(currentUrl).origin;
+  try {
+    return new URL(dashboard.contentWindow.location.href).origin === targetOrigin;
+  } catch (_crossOriginFrame) {
+    return true;
+  }
+}
 
 async function readDashboardUrl() {
   if (globalThis.chrome?.storage?.local) {
@@ -125,11 +161,345 @@ function unavailableClient(code, message) {
     status: result,
     priceProduct: result,
     decorateCollectionPage: result,
+    syncMonitorCollection: result,
+    monitorStatus: result,
+    runMonitor: result,
     listWatches: result,
     upsertWatch: result,
     removeWatch: result,
     runWatches: result
   };
+}
+
+function setMonitorStatus(message, kind = '') {
+  monitorStatus.textContent = message;
+  monitorStatus.classList.toggle('ok', kind === 'ok');
+  monitorStatus.classList.toggle('warning', kind === 'warning');
+  monitorStatus.classList.toggle('error', kind === 'error');
+}
+
+function monitorTimestamp(value) {
+  if (!value || !Number.isFinite(Date.parse(value))) return '—';
+  return new Date(value).toLocaleString();
+}
+
+function renderMonitorDetails(result = {}) {
+  const lastSync = result.lastSync && typeof result.lastSync === 'object' ? result.lastSync : {};
+  const revision = String(result.revision || lastSync.revision || lastMonitorDetails.revision || lastForwardedMonitorRevision || '—');
+  const productCount = Number.isInteger(result.productCount)
+    ? result.productCount
+    : (Number.isInteger(lastSync.productCount)
+      ? lastSync.productCount
+      : (Number.isInteger(lastMonitorDetails.productCount) ? lastMonitorDetails.productCount : lastMonitorSubscriptionProductCount));
+  const activeTargetCount = Number.isInteger(result.activeTargetCount)
+    ? result.activeTargetCount
+    : (Number.isInteger(lastSync.activeTargetCount) ? lastSync.activeTargetCount : lastMonitorDetails.activeTargetCount);
+  const syncedAt = result.syncedAt || lastSync.syncedAt || lastMonitorDetails.syncedAt || '';
+  if (revision !== '—') lastMonitorDetails.revision = revision;
+  if (Number.isInteger(productCount)) lastMonitorDetails.productCount = productCount;
+  if (Number.isInteger(activeTargetCount)) lastMonitorDetails.activeTargetCount = activeTargetCount;
+  if (syncedAt && Number.isFinite(Date.parse(syncedAt))) lastMonitorDetails.syncedAt = new Date(syncedAt).toISOString();
+  monitorRevision.textContent = revision;
+  monitorProductCount.textContent = productCount || productCount === 0 ? String(productCount) : '—';
+  monitorTargetCount.textContent = activeTargetCount == null ? '—' : String(activeTargetCount);
+  monitorSyncedAt.textContent = monitorTimestamp(syncedAt);
+  monitorDetails.hidden = false;
+}
+
+function monitorSyncStatusPayload(state, details = {}) {
+  const allowedStates = new Set(['idle', 'syncing', 'synced', 'error', 'unavailable']);
+  return {
+    schema: 'tcg.collection-monitor-sync-status/v1',
+    state: allowedStates.has(state) ? state : 'error',
+    revision: details.revision == null ? null : diagnosticText(details.revision, 160),
+    productCount: Number.isInteger(details.productCount) && details.productCount >= 0 ? details.productCount : null,
+    activeTargetCount: Number.isInteger(details.activeTargetCount) && details.activeTargetCount >= 0 ? details.activeTargetCount : null,
+    monitorConfigured: typeof details.monitorConfigured === 'boolean' ? details.monitorConfigured : null,
+    syncedAt: details.syncedAt && Number.isFinite(Date.parse(details.syncedAt)) ? new Date(details.syncedAt).toISOString() : null,
+    message: details.message == null ? null : diagnosticText(details.message, 300),
+    errorCode: details.errorCode == null ? null : diagnosticText(details.errorCode, 80)
+  };
+}
+
+function publishMonitorSyncStatus(state, details = {}) {
+  if (!dashboardMonitorBridge) return Promise.resolve(null);
+  return dashboardMonitorBridge.postSyncStatus(monitorSyncStatusPayload(state, details));
+}
+
+function publishMonitorSyncStatusQuietly(state, details = {}) {
+  publishMonitorSyncStatus(state, details).catch(() => {});
+}
+
+function setMonitorBusy(busy) {
+  monitorSyncRunning = busy;
+  syncMonitorButton.disabled = busy;
+  refreshMonitorStatusButton.disabled = busy;
+  runMonitorButton.disabled = busy;
+}
+
+function monitorErrorMessage(error) {
+  const code = String(error?.code || error?.error?.code || '');
+  const message = String(error?.message || error?.error?.message || error || 'Monitor request failed.');
+  if (code === 'UNAUTHORIZED' || /UNAUTHORIZED/.test(message)) return 'Re-pair TCG Comps in Settings, then retry the monitor.';
+  if (code === 'MONITOR_SUBSCRIPTION_TIMEOUT') return 'The dashboard did not return monitor settings. Refresh the dashboard and try again.';
+  if (code === 'MONITOR_NOT_CONFIGURED') return 'The always-on monitor service is not configured in TCG Comps yet.';
+  if (code === 'MONITOR_UNAVAILABLE') return 'The always-on monitor service is offline or unreachable. Check TCG Comps monitor settings, then retry.';
+  if (code === 'MONITOR_HTTP_ERROR') return 'The always-on monitor service returned an HTTP error. Check its status, then retry.';
+  if (code === 'MONITOR_REJECTED') return 'The monitor did not accept the exact collection revision. Check the monitor service, then retry.';
+  if (code === 'USER_ACTION_REQUIRED') return 'Select Run now again to start a user-requested monitor run.';
+  if (/receiving end|could not establish connection|not exist/i.test(message)) return 'TCG Comps is unavailable. Reload it, then try again.';
+  return message;
+}
+
+function buildMonitorDiagnostics({ error, stage, reason, startedAt, subscription, response }) {
+  const now = Date.now();
+  const productCount = subscription?.collection?.products && typeof subscription.collection.products === 'object'
+    ? Object.keys(subscription.collection.products).length
+    : 0;
+  const lines = [
+    'TCG Collection Tracker monitor diagnostics',
+    'Generated: ' + new Date(now).toISOString(),
+    'Tracker extension version: ' + trackerVersion(),
+    'Tracker extension ID: ' + String(globalThis.chrome?.runtime?.id || 'unavailable'),
+    'Dashboard URL: ' + currentUrl,
+    'Dashboard request origin: ' + new URL(currentUrl).origin,
+    'Dashboard loaded at: ' + (dashboardLoadedAt ? new Date(dashboardLoadedAt).toISOString() : 'not observed'),
+    'TCG Comps extension ID: ' + String(pricingSettings.extensionId || 'not configured'),
+    'Pricing paired: ' + (pricingSettings.extensionId && pricingSettings.apiToken ? 'yes' : 'no'),
+    'Expected pricing API version: ' + EXPECTED_PRICING_API_VERSION,
+    'Vendored provider version: ' + VENDORED_PROVIDER_VERSION,
+    'Monitor channel: ' + String(globalThis.TCGCollectionMonitorBridge?.CHANNEL || 'unavailable'),
+    'Subscription schema: ' + String(subscription?.schema || 'not received'),
+    'Subscription revision: ' + String(subscription?.revision || 'not received'),
+    'Collection product count: ' + productCount,
+    'Request reason: ' + String(reason || 'unknown'),
+    'Failure stage: ' + String(stage || 'unknown'),
+    'Elapsed: ' + Math.max(0, now - Number(startedAt || now)) + ' ms',
+    'Error code: ' + String(error?.code || error?.error?.code || 'UNCLASSIFIED'),
+    'Error name: ' + String(error?.name || 'Error'),
+    'Error message: ' + String(error?.message || error?.error?.message || error || 'Monitor request failed.')
+  ];
+  if (response?.engineVersion) lines.push('Provider engine version: ' + String(response.engineVersion));
+  if (response?.revision) lines.push('Provider revision: ' + String(response.revision));
+  if (response?.monitorConfigured != null) lines.push('Monitor configured: ' + String(Boolean(response.monitorConfigured)));
+  else if (response?.configured != null) lines.push('Monitor configured: ' + String(Boolean(response.configured)));
+  if (error?.stack) lines.push('', 'Sanitized stack:', String(error.stack));
+  lines.push('', 'No subscription body, GitHub/Gist credential, provider capability token, monitor bearer token, or email address is included.');
+  return diagnosticText(lines.join('\n'));
+}
+
+function showMonitorError(error, context) {
+  monitorDiagnostics = buildMonitorDiagnostics({ error, ...context });
+  monitorDiagnosticActions.hidden = false;
+  monitorCopyFeedback.textContent = '';
+  setMonitorStatus(monitorErrorMessage(error), 'error');
+}
+
+function clearMonitorDiagnostics() {
+  monitorDiagnostics = '';
+  monitorDiagnosticActions.hidden = true;
+  monitorCopyFeedback.textContent = '';
+}
+
+async function copyMonitorDiagnostics() {
+  if (!monitorDiagnostics) return;
+  try {
+    await writeClipboardText(monitorDiagnostics);
+    monitorCopyFeedback.textContent = 'Monitor error details copied to the clipboard.';
+    copyMonitorDiagnosticsButton.textContent = 'Copied error details';
+    window.setTimeout(() => { copyMonitorDiagnosticsButton.textContent = 'Copy error details'; }, 1800);
+  } catch (error) {
+    monitorCopyFeedback.textContent = 'Could not copy monitor error details: ' + diagnosticText(error?.message || error, 300);
+  }
+}
+
+function validateMonitorSubscription(subscription) {
+  const validator = globalThis.TCGCollectionMonitorBridge?.validateSubscription;
+  if (typeof validator !== 'function') throw collectionError('MONITOR_BRIDGE_UNAVAILABLE', 'Reload the updated Tracker extension.');
+  const checked = validator(subscription, globalThis.TCGPricingContracts?.validateCollectionSnapshot);
+  if (!checked?.ok) {
+    throw collectionError('INVALID_MONITOR_SUBSCRIPTION', 'The dashboard returned invalid monitor settings: ' + String(checked?.errors?.[0] || 'validation failed'));
+  }
+  return checked.value;
+}
+
+function providerMonitorMethod(client, name) {
+  if (client && typeof client[name] === 'function') return client[name].bind(client);
+  throw collectionError('MONITOR_CLIENT_UNAVAILABLE', 'Reload the updated Tracker and TCG Comps extensions before using the monitor.');
+}
+
+function validateMonitorSyncResponse(response, subscription) {
+  if (response?.error) throw collectionError(String(response.error.code || 'MONITOR_SYNC_FAILED'), String(response.error.message || response.error.code || 'Monitor sync failed.'));
+  if (Number(response?.apiVersion) !== EXPECTED_PRICING_API_VERSION) throw collectionError('UNSUPPORTED_VERSION', 'TCG Comps returned an incompatible API version.');
+  if (response.schema !== globalThis.TCGPricingContracts?.MONITOR_SYNC_RESULT_SCHEMA) {
+    throw collectionError('INVALID_MONITOR_RESPONSE', 'TCG Comps returned an incompatible monitor sync schema.');
+  }
+  if (response.accepted !== true || response.revision !== subscription.revision) {
+    throw collectionError('INVALID_MONITOR_RESPONSE', 'TCG Comps did not confirm the exact monitor subscription revision.');
+  }
+  if (!Number.isInteger(response.productCount) || response.productCount !== Object.keys(subscription.collection.products).length) {
+    throw collectionError('INVALID_MONITOR_RESPONSE', 'TCG Comps returned a different monitor product count.');
+  }
+  return response;
+}
+
+function validateMonitorStatusResponse(response) {
+  if (response?.error) throw collectionError(String(response.error.code || 'MONITOR_STATUS_FAILED'), String(response.error.message || response.error.code || 'Monitor status failed.'));
+  if (Number(response?.apiVersion) !== EXPECTED_PRICING_API_VERSION) throw collectionError('UNSUPPORTED_VERSION', 'TCG Comps returned an incompatible API version.');
+  if (response.schema !== globalThis.TCGPricingContracts?.MONITOR_STATUS_SCHEMA) {
+    throw collectionError('INVALID_MONITOR_RESPONSE', 'TCG Comps returned an incompatible monitor status schema.');
+  }
+  if (typeof response.configured !== 'boolean' || typeof response.online !== 'boolean' || (response.online && !response.configured)) {
+    throw collectionError('INVALID_MONITOR_RESPONSE', 'TCG Comps returned invalid monitor availability state.');
+  }
+  return response;
+}
+
+function validateMonitorRunResponse(response) {
+  if (response?.error) throw collectionError(String(response.error.code || 'MONITOR_RUN_FAILED'), String(response.error.message || response.error.code || 'Monitor run failed.'));
+  if (Number(response?.apiVersion) !== EXPECTED_PRICING_API_VERSION) throw collectionError('UNSUPPORTED_VERSION', 'TCG Comps returned an incompatible API version.');
+  if (response.schema !== globalThis.TCGPricingContracts?.MONITOR_RUN_RESULT_SCHEMA || response.accepted !== true) {
+    throw collectionError('INVALID_MONITOR_RESPONSE', 'TCG Comps did not confirm the requested monitor run.');
+  }
+  return response;
+}
+
+async function syncCollectionMonitor({ userInitiated = false, reason = 'automatic' } = {}) {
+  if (monitorSyncRunning) return;
+  const startedAt = Date.now();
+  let stage = 'requesting-dashboard-subscription';
+  let subscription = null;
+  let response = null;
+  setMonitorBusy(true);
+  clearMonitorDiagnostics();
+  setMonitorStatus(userInitiated ? 'Syncing collection monitor…' : 'Updating collection monitor…');
+  publishMonitorSyncStatusQuietly('syncing', { message: userInitiated ? 'Manual monitor sync in progress.' : 'Collection change sync in progress.' });
+  try {
+    if (!dashboardMonitorBridge) throw collectionError('MONITOR_BRIDGE_UNAVAILABLE', 'The dashboard monitor bridge is not ready yet.');
+    subscription = validateMonitorSubscription(await dashboardMonitorBridge.requestSubscription());
+    lastMonitorSubscriptionProductCount = Object.keys(subscription.collection.products).length;
+    if (!monitorRevisionGate.shouldForward(subscription.revision, userInitiated)) {
+      renderMonitorDetails({ revision: subscription.revision, productCount: lastMonitorSubscriptionProductCount });
+      setMonitorStatus('Monitor already has this collection revision.', 'ok');
+      publishMonitorSyncStatusQuietly('synced', {
+        revision: subscription.revision,
+        productCount: lastMonitorSubscriptionProductCount,
+        message: 'Monitor already has this collection revision.'
+      });
+      return;
+    }
+    stage = 'calling-tcg-comps-sync';
+    pricingClient = createPricingClient();
+    response = await providerMonitorMethod(pricingClient, 'syncMonitorCollection')(subscription);
+    stage = 'validating-tcg-comps-sync';
+    validateMonitorSyncResponse(response, subscription);
+    lastForwardedMonitorRevision = subscription.revision;
+    monitorRevisionGate.accept(subscription.revision);
+    renderMonitorDetails(response);
+    setMonitorStatus(response.monitorConfigured === false
+      ? 'Collection synced, but the always-on monitor service is not configured.'
+      : 'Collection monitor synced.', response.monitorConfigured === false ? 'warning' : 'ok');
+    publishMonitorSyncStatusQuietly('synced', {
+      revision: response.revision,
+      productCount: response.productCount,
+      activeTargetCount: response.activeTargetCount,
+      monitorConfigured: response.monitorConfigured,
+      syncedAt: response.syncedAt,
+      message: response.monitorConfigured === false ? 'Collection synced; monitor service is not configured.' : 'Collection monitor synced.'
+    });
+  } catch (error) {
+    showMonitorError(error, { stage, reason, startedAt, subscription, response });
+    const code = String(error?.code || error?.error?.code || 'MONITOR_SYNC_FAILED');
+    const unavailableCodes = new Set(['UNAUTHORIZED', 'MONITOR_CLIENT_UNAVAILABLE', 'MONITOR_NOT_CONFIGURED', 'MONITOR_UNAVAILABLE', 'MONITOR_HTTP_ERROR']);
+    publishMonitorSyncStatusQuietly(unavailableCodes.has(code) ? 'unavailable' : 'error', {
+      revision: subscription?.revision || null,
+      productCount: lastMonitorSubscriptionProductCount || null,
+      monitorConfigured: response?.monitorConfigured,
+      message: monitorErrorMessage(error),
+      errorCode: code
+    });
+  } finally {
+    setMonitorBusy(false);
+  }
+}
+
+async function refreshCollectionMonitorStatus({ quiet = false } = {}) {
+  if (monitorSyncRunning) return;
+  const startedAt = Date.now();
+  let response = null;
+  if (!quiet) setMonitorBusy(true);
+  if (!quiet) clearMonitorDiagnostics();
+  if (!quiet) setMonitorStatus('Checking monitor status…');
+  try {
+    pricingClient = createPricingClient();
+    response = await providerMonitorMethod(pricingClient, 'monitorStatus')();
+    validateMonitorStatusResponse(response);
+    const acceptedRevision = response.revision || response.lastSync?.revision || '';
+    if (acceptedRevision) {
+      lastForwardedMonitorRevision = String(acceptedRevision);
+      monitorRevisionGate.accept(acceptedRevision);
+    }
+    renderMonitorDetails(response);
+    clearMonitorDiagnostics();
+    const message = !response.configured
+      ? 'The always-on monitor service is not configured.'
+      : (!response.online ? String(response.warning?.message || 'The always-on monitor service is offline or unreachable.') : 'Monitor status is current.');
+    const kind = response.configured && response.online ? 'ok' : 'warning';
+    setMonitorStatus(message, kind);
+    const lastSync = response.lastSync && typeof response.lastSync === 'object' ? response.lastSync : {};
+    publishMonitorSyncStatusQuietly(!response.configured || !response.online ? 'unavailable' : (acceptedRevision ? 'synced' : 'idle'), {
+      revision: acceptedRevision || null,
+      productCount: Number.isInteger(response.productCount) ? response.productCount : lastSync.productCount,
+      activeTargetCount: Number.isInteger(response.activeTargetCount) ? response.activeTargetCount : lastSync.activeTargetCount,
+      monitorConfigured: response.configured,
+      syncedAt: lastSync.syncedAt || null,
+      message,
+      errorCode: response.warning?.code || (!response.configured ? 'MONITOR_NOT_CONFIGURED' : (!response.online ? 'MONITOR_UNAVAILABLE' : null))
+    });
+  } catch (error) {
+    const code = String(error?.code || error?.error?.code || 'MONITOR_STATUS_FAILED');
+    if (!quiet) showMonitorError(error, { stage: 'calling-tcg-comps-status', reason: 'status-button', startedAt, response });
+    else setMonitorStatus(monitorErrorMessage(error), 'warning');
+    publishMonitorSyncStatusQuietly(code === 'UNAUTHORIZED' || code === 'MONITOR_CLIENT_UNAVAILABLE' || code === 'MONITOR_UNAVAILABLE' ? 'unavailable' : 'error', {
+      message: monitorErrorMessage(error), errorCode: code
+    });
+  } finally {
+    if (!quiet) setMonitorBusy(false);
+  }
+}
+
+async function runCollectionMonitorNow() {
+  if (monitorSyncRunning) return;
+  const startedAt = Date.now();
+  let response = null;
+  setMonitorBusy(true);
+  clearMonitorDiagnostics();
+  setMonitorStatus('Starting a monitor run…');
+  try {
+    pricingClient = createPricingClient();
+    response = await providerMonitorMethod(pricingClient, 'runMonitor')();
+    validateMonitorRunResponse(response);
+    renderMonitorDetails(response);
+    setMonitorStatus('Monitor run requested. Scheduled delivery remains provider-controlled.', 'ok');
+  } catch (error) {
+    showMonitorError(error, { stage: 'calling-tcg-comps-run', reason: 'run-button', startedAt, response });
+  } finally {
+    setMonitorBusy(false);
+  }
+}
+
+function installDashboardMonitorBridge() {
+  if (dashboardMonitorBridge) dashboardMonitorBridge.dispose();
+  dashboardMonitorBridge = globalThis.TCGCollectionMonitorBridge.createBridge({
+    windowObject: window,
+    frame: dashboard,
+    getTargetOrigin: () => new URL(currentUrl).origin,
+    isReady: dashboardFrameIsReady,
+    isActive: () => document.visibilityState === 'visible',
+    requestTimeoutMs: MONITOR_REQUEST_TIMEOUT_MS,
+    debounceMs: MONITOR_DEBOUNCE_MS,
+    onStateChanged: () => syncCollectionMonitor({ reason: 'dashboard-state-changed' })
+  });
 }
 
 function setPageScanStatus(title, message, kind = '', diagnostics = '') {
@@ -418,7 +788,9 @@ function startLoad(url, forceLatest = false) {
   loadError.hidden = true;
   status.classList.remove('ready');
   status.textContent = forceLatest ? 'Getting latest dashboard…' : 'Loading dashboard…';
+  dashboardLoadedAt = null;
   installPricingBridge();
+  installDashboardMonitorBridge();
   dashboard.src = dashboardRequestUrl(url, forceLatest);
   loadTimer = window.setTimeout(() => {
     status.textContent = 'Dashboard may be unavailable';
@@ -427,18 +799,28 @@ function startLoad(url, forceLatest = false) {
 }
 
 dashboard.addEventListener('load', () => {
+  if (!dashboardFrameIsReady()) return;
   window.clearTimeout(loadTimer);
   loadError.hidden = true;
   status.textContent = currentUrl.startsWith('http://') ? 'Local preview' : 'Live dashboard';
   status.classList.add('ready');
   dashboardLoadedAt = Date.now();
+  dashboardMonitorBridge.scheduleStateChanged();
 });
 
 document.getElementById('refresh').addEventListener('click', () => startLoad(currentUrl, true));
 document.getElementById('retry').addEventListener('click', () => startLoad(currentUrl, true));
 scanPageButton.addEventListener('click', decorateCollectionPage);
 copyPageScanDiagnosticsButton.addEventListener('click', copyPageScanDiagnostics);
+syncMonitorButton.addEventListener('click', () => syncCollectionMonitor({ userInitiated: true, reason: 'sync-button' }));
+refreshMonitorStatusButton.addEventListener('click', () => refreshCollectionMonitorStatus());
+runMonitorButton.addEventListener('click', runCollectionMonitorNow);
+copyMonitorDiagnosticsButton.addEventListener('click', copyMonitorDiagnostics);
 document.getElementById('closePageScanStatus').addEventListener('click', () => { pageScanStatus.hidden = true; });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') dashboardMonitorBridge?.resume();
+});
 
 document.getElementById('openTab').addEventListener('click', () => {
   if (globalThis.chrome?.tabs?.create) chrome.tabs.create({ url: currentUrl });
@@ -496,6 +878,7 @@ pricingForm.addEventListener('submit', async (event) => {
   pricingToken.placeholder = 'Stored securely; paste to replace';
   installPricingBridge();
   await testPricingConnection();
+  dashboardMonitorBridge?.scheduleStateChanged();
 });
 
 document.getElementById('clearPricing').addEventListener('click', async () => {
@@ -506,6 +889,12 @@ document.getElementById('clearPricing').addEventListener('click', async () => {
   pricingToken.placeholder = 'Paste capability token';
   installPricingBridge();
   setPricingStatus('Pricing pairing removed.');
+  lastForwardedMonitorRevision = '';
+  monitorRevisionGate.clear();
+  monitorDetails.hidden = true;
+  clearMonitorDiagnostics();
+  setMonitorStatus('Pair TCG Comps before syncing the collection monitor.');
+  publishMonitorSyncStatusQuietly('unavailable', { message: 'TCG Comps pairing was removed.', errorCode: 'UNAUTHORIZED' });
 });
 
 async function boot() {
@@ -525,7 +914,10 @@ async function boot() {
     ? 'Pairing stored. Testing TCG Comps…'
     : 'Pricing is not paired.');
   startLoad(currentUrl);
-  if (pricingSettings.extensionId && pricingSettings.apiToken) await testPricingConnection();
+  if (pricingSettings.extensionId && pricingSettings.apiToken) {
+    await testPricingConnection();
+    await refreshCollectionMonitorStatus({ quiet: true });
+  }
 }
 
 boot().catch((error) => {

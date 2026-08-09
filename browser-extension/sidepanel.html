@@ -59,6 +59,30 @@
       <p id="sourceError" class="error" role="alert" hidden></p>
     </form>
     <div class="settings-divider" role="presentation"></div>
+    <section class="monitor-settings" aria-labelledby="monitorHeading">
+      <div id="monitorHeading" class="settings-heading">Collection deal monitor</div>
+      <p>Sync missing collection targets to TCG Comps for the always-on deal and auction monitor. The Tracker never buys, bids, or sends marketplace credentials.</p>
+      <div class="settings-actions monitor-actions">
+        <button id="syncMonitor" class="save" type="button">Sync monitor</button>
+        <button id="refreshMonitorStatus" class="text-button" type="button">Refresh status</button>
+        <button id="runMonitor" class="text-button" type="button">Run now</button>
+      </div>
+      <p id="monitorStatus" class="pairing-status" role="status">Monitor status has not been checked.</p>
+      <dl id="monitorDetails" class="monitor-details" hidden>
+        <div><dt>Revision</dt><dd id="monitorRevision">—</dd></div>
+        <div><dt>Products</dt><dd id="monitorProductCount">—</dd></div>
+        <div><dt>Active targets</dt><dd id="monitorTargetCount">—</dd></div>
+        <div><dt>Last sync</dt><dd id="monitorSyncedAt">—</dd></div>
+      </dl>
+      <div id="monitorDiagnosticActions" class="monitor-diagnostic-actions" hidden>
+        <button id="copyMonitorDiagnostics" class="text-button" type="button" aria-label="Copy monitor error details">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+          Copy error details
+        </button>
+        <span id="monitorCopyFeedback" class="visually-hidden" aria-live="polite"></span>
+      </div>
+    </section>
+    <div class="settings-divider" role="presentation"></div>
     <form id="pricingForm">
       <div class="settings-heading">TCG Comps live pricing</div>
       <p>Pair with TCG Comps API v1. Provider release differences are informational when API v1 remains compatible. The capability token stays only in this extension's private storage.</p>
@@ -84,9 +108,10 @@
     </section>
   </main>
 
-  <script src="vendor/tcg-comps-2.40.0/pricing-contracts.js"></script>
-  <script src="vendor/tcg-comps-2.40.0/pricing-client.js"></script>
-  <script src="vendor/tcg-comps-2.40.0/pricing-bridge.js"></script>
+  <script src="vendor/tcg-comps-2.42.0/pricing-contracts.js"></script>
+  <script src="vendor/tcg-comps-2.42.0/pricing-client.js"></script>
+  <script src="vendor/tcg-comps-2.42.0/pricing-bridge.js"></script>
+  <script src="monitor-bridge.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>
