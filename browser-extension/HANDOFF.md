@@ -23,7 +23,7 @@ adding a pricing-message API, or changing which origin owns progress storage.
 
 ## Current state
 
-- Extension version: **1.2.1**.
+- Extension version: **1.3.2**.
 - Manifest: Chrome/Edge Manifest V3.
 - Primary surface: persistent browser side panel/sidebar.
 - Toolbar action and default shortcut: open the panel.
@@ -31,12 +31,13 @@ adding a pricing-message API, or changing which origin owns progress storage.
 - Local development source: an optional `http://127.0.0.1:<port>/` or
   `http://localhost:<port>/` URL selected from the extension gear.
 - Extension permissions: `sidePanel` and `storage` only.
-- Regression coverage: `node-app/tools/test-browser-extension.js`, run by
-  `npm test` from `node-app/`.
+- Regression coverage: `node-app/tools/test-browser-extension.js` and
+  `node-app/tools/test-browser-extension-monitor.js`, run by `npm test` from
+  `node-app/`.
 - Pricing provider contract: TCG Comps API v1. Provider release numbers are
   diagnostic metadata, not the compatibility boundary.
 - Vendored, unmodified provider artifacts:
-  `vendor/tcg-comps-2.40.0/{pricing-contracts,pricing-client,pricing-bridge}.js`.
+  `vendor/tcg-comps-2.42.0/{pricing-contracts,pricing-client,pricing-bridge}.js`.
 
 Version 1.0.1 fixed the first real extension-layout defect: when Settings was
 hidden, CSS Grid auto-placement moved the iframe into the 150px intrinsic-height
@@ -58,7 +59,7 @@ artifacts.
 Version 1.2.0 adds a direct **Mark collection needs on this page** action. The
 dashboard builds one ephemeral `tcg.collection-snapshot/v2` containing all 686 full
 canonical ProductRefs and their current target/owned/missing counts. The extension
-validates the exact iframe response and calls TCG Comps 2.40.0
+validates the exact iframe response and calls TCG Comps 2.42.0
 `pricing.page.decorateCollection` with `userInitiated:true`. TCG Comps owns page
 discovery, exact matching, and the namespaced marketplace overlay; the Tracker adds
 no marketplace host, scripting, tab, or `externally_connectable` permission.
@@ -71,6 +72,17 @@ token if an upstream error ever echoes it; the report never serializes the token
 Snapshot timeouts now carry `DASHBOARD_SNAPSHOT_TIMEOUT`, making a stale public
 dashboard distinguishable from TCG Comps authorization or content-script failures.
 
+Version 1.3.2 adds the privileged extension half of the Collection Deal and Auction
+Monitor. The extension requests an on-demand, credential-free subscription from the
+exact dashboard frame; forwards it to TCG Comps only after strict schema validation;
+shows sync, provider, revision, product-count, target-count, and last-sync status;
+and supports explicit **Sync collection**, **Refresh status**, and **Run now**
+actions. Dashboard change hints are payload-free and debounced, automatic duplicate
+revisions are skipped, manual sync remains idempotent, and diagnostics never include
+the catalog body, provider token, GitHub/Gist credentials, monitor bearer, or email.
+The bridge verifies that the cross-origin dashboard has replaced the iframe's
+initial `about:blank` document before posting a subscription or status message.
+
 ## How the extension uses the dashboard
 
 The extension does **not** contain or regenerate the collection UI. It embeds the
@@ -79,7 +91,7 @@ canonical GitHub Pages dashboard in `sidepanel.html`:
 ```text
 Chrome / Edge side panel
   extension toolbar (local extension HTML/CSS/JS)
-    mark page | refresh latest | open full tab | choose dashboard source | pair TCG Comps
+    mark page | monitor sync/status/run | refresh latest | open full tab | settings
     chrome.storage.local: provider extension ID + capability token
   iframe
     https://d-k-b.github.io/tcg_binder/
@@ -93,6 +105,9 @@ Chrome / Edge side panel
       on-demand collection snapshot (ProductRefs + counts only)
         ↕ exact-origin + exact-frame postMessage
       extension → TCG Comps-owned marketplace overlay
+      monitor subscription + payload-free change hints + sync status
+        ↕ exact-origin + exact-frame postMessage
+      extension → TCG Comps-owned collection monitor
 ```
 
 This separation is intentional:
@@ -129,9 +144,10 @@ Dashboard work should preserve these extension-facing behaviors:
    `generators/build_app.py`; the extension never patches generated HTML.
 
 Pricing communication uses channel `tcg-pricing/v1`; on-demand collection snapshots
-use `tcg-collection/v1`. Preserve exact origin, exact iframe, response type, and
-request ID validation for both. Never use `*`, scrape the dashboard DOM, or put the
-capability token in an iframe URL or page state.
+use `tcg-collection/v1`; monitor subscriptions, hints, and status use
+`tcg-collection-monitor/v1`. Preserve exact origin, exact iframe, response type,
+request ID, and schema validation for all three. Never use `*`, scrape the dashboard
+DOM, or put the capability token in an iframe URL or page state.
 
 ## Update workflows
 
@@ -203,6 +219,33 @@ observation, and DOM rendering. The Tracker must not vendor `listing-surface.js`
 scrape marketplace DOM, duplicate matching, persist a provider-ID map, bulk-price
 the collection, create watches, or enable 130point through this route.
 
+## Collection deal and auction monitor contract
+
+The extension requests `{channel:'tcg-collection-monitor/v1',
+type:'monitorSubscription',requestId}` from the exact dashboard frame. The exact
+response type is `monitorSubscriptionResult` and its result schema is
+`tcg.collection-monitor-subscription/v1`. It includes normalized preferences, a
+stable content revision, generation time, and one fresh
+`tcg.collection-snapshot/v2` containing the complete canonical catalog. The catalog
+is sent atomically; the extension does not derive targets, split the payload, cache
+provider IDs, or duplicate provider matching and pricing rules.
+
+`monitorStateChanged` is a payload-free dashboard hint. The extension debounces hint
+bursts, requests a fresh subscription, and skips an automatic sync when the stable
+revision is unchanged. A direct manual sync may resend the same revision. The
+extension calls only the packaged TCG Comps monitor client corresponding to the raw
+provider methods `pricing.monitor.syncCollection`, `pricing.monitor.status`, and
+`pricing.monitor.run`. Run-now is available only from its direct user button; the
+extension never buys, bids, or accepts an offer.
+
+The extension reports a normalized memory-only status back to the exact dashboard
+frame using `monitorSyncStatus`; the dashboard replies with
+`monitorSyncStatusResult` and `tcg.collection-monitor-sync-status-ack/v1`. Allowed
+status states are `idle`, `syncing`, `synced`, `error`, and `unavailable`. The status
+contains only revision, counts, configuration state, timestamp, message, and error
+code. Provider credentials remain only in extension `chrome.storage.local`; neither
+the subscription nor diagnostics may contain them.
+
 ## Verification checklist
 
 For an extension change:
@@ -239,6 +282,14 @@ Then load or reload `browser-extension/` as an unpacked extension and verify:
 - Every page-check error exposes the copy icon; its pasted report names the failure
   stage and error code, copies successfully in the side panel, and contains no
   capability token.
+- Wrong-origin, wrong-frame, wrong-request-ID, and malformed monitor responses are
+  ignored or rejected; the complete current catalog validates before provider sync.
+- Dashboard hint bursts cause one debounced subscription request, unchanged automatic
+  revisions are skipped, and manual sync may safely resend the same revision.
+- Monitor sync, status refresh, and explicit run-now show recoverable states and
+  sanitized copyable diagnostics with no catalog payload or credentials.
+- The dashboard receives the agreed memory-only monitor status/ACK exchange, and
+  reload/pair/missing-provider/unconfigured-monitor paths remain recoverable.
 
 ## File map
 
@@ -249,7 +300,8 @@ browser-extension/
   sidepanel.html         extension toolbar, settings, iframe, error surface
   sidepanel.css          side-panel layout and responsive shell
   sidepanel.js           source selection, refresh, validation, full-tab action
-  vendor/tcg-comps-2.40.0/ unmodified API v1/v2-snapshot consumer scripts and provenance
+  monitor-bridge.js      strict monitor iframe bridge, validation, revision gate
+  vendor/tcg-comps-2.42.0/ unmodified API v1 monitor/snapshot consumer scripts and provenance
   icons/                 generated PNG extension icons
   tools/build_icons.py   deterministic icon generator
   README.md              user installation and update instructions

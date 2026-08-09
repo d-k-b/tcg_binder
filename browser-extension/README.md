@@ -66,8 +66,11 @@ For local work, open the extension's gear and use
 
 When the extension's own files change, increment `version` in `manifest.json`, then
 select **Reload** for the unpacked extension on the browser's extensions page.
-Version `1.2.1` adds copyable, credential-safe diagnostics to the user-triggered
-collection page check through TCG Comps 2.40.0. Provider release differences remain
+Version `1.3.2` adds the privileged collection deal/auction monitor bridge, explicit
+monitor sync/status/manual-run controls, active-panel debounced resync, and
+credential-safe monitor diagnostics. It also blocks monitor messages until the
+cross-origin dashboard has replaced the iframe's initial `about:blank` document.
+Provider release differences remain
 informational when the negotiated API stays v1. The dashboard remains pinned to the
 side panel's flexible grid row, so hiding Settings or the page-check summary cannot
 collapse it to 150px tall.
@@ -143,6 +146,38 @@ never includes the TCG Comps capability token. For
 `DASHBOARD_SNAPSHOT_TIMEOUT`, first select **Get the latest published dashboard**;
 if it repeats, the copied dashboard URL and failure stage reveal whether the public
 dashboard is still missing the snapshot bridge.
+
+## Collection deal and auction monitor
+
+Open the extension gear and use **Collection deal monitor** after pairing TCG
+Comps 2.42.0. **Sync monitor** requests the current
+`tcg.collection-monitor-subscription/v1` bundle from the exact dashboard frame,
+validates it, and forwards all 686 canonical ProductRefs atomically through the
+authenticated TCG Comps client. **Refresh status** retrieves the provider's current
+non-secret revision/counts plus configured/online state. **Run now** is the only browser path that requests an
+immediate monitor run and is never called automatically.
+
+While the side panel is visible, a payload-free dashboard `monitorStateChanged`
+hint schedules a debounced fresh-bundle request. Repeated hints for the same
+accepted revision do not create repeated automatic provider syncs; a changed
+revision does. Hints received while the panel is inactive remain queued until it
+becomes visible again.
+
+The extension reports only bounded, memory-only sync status back to the exact
+dashboard origin/frame. It never sends the TCG Comps capability token, monitor
+bearer token, email address, subscription body, GitHub/Gist credentials, checklist
+keys, prices, listings, or provider IDs to the dashboard. Monitor errors expose a
+copy button with the failing stage, revision/count metadata, versions, and sanitized
+error details.
+
+TCG Comps and its always-on service own exact listing identity, Market and landed
+price calculation, alert eligibility, listing history, scheduling, deduplication,
+and email delivery. The Tracker does not parse marketplace pages for monitoring and
+never buys, bids, submits offers, or weakens ambiguous/mixed/stale safeguards.
+
+After updating the unpacked extension, select **Reload** for both extensions in
+`chrome://extensions` or `edge://extensions`, reopen the side panel, refresh the
+published dashboard, then use **Sync monitor**.
 
 ## Build icons and validate
 

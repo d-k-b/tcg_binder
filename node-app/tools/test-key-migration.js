@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const pricingContracts = require('../../browser-extension/vendor/tcg-comps-2.40.0/pricing-contracts.js');
+const pricingContracts = require('../../browser-extension/vendor/tcg-comps-2.42.0/pricing-contracts.js');
 
 let pass = 0, fail = 0;
 function ok(value, message) {
@@ -63,6 +63,12 @@ ok(activeKeys.every(k => /^[^|]+\|v2\|[0-9a-f]{16}$/.test(k)), 'emits canonical 
 ok(Object.keys(result.state.legacyChecksV1).length === 5, 'retains known and unknown legacy keys as recovery data');
 ok(result.state.keyMigration.migrated === 4 && result.state.keyMigration.unknown === 1,
   'records migration and unknown-key counts');
+ok(JSON.stringify(result.state.monitorPreferences) === JSON.stringify({
+  enabled:true,maxMarketRatio:.8,minimumConfidence:'medium',
+  sources:['ebay','tcgplayer','heritage','store'],includeOptional:false,instantFixedPriceEmail:true,
+  dailyDigest:{enabled:true,time:'07:00',timezone:'America/Chicago'}
+}) && result.state.monitorPreferencesUpdatedAt === null,
+  'migrates older saved state to the exact non-secret monitoring defaults');
 ok(result.allKeys.length === 950 && new Set(result.allKeys).size === 950,
   'all 950 required and bonus inventory keys are unique');
 ok(result.requiredKeys.length === 910 && new Set(result.requiredKeys).size === 910,
@@ -85,6 +91,36 @@ ok(result.pricingProducts.some(product => product.ref.unit === 'pack') &&
    result.pricingProducts.some(product => product.ref.unit === 'display') &&
    result.pricingProducts.some(product => product.ref.unit === 'kit'),
   'keeps packs, displays, and kits distinct in pricing identities');
+
+const monitorPreferencesAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
+  const normalized=normalizeMonitorPreferences({enabled:false,maxMarketRatio:.75,minimumConfidence:'high',
+    sources:['store','ebay','unknown'],includeOptional:true,instantFixedPriceEmail:false,
+    dailyDigest:{enabled:false,time:'08:15',timezone:'America/Chicago'}});
+  state.monitorPreferences=normalized;
+  state.monitorPreferencesUpdatedAt='2026-08-09T12:34:56.000Z';
+  const fields=monitorGistFields();
+  const payload=JSON.parse(JSON.stringify(Object.assign({checklist:'collector',checks:{},extras:{}},fields)));
+  const restored=monitorPreferenceEnvelope(payload);
+  const legacy=monitorPreferenceEnvelope({checklist:'collector',checks:{},extras:{}});
+  const invalid=normalizeMonitorPreferences({maxMarketRatio:4,minimumConfidence:'certain',sources:[],
+    dailyDigest:{time:'28:99',timezone:'not-a-zone'}});
+  return {normalized,fields,restored,legacy,invalid,
+    snapshot:JSON.parse(monitorGistSnapshot('collector',{}, {},fields)),
+    nonCanonical:JSON.parse(monitorGistSnapshot('packs',{}, {},fields))};
+})())`, context));
+ok(JSON.stringify(monitorPreferencesAudit.normalized.sources) === JSON.stringify(['ebay','store']) &&
+   monitorPreferencesAudit.normalized.maxMarketRatio === .75 && monitorPreferencesAudit.normalized.minimumConfidence === 'high',
+  'normalizes monitoring preferences into canonical source order without unknown sources');
+ok(JSON.stringify(monitorPreferencesAudit.restored.preferences) === JSON.stringify(monitorPreferencesAudit.normalized) &&
+   monitorPreferencesAudit.restored.updatedAt === '2026-08-09T12:34:56.000Z' && monitorPreferencesAudit.legacy === null,
+  'round-trips non-secret monitoring preferences through the canonical Gist payload fields');
+ok(JSON.stringify(monitorPreferencesAudit.snapshot.monitorPreferences) === JSON.stringify(monitorPreferencesAudit.normalized) &&
+   !Object.prototype.hasOwnProperty.call(monitorPreferencesAudit.nonCanonical,'monitorPreferences'),
+  'stores global monitoring preferences only in the canonical collector Gist');
+ok(monitorPreferencesAudit.invalid.maxMarketRatio === .8 && monitorPreferencesAudit.invalid.minimumConfidence === 'medium' &&
+   JSON.stringify(monitorPreferencesAudit.invalid.sources) === JSON.stringify(['ebay','tcgplayer','heritage','store']) &&
+   monitorPreferencesAudit.invalid.dailyDigest.time === '07:00' && monitorPreferencesAudit.invalid.dailyDigest.timezone === 'America/Chicago',
+  'falls back safely when imported or legacy monitoring preference values are invalid');
 
 const prereleaseAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const cl=DATA.checklists.find(x=>x.id==='prerelease');

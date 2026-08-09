@@ -354,6 +354,22 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .foot{font-size:11px;color:var(--muted);text-align:center;margin-top:26px;line-height:1.6}
 .info{font-size:11.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);
   border-radius:9px;padding:9px 11px;margin-top:14px;line-height:1.5}
+.monitor-modal{max-width:520px;max-height:calc(100vh - 36px);overflow:auto}
+.monitor-form{display:grid;gap:14px;margin-top:16px}
+.monitor-field{display:grid;gap:6px}
+.monitor-field>label,.monitor-title{font-size:11px;font-weight:750;color:var(--muted);letter-spacing:.2px}
+.monitor-field input[type="number"],.monitor-field input[type="time"],.monitor-field select{
+  width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;
+  background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+.monitor-line{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.monitor-line label{font-size:13px;line-height:1.35;cursor:pointer}
+.monitor-line small,.monitor-field small{display:block;color:var(--muted);font-size:10.5px;line-height:1.4;margin-top:2px}
+.monitor-line input[type="checkbox"],.monitor-sources input{accent-color:var(--lpurple);width:17px;height:17px;flex:none}
+.monitor-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.monitor-sources{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+.monitor-sources label{display:flex;align-items:center;gap:7px;font-size:12px}
+.monitor-status{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 11px}
+.monitor-status b{display:block;font-size:12px;margin-bottom:3px}.monitor-status span{font-size:11px;color:var(--muted);line-height:1.45}
 
 /* ---- responsive multi-column: 1 col phone / 2 laptop / 3 big monitor ---- */
 #content{column-width:480px;column-gap:16px}
@@ -394,6 +410,8 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
   .vlabel{display:none}
   .vbtn{width:33px;justify-content:center;padding:0}
   .search{min-width:120px}
+  .monitor-modal{padding:18px}
+  .monitor-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -421,6 +439,7 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
                aria-haspopup="true" aria-expanded="false">&#8943;</button>
        <div class="menu hmenu" id="moreMenu">
          <div class="mrow" id="syncItem"><span>Sync settings…</span></div>
+         <div class="mrow" id="monitorItem"><span>Deal monitoring…</span></div>
          <div class="msep"></div>
          <div class="mrow" id="exportBtn"><span>Export progress</span><span class="mkey">&#10515;</span></div>
          <div class="mrow" id="importBtn"><span>Import progress</span><span class="mkey">&#10514;</span></div>
@@ -506,6 +525,35 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
  </div>
 </div>
 
+<div class="modal-bg" id="monitorModal">
+ <div class="modal monitor-modal" role="dialog" aria-modal="true" aria-labelledby="monitorHeading">
+   <h2 id="monitorHeading"><span class="gicon">&#128276;</span> Deal monitoring</h2>
+   <p>Choose which missing sealed products the paired monitor should watch. The dashboard shares product identities and collection counts only; it never buys, bids, fetches marketplaces, or stores provider credentials.</p>
+   <div class="monitor-form">
+     <div class="monitor-line"><label for="monitorEnabled"><b>Enable monitoring</b><small>Required products that are still missing become active targets.</small></label><input id="monitorEnabled" type="checkbox"></div>
+     <div class="monitor-grid">
+       <div class="monitor-field"><label for="monitorDiscount">Minimum discount from Market</label><input id="monitorDiscount" type="number" min="0" max="99" step="1" inputmode="decimal"><small>20% means landed price must be at most 80% of verified Market.</small></div>
+       <div class="monitor-field"><label for="monitorConfidence">Minimum match confidence</label><select id="monitorConfidence"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
+     </div>
+     <div class="monitor-field"><div class="monitor-title">Sources</div><div class="monitor-sources">
+       <label><input type="checkbox" data-monitor-source="ebay">eBay</label>
+       <label><input type="checkbox" data-monitor-source="tcgplayer">TCGplayer</label>
+       <label><input type="checkbox" data-monitor-source="heritage">Heritage</label>
+       <label><input type="checkbox" data-monitor-source="store">Supported stores</label>
+     </div></div>
+     <div class="monitor-line"><label for="monitorOptional"><b>Include optional products</b><small>Watch bonus inventory with target 0 as well as required missing products.</small></label><input id="monitorOptional" type="checkbox"></div>
+     <div class="monitor-line"><label for="monitorInstant"><b>Instant fixed-price email</b><small>Auctions remain digest-only; nothing bids or buys automatically.</small></label><input id="monitorInstant" type="checkbox"></div>
+     <div class="monitor-line"><label for="monitorDigest"><b>Daily digest</b><small>One summary per local date.</small></label><input id="monitorDigest" type="checkbox"></div>
+     <div class="monitor-grid">
+       <div class="monitor-field"><label for="monitorDigestTime">Digest time</label><input id="monitorDigestTime" type="time"></div>
+       <div class="monitor-field"><label for="monitorTimezone">Timezone</label><select id="monitorTimezone"><option value="America/Chicago">America/Chicago</option></select></div>
+     </div>
+     <div class="monitor-status"><b id="monitorStatusTitle">Monitor status</b><span id="monitorStatusText">Open in the paired Tracker extension to synchronize monitoring.</span></div>
+   </div>
+   <div class="actions"><button class="pbtn g" id="monitorSave">Save preferences</button><button class="pbtn ghost" id="monitorClose">Close</button></div>
+ </div>
+</div>
+
 <script>
 const DATA = /*__DATA__*/;
 const KEY = "mtgBinder_v1";
@@ -565,6 +613,43 @@ function migrateChecks(checks){
   }
   return {checks:current,legacy,unknown,migrated};
 }
+const MONITOR_SOURCE_ORDER=['ebay','tcgplayer','heritage','store'];
+const MONITOR_GIST_CHECKLIST='collector';
+const MONITOR_DEFAULT_PREFERENCES={enabled:true,maxMarketRatio:.8,minimumConfidence:'medium',
+  sources:MONITOR_SOURCE_ORDER.slice(),includeOptional:false,instantFixedPriceEmail:true,
+  dailyDigest:{enabled:true,time:'07:00',timezone:'America/Chicago'}};
+function normalizeMonitorPreferences(input){
+  const value=input&&typeof input==='object'&&!Array.isArray(input)?input:{};
+  const digest=value.dailyDigest&&typeof value.dailyDigest==='object'&&!Array.isArray(value.dailyDigest)?value.dailyDigest:{};
+  const ratio=Number(value.maxMarketRatio),confidence=['low','medium','high'].includes(value.minimumConfidence)
+    ?value.minimumConfidence:MONITOR_DEFAULT_PREFERENCES.minimumConfidence;
+  const requestedSources=Array.isArray(value.sources)?value.sources:MONITOR_DEFAULT_PREFERENCES.sources;
+  const sources=MONITOR_SOURCE_ORDER.filter(source=>requestedSources.includes(source));
+  const time=typeof digest.time==='string'&&/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(digest.time)
+    ?digest.time:MONITOR_DEFAULT_PREFERENCES.dailyDigest.time;
+  const timezone=typeof digest.timezone==='string'&&/^[A-Za-z_]+(?:\/[A-Za-z0-9_+.-]+)+$/.test(digest.timezone)
+    ?digest.timezone:MONITOR_DEFAULT_PREFERENCES.dailyDigest.timezone;
+  return {enabled:typeof value.enabled==='boolean'?value.enabled:MONITOR_DEFAULT_PREFERENCES.enabled,
+    maxMarketRatio:Number.isFinite(ratio)&&ratio>0&&ratio<=1?Math.round(ratio*10000)/10000:MONITOR_DEFAULT_PREFERENCES.maxMarketRatio,
+    minimumConfidence:confidence,sources:sources.length?sources:MONITOR_DEFAULT_PREFERENCES.sources.slice(),
+    includeOptional:typeof value.includeOptional==='boolean'?value.includeOptional:MONITOR_DEFAULT_PREFERENCES.includeOptional,
+    instantFixedPriceEmail:typeof value.instantFixedPriceEmail==='boolean'?value.instantFixedPriceEmail:MONITOR_DEFAULT_PREFERENCES.instantFixedPriceEmail,
+    dailyDigest:{enabled:typeof digest.enabled==='boolean'?digest.enabled:MONITOR_DEFAULT_PREFERENCES.dailyDigest.enabled,
+      time,timezone}};
+}
+function monitorPreferenceEnvelope(payload){
+  if(!payload||typeof payload!=='object'||Array.isArray(payload)||!payload.monitorPreferences)return null;
+  const stamp=typeof payload.monitorPreferencesUpdatedAt==='string'&&!Number.isNaN(Date.parse(payload.monitorPreferencesUpdatedAt))
+    ?new Date(payload.monitorPreferencesUpdatedAt).toISOString():null;
+  return {preferences:normalizeMonitorPreferences(payload.monitorPreferences),updatedAt:stamp};
+}
+function monitorGistFields(){return {monitorPreferences:normalizeMonitorPreferences(state.monitorPreferences),
+  monitorPreferencesUpdatedAt:state.monitorPreferencesUpdatedAt||null};}
+function monitorGistSnapshot(cl,checks,extras,fields){
+  const snapshot={checks:checks||{},extras:extras||{}};
+  if(cl===MONITOR_GIST_CHECKLIST&&fields)Object.assign(snapshot,fields);
+  return JSON.stringify(snapshot);
+}
 function migrateState(s){
   s=s&&s.checks?s:{checks:{},drive:{connected:false,email:null,last:null},ui:{active:null,hideDone:false,closed:{}},theme:'light'};
   s.ui=s.ui||{active:null,hideDone:false,closed:{}};
@@ -576,6 +661,11 @@ function migrateState(s){
     s._needsMigrationSave=true;
   }
   s.extras=s.extras||{};
+  const normalizedMonitor=normalizeMonitorPreferences(s.monitorPreferences);
+  if(!s.monitorPreferences||JSON.stringify(s.monitorPreferences)!==JSON.stringify(normalizedMonitor))s._needsMigrationSave=true;
+  s.monitorPreferences=normalizedMonitor;
+  s.monitorPreferencesUpdatedAt=typeof s.monitorPreferencesUpdatedAt==='string'&&!Number.isNaN(Date.parse(s.monitorPreferencesUpdatedAt))
+    ?new Date(s.monitorPreferencesUpdatedAt).toISOString():null;
   s.keyVersion=2;return s;
 }
 let state=load();
@@ -597,6 +687,9 @@ function publishKeyDebug(){
     .every(k=>/^[^|]+\|v2\|[0-9a-f]{16}$/.test(k))?'v2':'mixed';
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(state));publishKeyDebug();}
+function noteMonitorCollectionChange(){
+  if(typeof scheduleMonitorStateChanged==='function')scheduleMonitorStateChanged();
+}
 
 function isChecked(k){ return !!state.checks[k]; }
 function slotQuantity(cl,it,si){return (isChecked(keyFor(cl,it,si))?1:0)+
@@ -676,7 +769,7 @@ function changeQuantity(cl,it,g,delta,focusSide){
       if(last)delete state.checks[keyFor(cl,it,last.si)];}
   }
   noteQuantityActivity(cl,it);
-  save();driveTouch();updateAll();restoreQuantityFocus(cl,it,g,focusSide);
+  save();driveTouch();noteMonitorCollectionChange();updateAll();restoreQuantityFocus(cl,it,g,focusSide);
 }
 function detailKey(cl,it){return [cl,normKeyPart(it.name),normKeyPart(it.code)].join('|');}
 function mutateSlotQuantity(cl,it,si,delta){
@@ -688,14 +781,14 @@ function mutateSlotQuantity(cl,it,si,delta){
 }
 function changeSlotQuantity(cl,it,si,delta,focusSide){
   mutateSlotQuantity(cl,it,si,delta);openDetails.add(detailKey(cl,it));
-  noteQuantityActivity(cl,it);save();driveTouch();updateAll();restoreVariantFocus(slotExtraKeyFor(cl,it,si),focusSide);
+  noteQuantityActivity(cl,it);save();driveTouch();noteMonitorCollectionChange();updateAll();restoreVariantFocus(slotExtraKeyFor(cl,it,si),focusSide);
 }
 function setVariantChecked(cl,it,si,checked){
   const k=keyFor(cl,it,si);
   if(checked)state.checks[k]=true;else{delete state.checks[k];delete state.extras[slotExtraKeyFor(cl,it,si)];}
   openDetails.add(detailKey(cl,it));
   noteQuantityActivity(cl,it);
-  save();driveTouch();updateAll();
+  save();driveTouch();noteMonitorCollectionChange();updateAll();
 }
 
 function clProgress(cl){
@@ -766,6 +859,10 @@ const COLLECTION_CHANNEL='tcg-collection/v1';
 const COLLECTION_SNAPSHOT_SCHEMA='tcg.collection-snapshot/v2';
 const COLLECTION_NAMESPACE='collection-tracker';
 const COLLECTION_MAX_PRODUCTS=1200;
+const MONITOR_CHANNEL='tcg-collection-monitor/v1';
+const MONITOR_SUBSCRIPTION_SCHEMA='tcg.collection-monitor-subscription/v1';
+const MONITOR_STATUS_SCHEMA='tcg.collection-monitor-sync-status/v1';
+const MONITOR_STATUS_ACK_SCHEMA='tcg.collection-monitor-sync-status-ack/v1';
 const pricingConsumerOrigin=(()=>{
   try{
     const candidate=new URLSearchParams(location.search).get(PRICING_QUERY)||'';
@@ -869,6 +966,72 @@ function buildCollectionSnapshot(){
   if(count>COLLECTION_MAX_PRODUCTS)throw new Error('Collection snapshot exceeds '+COLLECTION_MAX_PRODUCTS+' products');
   return {schema:COLLECTION_SNAPSHOT_SCHEMA,namespace:COLLECTION_NAMESPACE,products};
 }
+function monitorStableJson(value){
+  if(Array.isArray(value))return '['+value.map(monitorStableJson).join(',')+']';
+  if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+monitorStableJson(value[key])).join(',')+'}';
+  return JSON.stringify(value);
+}
+function buildMonitorSubscription(){
+  const preferences=normalizeMonitorPreferences(state.monitorPreferences),collection=buildCollectionSnapshot();
+  const revision=contentHash(monitorStableJson({preferences,collection}));
+  return {schema:MONITOR_SUBSCRIPTION_SCHEMA,namespace:COLLECTION_NAMESPACE,revision,
+    generatedAt:new Date().toISOString(),preferences,collection};
+}
+function postMonitorSubscription(requestId){
+  let result=null,error=null;
+  try{result=buildMonitorSubscription();}
+  catch(cause){error={code:'MONITOR_SUBSCRIPTION_BUILD_FAILED',message:String(cause&&cause.message||cause||'Monitor subscription failed').slice(0,500)};}
+  const response={channel:MONITOR_CHANNEL,type:'monitorSubscriptionResult',requestId};
+  if(error)response.error=error;else response.result=result;
+  window.parent.postMessage(response,pricingConsumerOrigin);
+}
+let monitorChangeTimer=null,monitorChangeSerial=0;
+function emitMonitorStateChanged(){
+  monitorChangeTimer=null;
+  if(!pricingConsumerOrigin)return;
+  const requestId='monitor-change-'+Date.now().toString(36)+'-'+(++monitorChangeSerial).toString(36);
+  window.parent.postMessage({channel:MONITOR_CHANNEL,type:'monitorStateChanged',requestId},pricingConsumerOrigin);
+}
+function scheduleMonitorStateChanged(){
+  if(!pricingConsumerOrigin)return;
+  if(monitorChangeTimer)clearTimeout(monitorChangeTimer);
+  monitorChangeTimer=setTimeout(emitMonitorStateChanged,350);
+}
+let monitorSyncStatus={schema:MONITOR_STATUS_SCHEMA,state:pricingConsumerOrigin?'idle':'unavailable',revision:null,
+  productCount:null,activeTargetCount:null,monitorConfigured:null,syncedAt:null,
+  message:pricingConsumerOrigin?'Waiting for the Tracker extension to synchronize.':'Open in the paired Tracker extension to synchronize monitoring.',errorCode:null};
+function sanitizeMonitorSyncStatus(value){
+  const states=new Set(['idle','syncing','synced','error','unavailable']);
+  if(!value||typeof value!=='object'||Array.isArray(value)||value.schema!==MONITOR_STATUS_SCHEMA||!states.has(value.state))return null;
+  const nullableString=(field,max)=>field==null?null:(typeof field==='string'&&field.length<=max?field:null);
+  const nullableCount=field=>field==null?null:(Number.isInteger(field)&&field>=0&&field<=100000?field:null);
+  const revision=nullableString(value.revision,200),productCount=nullableCount(value.productCount),
+    activeTargetCount=nullableCount(value.activeTargetCount),message=nullableString(value.message,280),
+    errorCode=nullableString(value.errorCode,100);
+  if(value.revision!=null&&revision===null||value.productCount!=null&&productCount===null||
+      value.activeTargetCount!=null&&activeTargetCount===null||value.message!=null&&message===null||
+      value.errorCode!=null&&errorCode===null||productCount!==null&&productCount>COLLECTION_MAX_PRODUCTS||
+      productCount!==null&&activeTargetCount!==null&&activeTargetCount>productCount||
+      value.monitorConfigured!=null&&typeof value.monitorConfigured!=='boolean')return null;
+  let syncedAt=null;
+  if(value.syncedAt!=null){if(typeof value.syncedAt!=='string'||Number.isNaN(Date.parse(value.syncedAt)))return null;
+    syncedAt=new Date(value.syncedAt).toISOString();}
+  return {schema:MONITOR_STATUS_SCHEMA,state:value.state,revision,productCount,activeTargetCount,
+    monitorConfigured:value.monitorConfigured==null?null:value.monitorConfigured,syncedAt,message,errorCode};
+}
+function paintMonitorSyncStatus(){
+  if(typeof document==='undefined')return;
+  const title=document.getElementById('monitorStatusTitle'),text=document.getElementById('monitorStatusText');
+  if(!title||!text)return;
+  const labels={idle:'Monitor ready',syncing:'Synchronizing monitor…',synced:'Monitor synchronized',error:'Monitor sync error',unavailable:'Monitor unavailable'};
+  title.textContent=labels[monitorSyncStatus.state]||'Monitor status';
+  const parts=[];
+  if(monitorSyncStatus.message)parts.push(monitorSyncStatus.message);
+  if(monitorSyncStatus.productCount!==null)parts.push(monitorSyncStatus.productCount+' products');
+  if(monitorSyncStatus.activeTargetCount!==null)parts.push(monitorSyncStatus.activeTargetCount+' active targets');
+  if(monitorSyncStatus.syncedAt)parts.push('Last sync '+new Date(monitorSyncStatus.syncedAt).toLocaleString());
+  text.textContent=parts.join(' · ')||'No synchronization status has been supplied yet.';
+}
 function postCollectionSnapshot(requestId){
   let result=null,error=null;
   try{result=buildCollectionSnapshot();}
@@ -883,6 +1046,18 @@ window.addEventListener('message',(event)=>{
   if(!message||message.channel!==COLLECTION_CHANNEL||message.type!=='collectionSnapshot'||
       !validCollectionRequestId(message.requestId))return;
   postCollectionSnapshot(message.requestId);
+});
+window.addEventListener('message',(event)=>{
+  if(!pricingConsumerOrigin||event.origin!==pricingConsumerOrigin||event.source!==window.parent)return;
+  const message=event.data;
+  if(!message||message.channel!==MONITOR_CHANNEL||!validCollectionRequestId(message.requestId))return;
+  if(message.type==='monitorSubscription'){postMonitorSubscription(message.requestId);return;}
+  if(message.type!=='monitorSyncStatus')return;
+  const status=sanitizeMonitorSyncStatus(message.status);
+  if(!status)return;
+  monitorSyncStatus=status;paintMonitorSyncStatus();
+  window.parent.postMessage({channel:MONITOR_CHANNEL,type:'monitorSyncStatusResult',requestId:message.requestId,
+    result:{schema:MONITOR_STATUS_ACK_SCHEMA,accepted:true}},pricingConsumerOrigin);
 });
 
 function interpretPriceResponse(product,response){
@@ -1392,7 +1567,7 @@ async function ghDiscover(){const r=await fetch(GH_API+"/gists?per_page=100",{he
   return out;}
 
 async function ghPull(firstConnect){if(!gh.token)return;
-  gh.ids=await ghDiscover();const merged={},mergedExtras={},legacy={};
+  gh.ids=await ghDiscover();const merged={},mergedExtras={},legacy={};let remoteMonitor=null;
   await Promise.all(Object.entries(gh.ids).map(async([cl,id])=>{
     try{const r=await fetch(GH_API+"/gists/"+id,{headers:ghH()});if(!r.ok)return;
       const j=await r.json(),f=(j.files||{})[fileFor(cl)];if(!f)return;
@@ -1400,16 +1575,32 @@ async function ghPull(firstConnect){if(!gh.token)return;
       const b=JSON.parse(c),m=migrateChecks(b.checks||{});Object.assign(merged,m.checks);
       Object.assign(mergedExtras,b.extras||{});
       Object.assign(legacy,b.legacyChecksV1||{},m.legacy,m.unknown);
-      gh.snap[cl]=JSON.stringify({checks:b.checks||{},extras:b.extras||{}});
+      const candidate=monitorPreferenceEnvelope(b);
+      if(candidate&&(!remoteMonitor||String(candidate.updatedAt||'')>String(remoteMonitor.updatedAt||'')||
+          String(candidate.updatedAt||'')===String(remoteMonitor.updatedAt||'')&&
+          JSON.stringify(candidate.preferences)>JSON.stringify(remoteMonitor.preferences)))remoteMonitor=candidate;
+      gh.snap[cl]=monitorGistSnapshot(cl,b.checks||{},b.extras||{},candidate?{
+        monitorPreferences:candidate.preferences,monitorPreferencesUpdatedAt:candidate.updatedAt}:null);
       if(m.migrated||Object.keys(m.unknown).length)ghDirty=true;}catch(e){}}));
+  let changed=false;
   if(Object.keys(merged).length||Object.keys(mergedExtras).length){
     // First connect on a device: keep BOTH sides (local wins ties) so an existing
     // local checklist can never be wiped by whatever is already in the gists.
     state.checks = firstConnect ? Object.assign({}, merged, state.checks) : merged;
     state.extras = firstConnect ? Object.assign({},mergedExtras,state.extras||{}) : mergedExtras;
     state.legacyChecksV1=Object.assign({},legacy,state.legacyChecksV1||{});
-    state=migrateState(state);delete state._needsMigrationSave;
-    save();}
+    state=migrateState(state);delete state._needsMigrationSave;changed=true;}
+  if(remoteMonitor){
+    const localStamp=state.monitorPreferencesUpdatedAt;
+    const useRemote=!firstConnect||!localStamp||!!remoteMonitor.updatedAt&&remoteMonitor.updatedAt>=localStamp;
+    if(useRemote){
+      const before=JSON.stringify(state.monitorPreferences),beforeStamp=state.monitorPreferencesUpdatedAt;
+      state.monitorPreferences=remoteMonitor.preferences;
+      state.monitorPreferencesUpdatedAt=remoteMonitor.updatedAt;
+      if(before!==JSON.stringify(state.monitorPreferences)||beforeStamp!==state.monitorPreferencesUpdatedAt)changed=true;
+    }else ghDirty=true;
+  }
+  if(changed){save();noteMonitorCollectionChange();}
   gh.last=Date.now(); ghRemember();}
 
 async function ghPush(unloading){if(!gh.token||gh.busy)return;gh.busy=true;
@@ -1424,13 +1615,17 @@ async function ghPush(unloading){if(!gh.token||gh.busy)return;gh.busy=true;
     for(const[k,v]of Object.entries(state.legacyChecksV1||{})){if(!v)continue;
       const cl=k.split("|")[0];(legacyGroups[cl]=legacyGroups[cl]||{})[k]=v;}
     const clIds=new Set([...Object.keys(gh.ids),...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(legacyGroups)]);
+    if(state.monitorPreferencesUpdatedAt)clIds.add(MONITOR_GIST_CHECKLIST);
     for(const cl of clIds){const checks=groups[cl]||{},extras=extraGroups[cl]||{},legacy=legacyGroups[cl]||{};
-      const snap=JSON.stringify({checks,extras});
+      const monitorFields=cl===MONITOR_GIST_CHECKLIST?monitorGistFields():null;
+      const snap=monitorGistSnapshot(cl,checks,extras,monitorFields);
       if(gh.snap[cl]===snap&&gh.ids[cl])continue;            // unchanged → skip
       const title=titleFor(cl);
+      const payload={checklist:cl,title,keyVersion:2,checks,extras,legacyChecksV1:legacy,
+        updatedAt:new Date().toISOString()};
+      if(monitorFields)Object.assign(payload,monitorFields);
       const body={description:"MTG Binder · "+title,
-        files:{[fileFor(cl)]:{content:JSON.stringify({checklist:cl,title,keyVersion:2,checks,extras,legacyChecksV1:legacy,
-          updatedAt:new Date().toISOString()},null,2)}}};
+        files:{[fileFor(cl)]:{content:JSON.stringify(payload,null,2)}}};
       if(gh.ids[cl]){await fetch(GH_API+"/gists/"+gh.ids[cl],
         {method:"PATCH",headers:ghH(),body:JSON.stringify(body),keepalive:!!unloading});}
       else{const r=await fetch(GH_API+"/gists",{method:"POST",headers:ghH(),
@@ -1515,7 +1710,6 @@ window.__binderDebug=function(){
     storedFormat: raw==null?"NOTHING STORED":(raw.charAt(0)==="{"?"json (current)":"bare token (legacy)"),
     hasToken: !!gh.token,
     tokenLength: gh.token?gh.token.length:0,
-    tokenPrefix: gh.token?gh.token.slice(0,4)+"…":null,
     user: gh.user,
     gistIds: Object.keys(gh.ids||{}),
     lastSync: gh.last?new Date(gh.last).toISOString():null,
@@ -1548,6 +1742,40 @@ async function ghBoot(){
 
 function toast(msg){ const t=document.getElementById('toast'); t.innerHTML='✓ '+msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2200); }
+
+function openMonitoring(){
+  const prefs=normalizeMonitorPreferences(state.monitorPreferences);
+  document.getElementById('monitorEnabled').checked=prefs.enabled;
+  document.getElementById('monitorDiscount').value=String(Math.round((1-prefs.maxMarketRatio)*1000)/10);
+  document.getElementById('monitorConfidence').value=prefs.minimumConfidence;
+  document.querySelectorAll('[data-monitor-source]').forEach(input=>{input.checked=prefs.sources.includes(input.dataset.monitorSource);});
+  document.getElementById('monitorOptional').checked=prefs.includeOptional;
+  document.getElementById('monitorInstant').checked=prefs.instantFixedPriceEmail;
+  document.getElementById('monitorDigest').checked=prefs.dailyDigest.enabled;
+  document.getElementById('monitorDigestTime').value=prefs.dailyDigest.time;
+  document.getElementById('monitorTimezone').value=prefs.dailyDigest.timezone;
+  paintMonitorSyncStatus();
+  document.getElementById('monitorModal').classList.add('show');
+}
+function saveMonitoringPreferences(){
+  const discount=Number(document.getElementById('monitorDiscount').value);
+  const sources=Array.from(document.querySelectorAll('[data-monitor-source]:checked')).map(input=>input.dataset.monitorSource);
+  if(!Number.isFinite(discount)||discount<0||discount>99){toast('Choose a discount from 0% to 99%');return;}
+  if(!sources.length){toast('Choose at least one monitoring source');return;}
+  const next=normalizeMonitorPreferences({enabled:document.getElementById('monitorEnabled').checked,
+    maxMarketRatio:Math.round((1-discount/100)*10000)/10000,
+    minimumConfidence:document.getElementById('monitorConfidence').value,sources,
+    includeOptional:document.getElementById('monitorOptional').checked,
+    instantFixedPriceEmail:document.getElementById('monitorInstant').checked,
+    dailyDigest:{enabled:document.getElementById('monitorDigest').checked,
+      time:document.getElementById('monitorDigestTime').value,
+      timezone:document.getElementById('monitorTimezone').value}});
+  const changed=JSON.stringify(next)!==JSON.stringify(state.monitorPreferences);
+  if(changed){state.monitorPreferences=next;state.monitorPreferencesUpdatedAt=new Date().toISOString();
+    save();driveTouch();scheduleMonitorStateChanged();}
+  document.getElementById('monitorModal').classList.remove('show');
+  toast(changed?'Monitoring preferences saved':'Monitoring preferences unchanged');
+}
 
 /* ---- wire up ---- */
 function openSync(){
@@ -1635,10 +1863,14 @@ document.addEventListener('click',closeMenus);
 document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeMenus(); });
 
 on('syncItem','click',openSync);
+on('monitorItem','click',openMonitoring);
 on('refreshUnfinishedPrices','click',()=>startPricingRefresh('unfinished'));
 on('refreshAllPrices','click',()=>startPricingRefresh('all'));
 /* #closeModal is created by openSync(), which binds it there. Nothing to do here. */
 on('driveModal','click',(e)=>{ if(e.target.id==='driveModal')e.target.classList.remove('show'); });
+on('monitorModal','click',(e)=>{ if(e.target.id==='monitorModal')e.target.classList.remove('show'); });
+on('monitorClose','click',()=>document.getElementById('monitorModal').classList.remove('show'));
+on('monitorSave','click',saveMonitoringPreferences);
 on('drivePill','click',openSync);
 document.getElementById('exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -1648,7 +1880,7 @@ document.getElementById('exportBtn').onclick=()=>{
 document.getElementById('importBtn').onclick=()=>document.getElementById('fileIn').click();
 document.getElementById('fileIn').onchange=(e)=>{
   const f=e.target.files[0]; if(!f)return; const r=new FileReader();
-  r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.checks){state=migrateState(s);delete state._needsMigrationSave;save(); active=state.ui.active||active; /* Startup is deliberately fault-isolated: a failure in rendering must not stop
+  r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.checks){state=migrateState(s);delete state._needsMigrationSave;save();noteMonitorCollectionChange(); active=state.ui.active||active; /* Startup is deliberately fault-isolated: a failure in rendering must not stop
    the sync from reconnecting, and vice versa. */
 try{ paintSync(); applyCols(); updateAll(); }
 catch(e){ console.error('[binder] initial render failed:', e); }
@@ -1688,6 +1920,7 @@ document.getElementById('themeBtn').onclick=()=>{ state.theme=state.theme==='dar
 if(state.theme==='dark')document.documentElement.setAttribute('data-theme','dark');
 document.getElementById('hideDoneSw').classList.toggle('on',state.ui.hideDone);
 paintSync(); updateAll();
+paintMonitorSyncStatus();
 ghBoot();
 </script>
 </body>

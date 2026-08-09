@@ -42,6 +42,13 @@
         if (request.type === "watchUpsert") return respond(event, request, { result: await client.upsertWatch(request.rule) });
         if (request.type === "watchRemove") return respond(event, request, { result: await client.removeWatch(request.watchId) });
         if (request.type === "watchRun") return respond(event, request, { result: await client.runWatches(request.watchId) });
+        if (request.type === "monitorSyncCollection") {
+          const checked = contracts.validateMonitorSubscription(request.subscription);
+          if (!checked.ok) return respond(event, request, { error: { code: "INVALID_MONITOR_SUBSCRIPTION", message: checked.errors.join("; ") } });
+          return respond(event, request, { result: await client.syncMonitorCollection(checked.value) });
+        }
+        if (request.type === "monitorStatus") return respond(event, request, { result: await client.monitorStatus() });
+        if (request.type === "monitorRun") return respond(event, request, { result: await client.runMonitor() });
         respond(event, request, { error: { code: "UNKNOWN_METHOD", message: "Unknown pricing bridge method" } });
       } catch (error) {
         respond(event, request, { error: { code: "BRIDGE_FAILURE", message: String(error && error.message || error) } });
@@ -57,4 +64,3 @@
 
   return { CHANNEL, createDashboardBridge };
 });
-
