@@ -153,6 +153,12 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .iconbtn:hover{background:var(--bg)}
 .iconbtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round}
+.iconbtn.pricing-active{color:var(--gold);border-color:var(--gold)}
+.iconbtn.pricing-active svg,.rowpricebtn.loading svg{animation:price-spin .85s linear infinite}
+.pricemenu .mrow.disabled{opacity:.48;cursor:not-allowed;pointer-events:none}
+.pricingmenustatus{padding:7px 10px 8px;color:var(--muted);font-size:10.5px;line-height:1.4;
+  border-top:1px solid var(--line)}
+@keyframes price-spin{to{transform:rotate(360deg)}}
 .vbtn{display:flex;align-items:center;gap:6px;height:31px}
 .vgear{font-size:13px;line-height:1}
 .menuwrap{position:relative}
@@ -162,6 +168,8 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .mrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 10px;
   border-radius:8px;font-size:12.5px;color:var(--ink);cursor:pointer;user-select:none}
 .mrow:hover{background:var(--bg)}
+.menu button.mrow{width:100%;border:0;background:transparent;font-family:inherit;font-size:12.5px;text-align:left}
+.menu button.mrow:hover,.menu button.mrow:focus-visible{background:var(--bg);outline:none}
 .menu select{font-size:12px;color:var(--lpurple);background:var(--card);
   border:1px solid var(--line);border-radius:7px;padding:4px 6px;cursor:pointer}
 
@@ -220,6 +228,14 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
   stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease}
 .item.open .rowtog svg{transform:rotate(180deg)}
 .ghosttog{pointer-events:none}   /* keeps rows without details aligned */
+.rowpricebtn{width:22px;height:22px;flex:none;display:grid;place-items:center;padding:0;
+  border:none;background:none;color:var(--muted);cursor:pointer;border-radius:6px}
+.rowpricebtn:hover,.rowpricebtn:focus-visible{background:var(--line);color:var(--lpurple);outline:none}
+.rowpricebtn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round}
+.rowpricebtn.live{color:var(--good)}
+.rowpricebtn.error{color:#c94d4d}
+.rowpricebtn:disabled{cursor:not-allowed;opacity:.38;background:none}
 .rowdet{display:none;padding:2px 34px 10px 8px;font-size:11.5px;color:var(--muted);
   line-height:1.55;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}
 .item.open .rowdet{display:grid}
@@ -231,10 +247,59 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .productpic figcaption b{display:block;color:var(--ink);font-size:10px;font-weight:650}
 .rowcopy{min-width:0;padding-top:2px}
 .rowcopy.wide{grid-column:1/-1}
+.variantlist{grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px}
+.varianttitle{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  font-weight:700;color:var(--ink);margin-bottom:6px}
+.variantsummary{font-size:10px;font-weight:650;color:var(--muted);text-align:right}
+.variantgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:5px 12px}
+.variantrow{display:flex;align-items:center;gap:7px;min-width:0;color:var(--ink);
+  border-radius:7px;padding:4px 6px;background:color-mix(in srgb,var(--rowalt) 72%,transparent)}
+.variantrow:hover{background:var(--line)}
+.variantname{min-width:0;flex:1;overflow-wrap:anywhere}
+.variantgoal{font-size:9px;color:var(--muted);white-space:nowrap}
+.variantqty{display:flex;align-items:center;flex:none;border:1px solid var(--line);border-radius:7px;
+  overflow:hidden;background:var(--card)}
+.variantqtybtn,.variantqtynum{height:24px;min-width:25px;border:0;background:transparent;color:var(--ink);
+  font:700 12px/1 inherit;padding:0;display:grid;place-items:center}
+.variantqtybtn{cursor:pointer;color:var(--lpurple)}
+.variantqtybtn:hover,.variantqtybtn:focus-visible{background:var(--line)}
+.variantqtybtn:disabled{cursor:default;color:var(--muted);opacity:.45}
+.variantqtynum{min-width:27px;border-inline:1px solid var(--line);font-variant-numeric:tabular-nums}
+.variantqtynum.met{background:color-mix(in srgb,var(--good) 18%,var(--card));color:var(--good)}
+.pricinglist{grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:7px}
+.pricingtitle{font-weight:700;color:var(--ink)}
+.pricecard{border:1px solid var(--line);border-radius:9px;padding:8px;background:var(--card);display:grid;gap:6px}
+.pricehead{display:flex;align-items:center;gap:8px;min-width:0}
+.pricehead b{min-width:0;overflow-wrap:anywhere;color:var(--ink)}
+.pricebadge{margin-left:auto;flex:none;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;background:var(--rowalt);color:var(--muted)}
+.pricebadge.live{background:rgba(39,134,95,.14);color:var(--good)}
+.pricebadge.loading{background:rgba(181,133,42,.16);color:var(--gold)}
+.pricebadge.error{background:rgba(224,92,92,.14);color:#c94d4d}
+.pricebadge.stale{background:rgba(181,133,42,.16);color:var(--gold)}
+.pricefacts{display:flex;flex-wrap:wrap;gap:5px 13px;color:var(--muted)}
+.pricefacts span{white-space:nowrap}.pricefacts b{color:var(--ink)}
+.pricefallback{font-size:10.5px;color:var(--muted)}
+.pricefallback b{color:var(--gold)}
+.priceerror{font-size:10.5px;color:#c94d4d;overflow-wrap:anywhere}
+.priceactions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.pricebtn{border:1px solid var(--line);background:var(--rowalt);color:var(--lpurple);border-radius:7px;
+  padding:5px 8px;font:700 10.5px/1.2 inherit;cursor:pointer}
+.pricebtn:hover,.pricebtn:focus-visible{border-color:var(--lpurple);background:var(--card)}
+.pricebtn:disabled{opacity:.55;cursor:wait}
+.watchbox{display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:6px}
+.watchbox label{font-size:10px;color:var(--muted)}
+.watchbox input{width:88px;height:27px;border:1px solid var(--line);border-radius:6px;background:var(--card);
+  color:var(--ink);padding:0 7px;font:inherit;font-size:11px}
+.watchmsg{font-size:10px;color:var(--muted)}
 .checks{display:flex;flex-wrap:wrap;gap:6px;flex:none;min-width:30px}
 /* Compact quantity control. The number owns the layout footprint; +/- slide out
    over the surrounding whitespace on hover or keyboard/touch focus. */
 .qtyctrl{position:relative;width:30px;height:24px;display:grid;place-items:center;z-index:1}
+.qtyctrl.ratio,.qtyctrl.ratio .qtynum{width:40px}
+.qtyctrl.ratio .qtybtn.minus{right:7px}.qtyctrl.ratio .qtybtn.plus{left:7px}
+.qtyctrl.ratio:hover .qtybtn.minus,.qtyctrl.ratio:focus-within .qtybtn.minus{transform:translateX(-35px) scale(1)}
+.qtyctrl.ratio:hover .qtybtn.plus,.qtyctrl.ratio:focus-within .qtybtn.plus{transform:translateX(35px) scale(1)}
 .qtyctrl:hover,.qtyctrl:focus-within{z-index:12}
 /* Once opened, this invisible bridge keeps :hover alive while the pointer crosses
    the 2px gap between the compact count and either translated button. */
@@ -391,6 +456,17 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
         <div class="search"><span class="sicon">&#128269;</span>
           <input id="search" placeholder="Search sets or codes…" aria-label="Search sets or codes"></div>
       </div>
+      <div class="menuwrap">
+        <button class="iconbtn" id="priceRefreshBtn" title="Refresh prices" aria-label="Refresh prices"
+                aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><polyline points="20 4 20 11 13 11"/></svg>
+        </button>
+        <div class="menu pricemenu" id="priceRefreshMenu">
+          <button type="button" class="mrow" id="refreshUnfinishedPrices"><span>Refresh unfinished items</span><span class="mkey" id="refreshUnfinishedCount"></span></button>
+          <button type="button" class="mrow" id="refreshAllPrices"><span>Refresh all items</span><span class="mkey" id="refreshAllCount"></span></button>
+          <div class="pricingmenustatus" id="pricingMenuStatus">Open in the tracker extension to use live pricing.</div>
+        </div>
+      </div>
       <button class="iconbtn" id="expandAll" title="Expand all eras" aria-label="Expand all eras">
         <svg viewBox="0 0 24 24"><polyline points="7 6 12 11 17 6"/><polyline points="7 13 12 18 17 13"/></svg>
       </button>
@@ -451,6 +527,9 @@ function groupKeyFor(cl,it,group){
   const seed=[normKeyPart(cl),normKeyPart(it.name),normKeyPart(it.code),normKeyPart(group)].join('\u001f');
   return cl+'|extra|'+contentHash(seed);
 }
+function slotExtraKeyFor(cl,it,si){
+  return cl+'|slot-extra|'+keyFor(cl,it,si).split('|').pop();
+}
 function displayGroupFor(it,sl){
   const kidCopies=it.slots.length>1&&it.slots.every(s=>/^Kid\s+\d+$/i.test(s.g||s.l||''));
   return kidCopies?'Copies':(sl.g||(sl.l||''));
@@ -463,6 +542,9 @@ function groupedSlots(it){
   return groups;
 }
 function groupTarget(g){return g.items.filter(({sl})=>slotRequired(sl)).length;}
+function checklistFor(id){return DATA.checklists.find(cl=>cl.id===id);}
+function usesDistinctVariants(id){const cl=checklistFor(id);return !!(cl&&cl.progressMode==='distinct_variants');}
+function usesGroupVariants(id){const cl=checklistFor(id);return !!(cl&&cl.progressMode==='group_variants');}
 function legacyKeyMap(){
   const out={},seen={};
   DATA.checklists.forEach(cl=>cl.eras.forEach((era,ei)=>era.items.forEach((it,ii)=>
@@ -500,6 +582,7 @@ let state=load();
 if(state._needsMigrationSave){delete state._needsMigrationSave;save();}
 let active=state.ui.active||DATA.checklists[0].id;
 let search="";
+const openDetails=new Set();
 publishKeyDebug();
 function load(){
   try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.checks)return migrateState(s); }catch(e){}
@@ -516,9 +599,15 @@ function publishKeyDebug(){
 function save(){localStorage.setItem(KEY,JSON.stringify(state));publishKeyDebug();}
 
 function isChecked(k){ return !!state.checks[k]; }
+function slotQuantity(cl,it,si){return (isChecked(keyFor(cl,it,si))?1:0)+
+  Math.max(0,Number(state.extras[slotExtraKeyFor(cl,it,si)]||0));}
 function checkedInGroup(cl,it,g){return g.items.filter(({si})=>isChecked(keyFor(cl,it,si))).length;}
-function ownedForGroup(cl,it,g){return checkedInGroup(cl,it,g)+Math.max(0,Number(state.extras[groupKeyFor(cl,it,g.k||g.n)]||0));}
+function ownedForGroup(cl,it,g){const checked=checkedInGroup(cl,it,g);
+  return usesDistinctVariants(cl)?g.items.reduce((n,{si})=>n+slotQuantity(cl,it,si),0):
+    checked+Math.max(0,Number(state.extras[groupKeyFor(cl,it,g.k||g.n)]||0));}
 function itemComplete(cl,it){const required=groupedSlots(it).filter(g=>groupTarget(g)>0);
+  if(usesDistinctVariants(cl))return it.slots.some(slotRequired)&&it.slots.every((sl,si)=>
+    !slotRequired(sl)||slotQuantity(cl,it,si)>=1);
   return required.length>0&&required.every(g=>ownedForGroup(cl,it,g)>=groupTarget(g));}
 function quantityNoun(group,count){return group==='Copies'?(count===1?'copy':'copies'):group;}
 const COMPLETION_LINGER_MS=4000;
@@ -545,21 +634,66 @@ function noteQuantityActivity(cl,it){
   else completionLinger.delete(k);
   scheduleCompletionLinger();
 }
+function restoreQuantityFocus(cl,it,g,side){
+  if(!side||typeof document==='undefined')return;
+  const key=groupKeyFor(cl,it,g.k||g.n);
+  const ctrl=document.querySelector('[data-qty-key="'+key+'"]');
+  if(!ctrl)return;
+  const sameSide=ctrl.querySelector('.qtybtn.'+side);
+  const target=sameSide&&!sameSide.disabled?sameSide:ctrl.querySelector('.qtynum');
+  if(!target)return;
+  try{target.focus({preventScroll:true});}catch(e){target.focus();}
+}
+function restoreVariantFocus(key,side){
+  if(!side||typeof document==='undefined')return;
+  const ctrl=document.querySelector('[data-variant-qty-key="'+key+'"]');
+  if(!ctrl)return;
+  const target=ctrl.querySelector('.variantqtybtn.'+side)||ctrl.querySelector('.variantqtynum');
+  if(!target||target.disabled)return;
+  try{target.focus({preventScroll:true});}catch(e){target.focus();}
+}
 function clearCompletionLinger(){
   completionLinger.clear();
   if(completionLingerTimer){clearTimeout(completionLingerTimer);completionLingerTimer=null;}
 }
-function changeQuantity(cl,it,g,delta){
+function changeQuantity(cl,it,g,delta,focusSide){
   const extraKey=groupKeyFor(cl,it,g.k||g.n),extra=Math.max(0,Number(state.extras[extraKey]||0));
+  const distinct=usesDistinctVariants(cl);
   if(delta>0){
-    const next=g.items.find(({si})=>!isChecked(keyFor(cl,it,si)));
-    if(next)state.checks[keyFor(cl,it,next.si)]=true;
-    else state.extras[extraKey]=extra+1;
+    const next=distinct
+      ? g.items.reduce((best,current)=>slotQuantity(cl,it,current.si)<slotQuantity(cl,it,best.si)?current:best,g.items[0])
+      : g.items.find(({si})=>!isChecked(keyFor(cl,it,si)));
+    if(next&&distinct)mutateSlotQuantity(cl,it,next.si,1);
+    else if(next)state.checks[keyFor(cl,it,next.si)]=true;
+    else if(!distinct)state.extras[extraKey]=extra+1;
   }else if(delta<0){
-    if(extra>0){if(extra===1)delete state.extras[extraKey];else state.extras[extraKey]=extra-1;}
+    if(distinct){
+      const owned=g.items.filter(({si})=>slotQuantity(cl,it,si)>0);
+      const next=owned.reduce((best,current)=>!best||slotQuantity(cl,it,current.si)>=slotQuantity(cl,it,best.si)?current:best,null);
+      if(next)mutateSlotQuantity(cl,it,next.si,-1);
+    }else if(extra>0){if(extra===1)delete state.extras[extraKey];else state.extras[extraKey]=extra-1;}
     else{const checked=g.items.filter(({si})=>isChecked(keyFor(cl,it,si)));const last=checked[checked.length-1];
       if(last)delete state.checks[keyFor(cl,it,last.si)];}
   }
+  noteQuantityActivity(cl,it);
+  save();driveTouch();updateAll();restoreQuantityFocus(cl,it,g,focusSide);
+}
+function detailKey(cl,it){return [cl,normKeyPart(it.name),normKeyPart(it.code)].join('|');}
+function mutateSlotQuantity(cl,it,si,delta){
+  const checkKey=keyFor(cl,it,si),extraKey=slotExtraKeyFor(cl,it,si),qty=slotQuantity(cl,it,si);
+  if(delta>0){if(qty===0)state.checks[checkKey]=true;else state.extras[extraKey]=Math.max(0,Number(state.extras[extraKey]||0))+1;}
+  else if(delta<0&&qty>0){const extra=Math.max(0,Number(state.extras[extraKey]||0));
+    if(extra>0){if(extra===1)delete state.extras[extraKey];else state.extras[extraKey]=extra-1;}
+    else delete state.checks[checkKey];}
+}
+function changeSlotQuantity(cl,it,si,delta,focusSide){
+  mutateSlotQuantity(cl,it,si,delta);openDetails.add(detailKey(cl,it));
+  noteQuantityActivity(cl,it);save();driveTouch();updateAll();restoreVariantFocus(slotExtraKeyFor(cl,it,si),focusSide);
+}
+function setVariantChecked(cl,it,si,checked){
+  const k=keyFor(cl,it,si);
+  if(checked)state.checks[k]=true;else{delete state.checks[k];delete state.extras[slotExtraKeyFor(cl,it,si)];}
+  openDetails.add(detailKey(cl,it));
   noteQuantityActivity(cl,it);
   save();driveTouch();updateAll();
 }
@@ -567,14 +701,14 @@ function changeQuantity(cl,it,g,delta){
 function clProgress(cl){
   let done=0,total=0;
   cl.eras.forEach((e,ei)=>e.items.forEach((it,ii)=>it.slots.forEach((sl,si)=>{
-    if(!slotRequired(sl))return; total++; if(isChecked(keyFor(cl.id,it,si))) done++;
+    if(!slotRequired(sl))return; total++; if(usesDistinctVariants(cl.id)?slotQuantity(cl.id,it,si)>=1:isChecked(keyFor(cl.id,it,si))) done++;
   })));
   return {done,total};
 }
 function eraProgress(cl,ei){
   let done=0,total=0;
   cl.eras[ei].items.forEach((it,ii)=>it.slots.forEach((sl,si)=>{
-    if(!slotRequired(sl))return; total++; if(isChecked(keyFor(cl.id,it,si)))done++;}));
+    if(!slotRequired(sl))return; total++; if(usesDistinctVariants(cl.id)?slotQuantity(cl.id,it,si)>=1:isChecked(keyFor(cl.id,it,si)))done++;}));
   return {done,total};
 }
 function overall(){
@@ -618,6 +752,320 @@ function valueHTML(val, est){
   }
   return val;
 }
+
+/* ---- TCG Comps pricing bridge ----
+   The dashboard never sees the provider extension id or capability token. The
+   tracker extension owns those credentials and accepts messages only from this
+   exact iframe/origin pair; this side answers only to the exact extension origin
+   supplied in the iframe URL. Pricing state is intentionally memory-only. */
+const PRICING_CHANNEL='tcg-pricing/v1';
+const PRICING_QUERY='pricingConsumerOrigin';
+const PRICING_TIMEOUT_MS=20000;
+const PRICING_STALE_MS=24*60*60*1000;
+const COLLECTION_CHANNEL='tcg-collection/v1';
+const COLLECTION_SNAPSHOT_SCHEMA='tcg.collection-snapshot/v2';
+const COLLECTION_NAMESPACE='collection-tracker';
+const COLLECTION_MAX_PRODUCTS=1200;
+const pricingConsumerOrigin=(()=>{
+  try{
+    const candidate=new URLSearchParams(location.search).get(PRICING_QUERY)||'';
+    return /^chrome-extension:\/\/[a-p]{32}$/.test(candidate)&&window.parent!==window?candidate:'';
+  }catch(e){return '';}
+})();
+const pricingPending=new Map();
+const pricingStates=new Map();
+let pricingRequestSerial=0;
+const PRICING_BATCH_CONCURRENCY=4;
+let pricingBatch={running:false,done:0,total:0,rows:0,label:'',checklistId:null};
+
+function pricingDefaultState(){
+  return pricingConsumerOrigin
+    ? {status:'idle',message:'Ready for a live price check.'}
+    : {status:'unavailable',code:'MISSING_EXTENSION',message:'Open this dashboard in the installed tracker extension for live pricing.'};
+}
+function pricingState(productId){return pricingStates.get(productId)||pricingDefaultState();}
+function pricingError(code,message){const error=new Error(message||code||'Pricing request failed');error.code=code||'BRIDGE_FAILURE';return error;}
+function pricingRequest(type,payload){
+  if(!pricingConsumerOrigin)return Promise.reject(pricingError('MISSING_EXTENSION','Open this dashboard in the installed tracker extension for live pricing.'));
+  const requestId='tracker-'+Date.now().toString(36)+'-'+(++pricingRequestSerial).toString(36);
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{pricingPending.delete(requestId);reject(pricingError('BRIDGE_TIMEOUT','TCG Comps did not respond. Reload both extensions and try again.'));},PRICING_TIMEOUT_MS);
+    pricingPending.set(requestId,{type:type+'Result',resolve,reject,timer});
+    window.parent.postMessage(Object.assign({channel:PRICING_CHANNEL,type,requestId},payload||{}),pricingConsumerOrigin);
+  });
+}
+window.addEventListener('message',(event)=>{
+  if(!pricingConsumerOrigin||event.origin!==pricingConsumerOrigin||event.source!==window.parent)return;
+  const message=event.data;
+  if(!message||message.channel!==PRICING_CHANNEL||typeof message.requestId!=='string')return;
+  const pending=pricingPending.get(message.requestId);
+  if(!pending||message.type!==pending.type)return;
+  clearTimeout(pending.timer);pricingPending.delete(message.requestId);
+  if(message.error)pending.reject(pricingError(message.error.code,message.error.message));
+  else pending.resolve(message.result);
+});
+
+/* The extension may request a current collection catalog when the user asks it
+   to decorate a marketplace page. This is deliberately a separate, read-only
+   bridge: the snapshot is rebuilt from in-memory ownership on every request and
+   contains ProductRefs plus counts only — never progress keys, sync credentials,
+   Gist metadata, pricing values, watches, or persisted bridge state. */
+function validCollectionRequestId(value){return typeof value==='string'&&value.length>0&&value.length<=160;}
+function collectionCount(value,label){
+  const count=Number(value);
+  if(!Number.isInteger(count)||count<0||count>100000)throw new Error(label+' must be an integer from 0 to 100000');
+  return count;
+}
+function collectionProductRef(ref){
+  const games=new Set(['mtg','pokemon','lorcana','yugioh','other']);
+  const productTypes=new Set(['booster','collector_booster','draft_booster','play_booster','set_booster',
+    'theme_booster','jumpstart_booster','epilogue_booster','beyond_booster','mystery_booster','sample_booster',
+    'prerelease_kit','elite_trainer_box','bundle','other_sealed']);
+  const units=new Set(['pack','kit','display','box','bundle','case']);
+  if(!ref||typeof ref!=='object'||Array.isArray(ref))throw new Error('Pricing product is missing its ProductRef');
+  if(ref.schema!=='tcg.product/v1')throw new Error('ProductRef schema must be tcg.product/v1');
+  if(typeof ref.productId!=='string'||ref.productId!==ref.productId.toLowerCase()||
+      !/^[a-z0-9][a-z0-9:._-]{5,199}$/.test(ref.productId))throw new Error('ProductRef productId is invalid');
+  if(!games.has(ref.game))throw new Error(ref.productId+': ProductRef game is unsupported');
+  if(typeof ref.setName!=='string'||!ref.setName.trim())throw new Error(ref.productId+': ProductRef setName is required');
+  if(typeof ref.productName!=='string'||!ref.productName.trim())throw new Error(ref.productId+': ProductRef productName is required');
+  if(!productTypes.has(ref.productType))throw new Error(ref.productId+': ProductRef productType is unsupported');
+  if(!units.has(ref.unit))throw new Error(ref.productId+': ProductRef unit is unsupported');
+  if(typeof ref.language!=='string'||!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/.test(ref.language))
+    throw new Error(ref.productId+': ProductRef language is invalid');
+  if(ref.setCode!==null&&ref.setCode!==undefined&&typeof ref.setCode!=='string')throw new Error(ref.productId+': ProductRef setCode is invalid');
+  if(ref.variant!==null&&ref.variant!==undefined&&typeof ref.variant!=='string')throw new Error(ref.productId+': ProductRef variant is invalid');
+  return {schema:ref.schema,productId:ref.productId,game:ref.game,setCode:ref.setCode==null?null:ref.setCode,
+    setName:ref.setName,productName:ref.productName,productType:ref.productType,unit:ref.unit,
+    language:ref.language,variant:ref.variant==null?null:ref.variant};
+}
+function collectionOwnership(cl,it,record){
+  if(Object.prototype.hasOwnProperty.call(record,'slotOrdinal')){
+    const si=record.slotOrdinal;
+    if(!Number.isInteger(si)||si<0||si>=it.slots.length)
+      throw new Error(record.ref.productId+': slotOrdinal does not identify an ownership slot');
+    const target=slotRequired(it.slots[si])?1:0;
+    return {target,owned:collectionCount(slotQuantity(cl.id,it,si),record.ref.productId+' owned')};
+  }
+  if(typeof record.slotGroup!=='string'||!record.slotGroup)
+    throw new Error(record.ref.productId+': pricing product has no ownership slotGroup');
+  const matches=groupedSlots(it).filter(group=>group.n===record.slotGroup);
+  if(matches.length!==1)
+    throw new Error(record.ref.productId+': slotGroup '+record.slotGroup+' maps to '+matches.length+' ownership groups');
+  return {target:collectionCount(groupTarget(matches[0]),record.ref.productId+' target'),
+    owned:collectionCount(ownedForGroup(cl.id,it,matches[0]),record.ref.productId+' owned')};
+}
+function buildCollectionSnapshot(){
+  const products={};let count=0;
+  DATA.checklists.forEach(cl=>cl.eras.forEach(era=>era.items.forEach(it=>(it.pricingProducts||[]).forEach(record=>{
+    const product=collectionProductRef(record.ref),productId=product.productId;
+    if(Object.prototype.hasOwnProperty.call(products,productId))throw new Error(productId+': duplicate pricing ProductRef');
+    const ownership=collectionOwnership(cl,it,record),target=ownership.target,owned=ownership.owned;
+    const missing=Math.max(target-owned,0),requirement=target>0?'required':'optional';
+    const status=missing>0?'missing':(owned>0?'owned':'target');
+    products[productId]={product,target,owned,missing,requirement,status};count++;
+  }))));
+  if(!count)throw new Error('Collection snapshot has no pricing products');
+  if(count>COLLECTION_MAX_PRODUCTS)throw new Error('Collection snapshot exceeds '+COLLECTION_MAX_PRODUCTS+' products');
+  return {schema:COLLECTION_SNAPSHOT_SCHEMA,namespace:COLLECTION_NAMESPACE,products};
+}
+function postCollectionSnapshot(requestId){
+  let result=null,error=null;
+  try{result=buildCollectionSnapshot();}
+  catch(cause){error={code:'SNAPSHOT_BUILD_FAILED',message:String(cause&&cause.message||cause||'Collection snapshot failed').slice(0,500)};}
+  const response={channel:COLLECTION_CHANNEL,type:'collectionSnapshotResult',requestId};
+  if(error)response.error=error;else response.result=result;
+  window.parent.postMessage(response,pricingConsumerOrigin);
+}
+window.addEventListener('message',(event)=>{
+  if(!pricingConsumerOrigin||event.origin!==pricingConsumerOrigin||event.source!==window.parent)return;
+  const message=event.data;
+  if(!message||message.channel!==COLLECTION_CHANNEL||message.type!=='collectionSnapshot'||
+      !validCollectionRequestId(message.requestId))return;
+  postCollectionSnapshot(message.requestId);
+});
+
+function interpretPriceResponse(product,response){
+  if(!response||typeof response!=='object')return {status:'error',code:'INVALID_RESPONSE',message:'TCG Comps returned an invalid response.'};
+  if(Number(response.apiVersion)!==1)return {status:'error',code:'UNSUPPORTED_VERSION',message:'TCG Comps API version 1 is required.'};
+  if(response.error){
+    const code=String(response.error.code||'SOURCE_FAILURE');
+    const unavailable=code==='NO_PRODUCT_MATCH'||code==='NO_VERIFIED_PRICE';
+    return {status:unavailable?'unavailable':'error',code,message:String(response.error.message||code),engineVersion:response.engineVersion||null};
+  }
+  if(response.schema!=='tcg.valuation/v1'||!response.product||response.product.schema!=='tcg.product/v1'||response.product.productId!==product.productId){
+    return {status:'error',code:'PRODUCT_MISMATCH',message:'TCG Comps did not return this exact product. No value or watch was accepted.',engineVersion:response.engineVersion||null};
+  }
+  if(!(response.market&&Number.isFinite(Number(response.market.value)))&&!(response.lowestAsk&&Number.isFinite(Number(response.lowestAsk.landedPrice)))){
+    return {status:'unavailable',code:'NO_VERIFIED_PRICE',message:'No verified market value or ask is available for this exact product.',engineVersion:response.engineVersion||null};
+  }
+  return {status:'success',valuation:response,engineVersion:response.engineVersion||null};
+}
+function pricingCanWatch(priceState,product){
+  return !!(priceState&&priceState.status==='success'&&priceState.valuation&&
+    priceState.valuation.product&&priceState.valuation.product.productId===product.productId);
+}
+function pricingWatchId(product){return 'tracker:'+contentHash(product.productId);}
+function pricingMoney(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString('en-US',{style:'currency',currency:'USD'}):'Unavailable';}
+function pricingTime(value){
+  const n=Date.parse(value||'');
+  return Number.isFinite(n)?new Date(n).toLocaleString():'Unavailable';
+}
+function safePriceUrl(value){
+  try{const u=new URL(value);return /^https:$/.test(u.protocol)?u.toString():'';}catch(e){return '';}
+}
+function refreshPrice(product,options){
+  options=options||{};
+  const prior=options.prior||pricingState(product.productId),repaint=options.repaint!==false;
+  pricingStates.set(product.productId,Object.assign({},prior,{status:'loading',message:'Refreshing live pricing…'}));if(repaint)renderContent();
+  return pricingRequest('priceProduct',{target:product,options:{includeActive:true,includeRecentSales:true}})
+    .then(response=>{pricingStates.set(product.productId,Object.assign({},prior,interpretPriceResponse(product,response)));if(repaint)renderContent();})
+    .catch(error=>{pricingStates.set(product.productId,Object.assign({},prior,{status:'error',code:error.code||'BRIDGE_FAILURE',message:String(error.message||error)}));if(repaint)renderContent();});
+}
+function pricingItems(cl,mode,item){
+  const rows=item?[item]:cl.eras.flatMap(era=>era.items);
+  if(mode!=='unfinished')return rows.filter(it=>(it.pricingProducts||[]).length);
+  return rows.filter(it=>(it.pricingProducts||[]).length&&it.slots.some(slotRequired)&&!itemComplete(cl.id,it));
+}
+function pricingQueueFor(items){
+  const seen=new Set(),queue=[];
+  items.forEach(it=>(it.pricingProducts||[]).forEach(record=>{
+    const product=record.ref;
+    if(product&&product.productId&&!seen.has(product.productId)){seen.add(product.productId);queue.push(product);}
+  }));
+  return queue;
+}
+function pricingItemStatus(item){
+  const states=(item.pricingProducts||[]).map(record=>pricingState(record.ref.productId));
+  if(states.some(ps=>ps.status==='loading'))return 'loading';
+  if(states.some(ps=>ps.status==='error'))return 'error';
+  if(states.length&&states.every(ps=>ps.status==='success'))return 'live';
+  return 'idle';
+}
+function paintPricingBatch(){
+  const btn=document.getElementById('priceRefreshBtn');if(!btn)return;
+  const cl=DATA.checklists.find(candidate=>candidate.id===active);
+  const all=cl?pricingItems(cl,'all'):[],unfinished=cl?pricingItems(cl,'unfinished'):[];
+  const allCount=document.getElementById('refreshAllCount'),unfinishedCount=document.getElementById('refreshUnfinishedCount');
+  if(allCount)allCount.textContent=String(all.length);if(unfinishedCount)unfinishedCount.textContent=String(unfinished.length);
+  const disabled=!pricingConsumerOrigin||pricingBatch.running;
+  ['refreshAllPrices','refreshUnfinishedPrices'].forEach(id=>{const row=document.getElementById(id);if(row){row.disabled=disabled;row.classList.toggle('disabled',disabled);}});
+  btn.classList.toggle('pricing-active',pricingBatch.running);
+  const label=pricingBatch.running?('Refreshing '+pricingBatch.done+' of '+pricingBatch.total+' prices'):'Refresh prices';
+  btn.title=label;btn.setAttribute('aria-label',label);
+  const status=document.getElementById('pricingMenuStatus');if(!status)return;
+  if(pricingBatch.running)status.textContent=pricingBatch.label+' · '+pricingBatch.done+'/'+pricingBatch.total+' prices';
+  else if(!pricingConsumerOrigin)status.textContent='Open in the paired tracker extension to use live pricing.';
+  else status.textContent='Refreshes every pricing product for the selected rows on this checklist.';
+}
+function startPricingRefresh(mode,item){
+  if(!pricingConsumerOrigin){toast('Open this dashboard in the paired tracker extension');return Promise.resolve(false);}
+  if(pricingBatch.running){toast('A price refresh is already running');return Promise.resolve(false);}
+  const cl=DATA.checklists.find(candidate=>candidate.id===active),items=pricingItems(cl,mode,item),products=pricingQueueFor(items)
+    .filter(product=>pricingState(product.productId).status!=='loading');
+  if(!products.length){toast(mode==='unfinished'?'No unfinished items to refresh':'No pricing products to refresh');return Promise.resolve(false);}
+  const queued=products.map(product=>({product,prior:pricingState(product.productId)}));
+  queued.forEach(({product,prior})=>pricingStates.set(product.productId,Object.assign({},prior,{status:'loading',message:'Queued for live pricing…'})));
+  pricingBatch={running:true,done:0,total:queued.length,rows:items.length,
+    label:item?('Refreshing '+item.name):(mode==='unfinished'?'Refreshing unfinished items':'Refreshing all items'),checklistId:cl.id};
+  closeMenus();renderContent();paintPricingBatch();
+  let cursor=0;
+  async function worker(){
+    while(cursor<queued.length){const entry=queued[cursor++];
+      await refreshPrice(entry.product,{prior:entry.prior,repaint:false});
+      pricingBatch.done++;paintPricingBatch();
+    }
+  }
+  return Promise.all(Array.from({length:Math.min(PRICING_BATCH_CONCURRENCY,queued.length)},worker)).then(()=>{
+    const failures=queued.filter(({product})=>pricingState(product.productId).status==='error').length;
+    const unavailable=queued.filter(({product})=>pricingState(product.productId).status==='unavailable').length;
+    pricingBatch.running=false;renderContent();paintPricingBatch();
+    toast('Refreshed '+queued.length+' price'+(queued.length===1?'':'s')+
+      (failures||unavailable?' · '+(failures+unavailable)+' unavailable/error':''));
+    return true;
+  });
+}
+function watchRule(product,threshold){
+  return {schema:'tcg.watch-rule/v1',watchId:pricingWatchId(product),product,enabled:true,
+    threshold:{maxLandedPrice:threshold,maxUnitPrice:null,maxMarketRatio:null},
+    sources:['ebay','tcgplayer'],minimumConfidence:'medium',cooldownMinutes:1440,
+    delivery:{chrome:true,monitorWebhook:false}};
+}
+function runWatchAction(product,action,threshold){
+  const current=pricingState(product.productId);
+  if(!pricingCanWatch(current,product))return;
+  pricingStates.set(product.productId,Object.assign({},current,{watchBusy:true,watchMessage:'Working…'}));renderContent();
+  let call;
+  if(action==='upsert')call=pricingRequest('watchUpsert',{rule:watchRule(product,threshold)});
+  else if(action==='remove')call=pricingRequest('watchRemove',{watchId:pricingWatchId(product)});
+  else call=pricingRequest('watchRun',{watchId:pricingWatchId(product)});
+  call.then(response=>{
+    if(response&&response.error)throw pricingError(response.error.code,response.error.message);
+    const latest=pricingState(product.productId);
+    pricingStates.set(product.productId,Object.assign({},latest,{watchBusy:false,watchSaved:action==='remove'?false:true,
+      watchThreshold:action==='upsert'?threshold:latest.watchThreshold,
+      watchMessage:action==='upsert'?'Watch saved in TCG Comps.':action==='remove'?'Watch removed from TCG Comps.':'Watch check finished.'}));
+    renderContent();
+  }).catch(error=>{
+    const latest=pricingState(product.productId);
+    pricingStates.set(product.productId,Object.assign({},latest,{watchBusy:false,watchMessage:String(error.message||error)}));renderContent();
+  });
+}
+function appendFact(host,label,value){
+  const span=document.createElement('span'),b=document.createElement('b');b.textContent=label+': ';
+  span.appendChild(b);span.appendChild(document.createTextNode(value));host.appendChild(span);
+}
+function renderPricingList(products){
+  const list=document.createElement('div');list.className='pricinglist';
+  const title=document.createElement('div');title.className='pricingtitle';title.textContent='TCG Comps live pricing';list.appendChild(title);
+  products.forEach(record=>{
+    const product=record.ref,ps=pricingState(product.productId),card=document.createElement('div');card.className='pricecard';
+    const head=document.createElement('div');head.className='pricehead';
+    const label=document.createElement('b');label.textContent=record.label;
+    const badge=document.createElement('span');badge.className='pricebadge';
+    if(ps.status==='loading'){badge.classList.add('loading');badge.textContent='Refreshing';}
+    else if(ps.status==='success'){
+      const observed=Date.parse(ps.valuation.observedAt||''),stale=Number.isFinite(observed)&&Date.now()-observed>PRICING_STALE_MS;
+      badge.classList.add(stale?'stale':'live');badge.textContent=stale?'Stale':'Live';
+    }else if(ps.status==='error'){badge.classList.add('error');badge.textContent='Error';}
+    else if(ps.status==='unavailable'){badge.textContent=ps.code==='MISSING_EXTENSION'?'Extension needed':'Unavailable';}
+    else badge.textContent='Not checked';
+    head.appendChild(label);head.appendChild(badge);card.appendChild(head);
+    if(ps.status==='success'){
+      const valuation=ps.valuation,facts=document.createElement('div');facts.className='pricefacts';
+      appendFact(facts,'Live value',pricingMoney(valuation.market&&valuation.market.value));
+      appendFact(facts,'Lowest verified ask',pricingMoney(valuation.lowestAsk&&valuation.lowestAsk.landedPrice));
+      appendFact(facts,'Confidence',String(valuation.market&&valuation.market.confidence||'unavailable'));
+      appendFact(facts,'Checked',pricingTime(valuation.observedAt));card.appendChild(facts);
+      const askUrl=safePriceUrl(valuation.lowestAsk&&valuation.lowestAsk.url);
+      if(askUrl){const link=document.createElement('a');link.href=askUrl;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open verified lowest ask';card.appendChild(link);}
+    }else if(ps.status==='unavailable'||ps.status==='error'){
+      const error=document.createElement('div');error.className=ps.status==='error'?'priceerror':'pricefallback';error.textContent=ps.message||'Live pricing is unavailable.';card.appendChild(error);
+    }
+    if(record.staticValue){const fallback=document.createElement('div');fallback.className='pricefallback';
+      const b=document.createElement('b');b.textContent='Static fallback: ';fallback.appendChild(b);fallback.appendChild(document.createTextNode(record.staticValue));card.appendChild(fallback);}
+    const actions=document.createElement('div');actions.className='priceactions';
+    const refresh=document.createElement('button');refresh.type='button';refresh.className='pricebtn';refresh.textContent=ps.status==='success'?'Refresh price':'Check live price';
+    refresh.disabled=ps.status==='loading'||pricingBatch.running||!pricingConsumerOrigin;refresh.onclick=()=>refreshPrice(product);actions.appendChild(refresh);card.appendChild(actions);
+    if(pricingCanWatch(ps,product)){
+      const box=document.createElement('div');box.className='watchbox';
+      const watchLabel=document.createElement('label');watchLabel.textContent='Alert at landed price ≤ $';
+      const input=document.createElement('input');input.type='number';input.min='0.01';input.step='0.01';input.inputMode='decimal';input.value=ps.watchThreshold||'';
+      input.setAttribute('aria-label','Maximum landed price for '+record.label);
+      input.oninput=()=>{const latest=pricingState(product.productId);latest.watchThreshold=input.value;pricingStates.set(product.productId,latest);};
+      const saveWatch=document.createElement('button');saveWatch.type='button';saveWatch.className='pricebtn';saveWatch.textContent='Save watch';saveWatch.disabled=!!ps.watchBusy;
+      saveWatch.onclick=()=>{const value=Number(input.value);if(!(value>0)){input.setCustomValidity('Enter a positive price.');input.reportValidity();return;}input.setCustomValidity('');runWatchAction(product,'upsert',value);};
+      const runWatch=document.createElement('button');runWatch.type='button';runWatch.className='pricebtn';runWatch.textContent='Run now';runWatch.disabled=!!ps.watchBusy;runWatch.onclick=()=>runWatchAction(product,'run');
+      const removeWatch=document.createElement('button');removeWatch.type='button';removeWatch.className='pricebtn';removeWatch.textContent='Remove';removeWatch.disabled=!!ps.watchBusy;removeWatch.onclick=()=>runWatchAction(product,'remove');
+      box.appendChild(watchLabel);box.appendChild(input);box.appendChild(saveWatch);box.appendChild(runWatch);box.appendChild(removeWatch);
+      if(ps.watchMessage){const msg=document.createElement('span');msg.className='watchmsg';msg.textContent=ps.watchMessage;box.appendChild(msg);}
+      card.appendChild(box);
+    }
+    list.appendChild(card);
+  });
+  return list;
+}
+/* ---- end TCG Comps pricing bridge ---- */
 
 /* The frozen headers must park directly under the search bar, which is itself
    sticky at 62px and changes height if it ever wraps — so measure, don't guess. */
@@ -698,7 +1146,7 @@ function renderContent(){
       /* Single type, but a varying number of boxes — prerelease runs 1 to 10
          variants. Reserve a fixed block (wrapping past 5, as the PDF does) so
          the set names still start on one line. */
-      body.style.setProperty('--onew','30px');
+      body.style.setProperty('--onew',usesDistinctVariants(cl.id)?'40px':'30px');
     }
     /* Frozen column headings, like a spreadsheet: one sticky bar per era that
        holds the type labels and the era name, so scrolling a long era never
@@ -722,7 +1170,8 @@ function renderContent(){
     }
     items.forEach(({it,ii})=>{
       const allDone=itemComplete(cl.id,it);
-      const item=document.createElement('div'); item.className='item'+(allDone?' done':'');
+      const detailIsOpen=openDetails.has(detailKey(cl.id,it));
+      const item=document.createElement('div'); item.className='item'+(allDone?' done':'')+(detailIsOpen?' open':'');
       const row=document.createElement('div'); row.className='row';
       const checks=document.createElement('div'); checks.className='checks';
       let groups=groupedSlots(it);
@@ -744,17 +1193,23 @@ function renderContent(){
           const lab=document.createElement('i');lab.className='slotlab';lab.textContent=g.n;wrap.appendChild(lab);}
         const bx=document.createElement('div'); bx.className='slotboxes';
         const target=groupTarget(g),goal=target>0,owned=ownedForGroup(cl.id,it,g),color=g.items[0].sl.c||'var(--lpurple)';
-        const ctrl=document.createElement('div');ctrl.className='qtyctrl '+(goal?'goal':'bonus');ctrl.style.setProperty('--qtyc',color);
+        const distinct=usesDistinctVariants(cl.id),completeVariants=distinct?
+          g.items.filter(({sl,si})=>!slotRequired(sl)||slotQuantity(cl.id,it,si)>=1).length:0;
+        const ctrl=document.createElement('div');ctrl.className='qtyctrl '+(goal?'goal':'bonus');
+        ctrl.dataset.qtyKey=groupKeyFor(cl.id,it,g.k||g.n);ctrl.style.setProperty('--qtyc',color);
         const minus=document.createElement('button');minus.type='button';minus.className='qtybtn minus';minus.textContent='−';
         minus.disabled=owned===0;minus.setAttribute('aria-label','Remove one '+(goal?'':'bonus ')+quantityNoun(g.n,1)+' from '+it.name);
-        minus.onclick=()=>changeQuantity(cl.id,it,g,-1);
+        minus.onclick=()=>changeQuantity(cl.id,it,g,-1,'minus');
         const num=document.createElement('button');num.type='button';num.className='qtynum'+
           (goal&&owned>=target?' met':(!goal&&owned>0?' owned':''));
-        num.textContent=owned;num.title=goal?(owned+' owned · goal '+target):(owned+' owned · bonus inventory · not part of completion');
+        if(distinct)num.className='qtynum'+(itemComplete(cl.id,it)?' met':'');
+        num.textContent=owned;num.title=distinct?(owned+' total copies · '+completeVariants+'/'+target+' variants complete'):
+          (goal?(owned+' owned · goal '+target):(owned+' owned · bonus inventory · not part of completion'));
         num.setAttribute('aria-label',owned+' '+quantityNoun(g.n,owned)+' owned for '+it.name+'; '+
-          (goal?('goal '+target+'.'):('bonus inventory, not part of completion.'))+' Focus to adjust.');
+          (distinct?(completeVariants+' of '+target+' distinct variants complete.'):
+          (goal?('goal '+target+'.'):('bonus inventory, not part of completion.')))+' Focus to adjust.');
         const plus=document.createElement('button');plus.type='button';plus.className='qtybtn plus';plus.textContent='+';
-        plus.setAttribute('aria-label','Add one '+(goal?'':'bonus ')+quantityNoun(g.n,1)+' to '+it.name);plus.onclick=()=>changeQuantity(cl.id,it,g,1);
+        plus.setAttribute('aria-label','Add one '+(goal?'':'bonus ')+quantityNoun(g.n,1)+' to '+it.name);plus.onclick=()=>changeQuantity(cl.id,it,g,1,'plus');
         ctrl.appendChild(minus);ctrl.appendChild(num);ctrl.appendChild(plus);bx.appendChild(ctrl);
         wrap.appendChild(bx); checks.appendChild(wrap);
       });
@@ -763,8 +1218,15 @@ function renderContent(){
          Draft/Set/Collector pills said exactly what the columns already say.
          Tags that carry real information (box type, set type, release date)
          don't match a column name and survive. */
-      const tags=it.tags.filter(t=>eraCols.indexOf(t.t)<0)
+      let tags=it.tags.filter(t=>eraCols.indexOf(t.t)<0)
         .map(t=>`<span class="tag" style="background:${t.c}">${t.t}</span>`).join('');
+      if(usesDistinctVariants(cl.id)&&(it.variants||[]).length>1){
+        const completed=it.slots.filter((sl,si)=>slotRequired(sl)&&slotQuantity(cl.id,it,si)>=1).length;
+        tags+=`<span class="tag" style="background:var(--gold)">${completed}/${it.slots.filter(slotRequired).length} variants</span>`;
+      }else if(usesGroupVariants(cl.id)&&(it.variants||[]).length>1){
+        const total=groupedSlots(it).reduce((n,g)=>n+ownedForGroup(cl.id,it,g),0);
+        tags+=`<span class="tag" style="background:var(--muted)">${total} total</span>`;
+      }
       /* Name, code and type share one line — the old two-line stack made every
          row ~20px taller for information that fits comfortably beside it. */
       meta.innerHTML=`<div class="mline"><span class="mname">${it.name}</span>`
@@ -772,28 +1234,49 @@ function renderContent(){
       row.appendChild(checks); row.appendChild(meta);
       if(it.value){ const v=document.createElement('div'); v.className='val'+(it.est?' est':'');
         v.innerHTML=valueHTML(it.value,it.est); v.title=it.value.includes(' / ')?'MSRP / current market':''; row.appendChild(v); }
+      const pricingProducts=it.pricingProducts||[];
+      if(pricingProducts.length){
+        const priceStatus=pricingItemStatus(it),priceRefresh=document.createElement('button');
+        priceRefresh.type='button';priceRefresh.className='rowpricebtn '+priceStatus;
+        priceRefresh.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><polyline points="20 4 20 11 13 11"/></svg>';
+        priceRefresh.disabled=!pricingConsumerOrigin||pricingBatch.running||priceStatus==='loading';
+        const priceLabel=(priceStatus==='loading'?'Refreshing prices for ':'Refresh prices for ')+it.name;
+        priceRefresh.title=!pricingConsumerOrigin?'Open in the tracker extension for live pricing':priceLabel;
+        priceRefresh.setAttribute('aria-label',priceRefresh.title);
+        priceRefresh.onclick=(event)=>{event.stopPropagation();startPricingRefresh('all',it);};
+        row.appendChild(priceRefresh);
+      }
       /* Detail drawer: only built when there is something to say. */
       const extra=[];
       if(it.note) extra.push(it.note);
       if(it.est)  extra.push('Value is a best-effort estimate — verify before buying.');
       const productImages=it.images||[];
-      if(extra.length||productImages.length){
+      const namedVariants=usesDistinctVariants(cl.id)&&(it.variants||[]).length>1?
+        (it.variants||[]).map((name,si)=>({name,si,target:1})):
+        (usesGroupVariants(cl.id)&&(it.variants||[]).length>1?(it.variants||[]).map(variant=>{
+          const group=groupedSlots(it).find(g=>g.n===variant.group);
+          return {name:variant.name,group,target:variant.target||groupTarget(group)};
+        }):[]);
+      if(extra.length||productImages.length||namedVariants.length||pricingProducts.length){
         const tog=document.createElement('button');
-        tog.className='rowtog'; tog.setAttribute('aria-expanded','false');
-        tog.setAttribute('aria-label','Show details for '+it.name);
+        tog.className='rowtog'; tog.setAttribute('aria-expanded',detailIsOpen?'true':'false');
+        tog.setAttribute('aria-label',(detailIsOpen?'Hide':'Show')+' details for '+it.name);
         tog.innerHTML='<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>';
         tog.onclick=(e)=>{ e.stopPropagation();
           const open=item.classList.toggle('open');
+          if(open)openDetails.add(detailKey(cl.id,it));else openDetails.delete(detailKey(cl.id,it));
           if(open)item.querySelectorAll('img[data-src]').forEach(img=>{
             img.src=img.dataset.src;delete img.dataset.src;});
-          tog.setAttribute('aria-expanded', open?'true':'false'); };
+          tog.setAttribute('aria-expanded', open?'true':'false');
+          tog.setAttribute('aria-label',(open?'Hide':'Show')+' details for '+it.name); };
         row.appendChild(tog);
         const det=document.createElement('div'); det.className='rowdet';
         if(productImages.length){
           const pics=document.createElement('div');pics.className='rowpics';
           productImages.forEach(image=>{
             const fig=document.createElement('figure');fig.className='productpic';
-            const img=document.createElement('img');img.dataset.src=image.url;
+            const img=document.createElement('img');
+            if(detailIsOpen)img.src=image.url;else img.dataset.src=image.url;
             img.alt=image.caption+' for '+it.name;img.loading='lazy';img.decoding='async';
             img.onerror=()=>{fig.style.display='none';};
             const cap=document.createElement('figcaption');
@@ -809,6 +1292,42 @@ function renderContent(){
           if(!productImages.length)copy.classList.add('wide');
           copy.textContent=extra.join(' · ');det.appendChild(copy);
         }
+        if(namedVariants.length){
+          const variants=document.createElement('div');variants.className='variantlist';
+          const title=document.createElement('div');title.className='varianttitle';
+          const titleText=document.createElement('span');
+          titleText.textContent=usesDistinctVariants(cl.id)?'Distinct sealed variants':'Booster pack types';
+          const totalOwned=namedVariants.reduce((n,variant)=>n+(variant.group?
+            ownedForGroup(cl.id,it,variant.group):slotQuantity(cl.id,it,variant.si)),0);
+          const metCount=namedVariants.filter(variant=>(variant.group?
+            ownedForGroup(cl.id,it,variant.group):slotQuantity(cl.id,it,variant.si))>=variant.target).length;
+          const summary=document.createElement('span');summary.className='variantsummary';
+          summary.textContent=totalOwned+' total · '+metCount+'/'+namedVariants.length+' complete';
+          title.appendChild(titleText);title.appendChild(summary);variants.appendChild(title);
+          const grid=document.createElement('div');grid.className='variantgrid';
+          namedVariants.forEach(variant=>{
+            const variantRow=document.createElement('div');variantRow.className='variantrow';
+            const text=document.createElement('span');text.className='variantname';text.textContent=variant.name;
+            const goal=document.createElement('span');goal.className='variantgoal';goal.textContent='goal '+variant.target;
+            const owned=variant.group?ownedForGroup(cl.id,it,variant.group):slotQuantity(cl.id,it,variant.si);
+            const key=variant.group?groupKeyFor(cl.id,it,variant.group.k||variant.group.n):slotExtraKeyFor(cl.id,it,variant.si);
+            const ctrl=document.createElement('div');ctrl.className='variantqty';ctrl.dataset.variantQtyKey=key;
+            const minus=document.createElement('button');minus.type='button';minus.className='variantqtybtn minus';minus.textContent='−';minus.disabled=owned===0;
+            minus.setAttribute('aria-label','Remove one '+variant.name+' from '+it.name);
+            minus.onclick=()=>{if(variant.group){changeQuantity(cl.id,it,variant.group,-1);restoreVariantFocus(key,'minus');}
+              else changeSlotQuantity(cl.id,it,variant.si,-1,'minus');};
+            const num=document.createElement('span');num.className='variantqtynum'+(owned>=variant.target?' met':'');num.textContent=owned;
+            num.setAttribute('aria-label',owned+' owned; goal '+variant.target+' for '+variant.name);
+            const plus=document.createElement('button');plus.type='button';plus.className='variantqtybtn plus';plus.textContent='+';
+            plus.setAttribute('aria-label','Add one '+variant.name+' to '+it.name);
+            plus.onclick=()=>{if(variant.group){changeQuantity(cl.id,it,variant.group,1);restoreVariantFocus(key,'plus');}
+              else changeSlotQuantity(cl.id,it,variant.si,1,'plus');};
+            ctrl.appendChild(minus);ctrl.appendChild(num);ctrl.appendChild(plus);
+            variantRow.appendChild(text);variantRow.appendChild(goal);variantRow.appendChild(ctrl);grid.appendChild(variantRow);
+          });
+          variants.appendChild(grid);det.appendChild(variants);
+        }
+        if(pricingProducts.length)det.appendChild(renderPricingList(pricingProducts));
         item.appendChild(row); item.appendChild(det);
       } else {
         const sp=document.createElement('span'); sp.className='rowtog ghosttog'; row.appendChild(sp);
@@ -824,7 +1343,7 @@ function renderContent(){
   }
 }
 
-function updateAll(){ renderTabs(); renderContent(); updateOverall(); syncStickyTop(); }
+function updateAll(){ renderTabs(); renderContent(); updateOverall(); syncStickyTop(); paintPricingBatch(); }
 function updateOverall(){
   const o=overall(); const p=pct(o.done,o.total);
   document.getElementById('ovPct').textContent=p+'%';
@@ -904,7 +1423,7 @@ async function ghPush(unloading){if(!gh.token||gh.busy)return;gh.busy=true;
     const legacyGroups={};
     for(const[k,v]of Object.entries(state.legacyChecksV1||{})){if(!v)continue;
       const cl=k.split("|")[0];(legacyGroups[cl]=legacyGroups[cl]||{})[k]=v;}
-    const clIds=new Set([...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(legacyGroups)]);
+    const clIds=new Set([...Object.keys(gh.ids),...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(legacyGroups)]);
     for(const cl of clIds){const checks=groups[cl]||{},extras=extraGroups[cl]||{},legacy=legacyGroups[cl]||{};
       const snap=JSON.stringify({checks,extras});
       if(gh.snap[cl]===snap&&gh.ids[cl])continue;            // unchanged → skip
@@ -1111,10 +1630,13 @@ function wireMenu(btnId, menuId, closeOnItem){
 wireMenu('clBtn','clMenu',true);
 wireMenu('viewBtn','viewMenu',false);
 wireMenu('moreBtn','moreMenu',true);
+wireMenu('priceRefreshBtn','priceRefreshMenu',true);
 document.addEventListener('click',closeMenus);
 document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeMenus(); });
 
 on('syncItem','click',openSync);
+on('refreshUnfinishedPrices','click',()=>startPricingRefresh('unfinished'));
+on('refreshAllPrices','click',()=>startPricingRefresh('all'));
 /* #closeModal is created by openSync(), which binds it there. Nothing to do here. */
 on('driveModal','click',(e)=>{ if(e.target.id==='driveModal')e.target.classList.remove('show'); });
 on('drivePill','click',openSync);

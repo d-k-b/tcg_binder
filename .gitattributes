@@ -5,3 +5,4 @@ mtg_binder_app.html linguist-generated=true
 apps/static/index.html linguist-generated=true
 data/binder_data.json linguist-generated=true
 node-app/data/binder_data.json linguist-generated=true
+browser-extension/vendor/** -whitespace

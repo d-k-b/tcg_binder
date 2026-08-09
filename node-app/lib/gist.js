@@ -90,10 +90,11 @@ async function ensureIds() {
   return idCache;
 }
 
-/** Read every checklist gist and merge into one checks object. */
+/** Read every checklist gist and merge its stable checks and quantity extras. */
 async function read() {
   const ids = await ensureIds();
   const merged = {};
+  const mergedExtras = {};
   const mergedLegacy = {};
   let newest = null;
   await Promise.all(Object.entries(ids).map(async ([clId, gistId]) => {
@@ -107,20 +108,23 @@ async function read() {
       if (f.truncated && f.raw_url) content = await (await fetch(f.raw_url)).text();
       const body = JSON.parse(content);
       Object.assign(merged, body.checks || {});
+      Object.assign(mergedExtras, body.extras || {});
       Object.assign(mergedLegacy, body.legacyChecksV1 || {});
       if (body.updatedAt && (!newest || body.updatedAt > newest)) newest = body.updatedAt;
       lastHash[clId] = sha(JSON.stringify({
-        checks: body.checks || {}, legacyChecksV1: body.legacyChecksV1 || {},
+        checks: body.checks || {}, extras: body.extras || {}, legacyChecksV1: body.legacyChecksV1 || {},
       }));
     } catch (e) { /* skip a bad gist rather than lose everything */ }
   }));
-  return { checks: merged, keyVersion: 2, legacyChecksV1: mergedLegacy, updatedAt: newest, source: 'gist' };
+  return { checks: merged, extras: mergedExtras, keyVersion: 2,
+    legacyChecksV1: mergedLegacy, updatedAt: newest, source: 'gist' };
 }
 
-/** Split checks by checklist and write only the gists that actually changed. */
+/** Split progress by checklist and write only the gists that actually changed. */
 async function write(allChecks, meta = {}) {
   const ids = await ensureIds();
   const groups = {};
+  const extraGroups = {};
   const legacyGroups = {};
   for (const [k, v] of Object.entries(allChecks || {})) {
     if (!v) continue;
@@ -132,15 +136,26 @@ async function write(allChecks, meta = {}) {
     const clId = k.split('|')[0];
     (legacyGroups[clId] = legacyGroups[clId] || {})[k] = v;
   }
+  for (const [k, v] of Object.entries(meta.extras || {})) {
+    if (Number(v) <= 0) continue;
+    const clId = k.split('|')[0];
+    (extraGroups[clId] = extraGroups[clId] || {})[k] = Number(v);
+  }
 
   const touched = [];
-  await Promise.all(Object.entries(groups).map(async ([clId, checks]) => {
+  // Existing remote gists must participate even when their last quantity was
+  // removed, otherwise an empty local checklist could never clear stale data.
+  const checklistIds = new Set([...Object.keys(ids), ...Object.keys(groups),
+    ...Object.keys(extraGroups), ...Object.keys(legacyGroups)]);
+  await Promise.all([...checklistIds].map(async (clId) => {
+    const checks = groups[clId] || {};
+    const extras = extraGroups[clId] || {};
     const legacyChecksV1 = legacyGroups[clId] || {};
-    const h = sha(JSON.stringify({ checks, legacyChecksV1 }));
+    const h = sha(JSON.stringify({ checks, extras, legacyChecksV1 }));
     if (lastHash[clId] === h && ids[clId]) return;      // nothing changed
     const title = titleFor(clId);
     const payload = JSON.stringify(
-      { checklist: clId, title, keyVersion: meta.keyVersion || 2, checks, legacyChecksV1,
+      { checklist: clId, title, keyVersion: meta.keyVersion || 2, checks, extras, legacyChecksV1,
         keyMigration: meta.keyMigration || null, updatedAt: new Date().toISOString() }, null, 2);
     const body = { description: descFor(clId, title), files: { [fileFor(clId)]: { content: payload } } };
 

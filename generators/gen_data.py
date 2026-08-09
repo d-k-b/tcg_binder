@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Import the four checklist build scripts and emit a unified JSON model.
-import importlib.util, json, sys, io, contextlib, tempfile
+import importlib.util, json, sys, io, contextlib, tempfile, re, unicodedata
 
 def load(mod_name, path):
     spec = importlib.util.spec_from_file_location(mod_name, path)
@@ -182,15 +182,22 @@ def pack_items(rows, era=None):
     for (s,code,m,st,c,est,note) in rows:
         ML = main_pack_label(era,s)
         MK = PACK_MAIN_OVERRIDES.get(s,(ML,ML))[1]
-        slots=[]; tags=[]
+        slots=[]; tags=[]; variants=[]
         if m>0:
             mc=BOX_TYPE.get(ML,C_MAIN)
-            tags.append({"t":ML,"c":mc}); slots+=[{"l":ML+" #1","g":ML,"k":MK,"c":mc},{"l":ML+" #2","g":ML,"k":MK,"c":mc}]
+            label=PRODUCT_LABEL_BY_GROUP[ML]+" Pack"
+            tags.append({"t":ML,"c":mc}); variants.append({"name":label,"group":ML,"target":2})
+            slots+=[{"l":label+" copy 1","g":ML,"k":MK,"c":mc},{"l":label+" copy 2","g":ML,"k":MK,"c":mc}]
         if st>0:
-            tags.append({"t":"Set","c":C_SET}); slots+=[{"l":"Set #1","g":"Set","c":C_SET},{"l":"Set #2","g":"Set","c":C_SET}]
+            label=PRODUCT_LABEL_BY_GROUP["Set"]+" Pack"
+            tags.append({"t":"Set","c":C_SET}); variants.append({"name":label,"group":"Set","target":2})
+            slots+=[{"l":label+" copy 1","g":"Set","k":"Set","c":C_SET},{"l":label+" copy 2","g":"Set","k":"Set","c":C_SET}]
         if c>0:
-            tags.append({"t":"Collector","c":C_COLL}); slots+=[{"l":"Collector #1","g":"Collector","c":C_COLL},{"l":"Collector #2","g":"Collector","c":C_COLL}]
-        out.append({"name":s,"code":code,"note":note,"est":est,"value":None,"tags":tags,"slots":slots})
+            label=PRODUCT_LABEL_BY_GROUP["Collector"]+" Pack"
+            tags.append({"t":"Collector","c":C_COLL}); variants.append({"name":label,"group":"Collector","target":2})
+            slots+=[{"l":label+" copy 1","g":"Collector","k":"Collector","c":C_COLL},{"l":label+" copy 2","g":"Collector","k":"Collector","c":C_COLL}]
+        out.append({"name":s,"code":code,"note":note,"est":est,"value":None,
+                    "tags":tags,"variants":variants,"slots":slots})
     return out
 
 def prerel_items(rows, era=None):
@@ -198,10 +205,17 @@ def prerel_items(rows, era=None):
     for (s,code,yr,nv,est,note) in rows:
         multi = nv>1
         col = GOLD if multi else LP
-        slots=[{"l":"Variant %d"%(i+1),"g":"Variant","c":col} for i in range(nv)]
+        names=list(prerel.variant_names(code,nv))
+        old_count=prerel.LEGACY_VARIANT_COUNTS.get(code,nv)
+        slots=[]
+        for i,name in enumerate(names):
+            slot={"l":name,"g":"Variant","k":"Variant","c":col}
+            if i>=old_count: slot["legacy"]=None
+            slots.append(slot)
         tags=[{"t":yr,"c":GREY}]
         if multi: tags.append({"t":"%d variants"%nv,"c":GOLD})
-        out.append({"name":s,"code":code,"note":note,"est":est,"value":None,"tags":tags,"slots":slots})
+        out.append({"name":s,"code":code,"note":note,"est":est,"value":None,
+                    "tags":tags,"variants":names,"slots":slots})
     return out
 
 def build(checklist_id, title, sub, eras, item_fn):
@@ -234,6 +248,130 @@ def attach_product_images(checklists):
                                      "source":rec["source"]} for rec in found]
                     attached+=len(found)
     return attached
+
+PRODUCT_TYPE_BY_GROUP = {
+    "Booster": "booster",
+    "Draft": "draft_booster",
+    "Set": "set_booster",
+    "Play": "play_booster",
+    "Beyond": "beyond_booster",
+    "Epilogue": "epilogue_booster",
+    "Theme": "theme_booster",
+    "Jumpstart": "jumpstart_booster",
+    "JS Vol. 2": "jumpstart_booster",
+    "Mystery": "mystery_booster",
+    "Collector": "collector_booster",
+}
+
+PRODUCT_LABEL_BY_GROUP = {
+    "Booster": "Booster",
+    "Draft": "Draft Booster",
+    "Set": "Set Booster",
+    "Play": "Play Booster",
+    "Beyond": "Beyond Booster",
+    "Epilogue": "Epilogue Booster",
+    "Theme": "Theme Booster",
+    "Jumpstart": "Jumpstart Booster",
+    "JS Vol. 2": "Jumpstart Vol. 2 Booster",
+    "Mystery": "Mystery Booster",
+    "Collector": "Collector Booster",
+}
+
+def _slug(value):
+    value=unicodedata.normalize("NFKD",str(value or "")).encode("ascii","ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+","-",value.lower()).strip("-") or "unknown"
+
+def _product_ref(game, item, product_name, product_type, unit, variant=None):
+    code=str(item.get("code") or "unknown").lower()
+    pieces=[game,code,_slug(item.get("name")),product_type.replace("_","-"),unit]
+    if variant: pieces.append(_slug(variant))
+    pieces.append("en")
+    product_id=":".join(pieces)
+    if len(product_id)>200:
+        raise ValueError("ProductRef productId exceeds 200 characters: "+product_id)
+    return {
+        "schema":"tcg.product/v1",
+        "productId":product_id,
+        "game":game,
+        "setCode":item.get("code") or None,
+        "setName":item.get("name") or "Unknown set",
+        "productName":product_name,
+        "productType":product_type,
+        "unit":unit,
+        "language":"en",
+        "variant":variant or None,
+    }
+
+def _pricing_record(group, label, ref, static_value=None, slot_ordinal=None):
+    record={"slotGroup":group,"label":label,"staticValue":static_value,"ref":ref}
+    if slot_ordinal is not None: record["slotOrdinal"]=slot_ordinal
+    return record
+
+def attach_pricing_products(checklists):
+    """Attach explicit ProductRef v1 identities without touching ownership slots.
+
+    Multiple ownership copies share one pricing product. Rows with distinct sealed
+    product groups get one identity per group; prerelease variants get one identity
+    per named kit. These records are intentionally excluded from keyFor().
+    """
+    count=0
+    for cl in checklists:
+        for era in cl["eras"]:
+            for item in era["items"]:
+                products=[]
+                if cl["id"]=="collector":
+                    special=item["name"] in ("Shards of Alara Premium Foil Booster Box","Double Masters VIP Edition Box")
+                    product_type="other_sealed" if special else "collector_booster"
+                    unit="box" if item["name"]=="Double Masters VIP Edition Box" else "display"
+                    product_name=item["name"] if special else item["name"]+" Collector Booster Display"
+                    ref=_product_ref("mtg",item,product_name,product_type,unit)
+                    products.append(_pricing_record("Display",product_name,ref,item.get("value")))
+                elif cl["id"]=="boxes":
+                    seen=set()
+                    for slot in item.get("slots",[]):
+                        group=slot.get("g") or slot.get("l")
+                        if group in seen: continue
+                        seen.add(group)
+                        product_type=PRODUCT_TYPE_BY_GROUP.get(group,"other_sealed")
+                        label=PRODUCT_LABEL_BY_GROUP.get(group,group)+" Display"
+                        product_name=item["name"]+" "+label
+                        ref=_product_ref("mtg",item,product_name,product_type,"display",
+                                         group if group=="JS Vol. 2" else None)
+                        static=item.get("value") if slot.get("r",True) else None
+                        products.append(_pricing_record(group,label,ref,static))
+                elif cl["id"]=="packs":
+                    seen=set()
+                    for slot in item.get("slots",[]):
+                        group=slot.get("g") or slot.get("l")
+                        if group in seen: continue
+                        seen.add(group)
+                        product_type=PRODUCT_TYPE_BY_GROUP.get(group,"booster")
+                        label=PRODUCT_LABEL_BY_GROUP.get(group,group)+" Pack"
+                        product_name=item["name"]+" "+label
+                        ref=_product_ref("mtg",item,product_name,product_type,"pack",
+                                         group if group=="JS Vol. 2" else None)
+                        products.append(_pricing_record(group,label,ref))
+                elif cl["id"]=="prerelease":
+                    for si,slot in enumerate(item.get("slots",[])):
+                        variant=slot.get("l") or "Standard Prerelease Pack"
+                        exact_variant=None if variant=="Standard Prerelease Pack" else variant
+                        product_name=(item["name"]+" Prerelease Pack"+
+                                      ((" ("+exact_variant+")") if exact_variant else ""))
+                        ref=_product_ref("mtg",item,product_name,"prerelease_kit","kit",exact_variant)
+                        products.append(_pricing_record("Variant",variant,ref,slot_ordinal=si))
+                elif cl["id"] in ("lorcana","lorcana_pre","lorcana_coll"):
+                    if cl["id"]=="lorcana":
+                        label="Booster Box"; product_type="booster"; unit="display"
+                    elif cl["id"]=="lorcana_pre":
+                        label="Prerelease Box"; product_type="prerelease_kit"; unit="kit"
+                    else:
+                        label="Collector Booster Box"; product_type="collector_booster"; unit="display"
+                    product_name=item["name"]+" "+label
+                    ref=_product_ref("lorcana",item,product_name,product_type,unit)
+                    products.append(_pricing_record("Copies",label,ref,item.get("value")))
+                item["pricingProducts"]=products
+                count+=len(products)
+    return count
 
 K1="#1d9e75"; K2="#9c3d54"  # kid 1 teal, kid 2 magenta
 C_COLLB="#9c3d54"
@@ -284,14 +422,14 @@ data = {
     "sub":"The goal is one preferred non-Collector randomized booster display per set or materially distinct edition, 1993–2026. "
           "Other non-Collector display types are grouped into focused bonus sections: track any quantity, but they do not affect completion.",
     "eras":box_eras()},
-   build("packs","MTG Booster Packs",
+   dict(build("packs","MTG Booster Packs",
          "Two of every booster pack, for every set — one pair per pack type that set was sold in. "
-         "Wrapper art variants are not tracked separately.",
-         packs.ERAS, pack_items),
-   build("prerelease","MTG Prerelease Packs",
-         "One of every prerelease pack variant. Retail prerelease kits begin with Return to Ravnica (2012); "
-         "earlier sets held prerelease events but sold no boxed product.",
-         prerel.ERAS, prerel_items),
+         "Open details on sets with multiple pack types to adjust each named type independently. Wrapper art variants are not tracked separately.",
+         packs.ERAS, pack_items), progressMode="group_variants"),
+   dict(build("prerelease","MTG Prerelease Packs",
+         "One of every distinct sealed prerelease pack or kit variant. Named guild, clan, faction, color, character, and college versions each count once; duplicate copies are tracked but do not increase completion. "
+         "Retail kits begin with Return to Ravnica (2012), with Mirrodin Besieged faction packs as a verified exception.",
+         prerel.ERAS, prerel_items), progressMode="distinct_variants"),
    {"id":"lorcana","title":"Lorcana Booster Boxes",
     "sub":"One sealed booster box per kid — two of every Lorcana set. "
           "Values are shown as MSRP / market; market is what you will actually pay.",
@@ -306,6 +444,7 @@ data = {
  ]
 }
 image_count=attach_product_images(data["checklists"])
+pricing_product_count=attach_pricing_products(data["checklists"])
 
 targets=[os.path.join(DATA_DIR,"binder_data.json")]
 node_data=os.path.join(ROOT,"node-app","data")
@@ -323,4 +462,5 @@ for cl in data["checklists"]:
     print(cl["id"], "items=",items, "required=",tot, "inventory_slots=",inv)
 print("OK")
 print("trusted product images=",image_count)
+print("pricing products=",pricing_product_count)
 print("wrote data:", ", ".join(os.path.relpath(t,ROOT) for t in targets))

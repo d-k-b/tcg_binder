@@ -12,6 +12,28 @@ const path = require('path');
 process.env.GITHUB_TOKEN = 'ghp_fake_token_for_tests';
 const DATA_DIR = path.join(__dirname, '..', '.data');
 const IDPATH = path.join(DATA_DIR, 'gists.json');
+const binder = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'data', 'binder_data.json'), 'utf8'));
+
+function norm(value) { return String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function hash(value) {
+  let h = 0xcbf29ce484222325n;
+  for (let i = 0; i < value.length; i++) {
+    h ^= BigInt(value.charCodeAt(i));
+    h = BigInt.asUintN(64, h * 0x100000001b3n);
+  }
+  return h.toString(16).padStart(16, '0');
+}
+function keyFor(checklist, item, slotIndex) {
+  const slot = item.slots[slotIndex], group = norm(slot.k || slot.g || slot.l);
+  const ordinal = item.slots.slice(0, slotIndex)
+    .filter((s) => norm(s.k || s.g || s.l) === group).length;
+  return checklist + '|v2|' + hash([norm(checklist), norm(item.name), norm(item.code), group, ordinal].join('\u001f'));
+}
+const prerelease = binder.checklists.find((cl) => cl.id === 'prerelease');
+const magic2015 = prerelease.eras.flatMap((era) => era.items).find((item) => item.name === 'Magic 2015');
+const prereleaseVariantKeys = [keyFor('prerelease', magic2015, 0), keyFor('prerelease', magic2015, 1)];
+const prereleaseExtraKey = 'prerelease|slot-extra|' + prereleaseVariantKeys[0].split('|').pop();
+const lorcanaExtraKey = 'lorcana|extra|0123456789abcdef';
 
 let pass = 0, fail = 0;
 const eq = (a, b, msg) => {
@@ -72,14 +94,18 @@ function freshGist() {
     'collector|2|3|0': true,
     'boxes|1|0|0': true,
     'lorcana|3|2|4': true,
+    [prereleaseVariantKeys[0]]: true,
+    [prereleaseVariantKeys[1]]: true,
   };
-  const meta = { keyVersion: 2, legacyChecksV1: { 'collector|0|1|0': true } };
+  const meta = { keyVersion: 2,
+    extras: { [prereleaseExtraKey]: 2, [lorcanaExtraKey]: 1 },
+    legacyChecksV1: { 'collector|0|1|0': true } };
   const w = await gist.write(checks, meta);
-  eq(w.updated.sort(), ['boxes', 'collector', 'lorcana'], 'writes one gist per checklist');
-  eq(Object.keys(store).length, 3, 'created exactly 3 gists');
+  eq(w.updated.sort(), ['boxes', 'collector', 'lorcana', 'prerelease'], 'writes one gist per checklist');
+  eq(Object.keys(store).length, 4, 'created exactly 4 gists');
 
   const names = Object.values(store).map((g) => Object.keys(g.files)[0]).sort();
-  eq(names, ['mtg-binder-boxes.json', 'mtg-binder-collector.json', 'mtg-binder-lorcana.json'],
+  eq(names, ['mtg-binder-boxes.json', 'mtg-binder-collector.json', 'mtg-binder-lorcana.json', 'mtg-binder-prerelease.json'],
      'filenames follow mtg-binder-<checklist>.json');
 
   const collector = Object.values(store).find((g) => g.files['mtg-binder-collector.json']);
@@ -106,15 +132,53 @@ function freshGist() {
   const back = await gist.read();
   eq(Object.keys(back.checks).sort(), Object.keys(changed).sort(), 'read() merges all gists back');
   eq(back.checks['lorcana|3|2|4'], true, 'individual values survive the round trip');
+  eq(prereleaseVariantKeys.every((key) => back.checks[key]), true,
+     'real named prerelease variant keys survive the pull/push/reload round trip');
+  eq(back.extras[prereleaseExtraKey] === 2 && back.extras[lorcanaExtraKey] === 1, true,
+     'per-variant and group-level duplicate quantities survive the pull/push/reload round trip');
   eq(back.legacyChecksV1['collector|0|1|0'], true, 'legacy recovery keys survive the round trip');
 
-  // 5. discovery rebuilds ids from filenames after a wiped cache
-  eq(Object.keys(await gist.ensureIds()).sort(), ['boxes', 'collector', 'lorcana'],
+  // 5. editing one named variant patches only prerelease and preserves its sibling
+  calls = [];
+  const variantEdited = Object.assign({}, changed);
+  delete variantEdited[prereleaseVariantKeys[1]];
+  const w4 = await gist.write(variantEdited, meta);
+  eq(w4.updated, ['prerelease'], 'editing one variant rewrites only the prerelease gist');
+  gist = freshGist();
+  const editedBack = await gist.read();
+  eq(editedBack.checks[prereleaseVariantKeys[0]] === true && !editedBack.checks[prereleaseVariantKeys[1]], true,
+     'variant-level edit is preserved after a fresh pull');
+  eq(editedBack.extras[prereleaseExtraKey], 2,
+     'editing ownership preserves the named variant duplicate quantity');
+
+  // 6. changing only a duplicate quantity still patches the owning checklist
+  calls = [];
+  const quantityMeta = { ...meta, extras: { ...meta.extras, [prereleaseExtraKey]: 3 } };
+  const w5 = await gist.write(variantEdited, quantityMeta);
+  eq(w5.updated, ['prerelease'], 'editing only a named variant quantity rewrites its checklist gist');
+  gist = freshGist();
+  const quantityBack = await gist.read();
+  eq(quantityBack.extras[prereleaseExtraKey], 3,
+     'named variant quantity edit is preserved after a fresh pull');
+
+  calls = [];
+  const clearedChecks = { ...variantEdited };
+  delete clearedChecks[prereleaseVariantKeys[0]];
+  const clearedMeta = { ...quantityMeta, extras: { [lorcanaExtraKey]: 1 } };
+  const w6 = await gist.write(clearedChecks, clearedMeta);
+  eq(w6.updated, ['prerelease'], 'removing the final variant and duplicate clears its existing gist');
+  gist = freshGist();
+  const clearedBack = await gist.read();
+  eq(!clearedBack.checks[prereleaseVariantKeys[0]] && !clearedBack.extras[prereleaseExtraKey], true,
+     'an empty local variant quantity does not reappear after a fresh pull');
+
+  // 7. discovery rebuilds ids from filenames after a wiped cache
+  eq(Object.keys(await gist.ensureIds()).sort(), ['boxes', 'collector', 'lorcana', 'prerelease'],
      'ids re-discovered from GitHub when the local cache is gone');
 
-  // 6. links() gives the dashboard something to point at
+  // 8. links() gives the dashboard something to point at
   const links = gist.links();
-  eq(links.length, 3, 'links() returns one URL per checklist');
+  eq(links.length, 4, 'links() returns one URL per checklist');
   eq(links.every((l) => l.url.startsWith('https://gist.github.com/')), true, 'links are real gist URLs');
 
   try { fs.unlinkSync(IDPATH); } catch {}

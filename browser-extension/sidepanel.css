@@ -1,0 +1,117 @@
+:root {
+  color-scheme: light;
+  --ink: #211b38;
+  --muted: #706a85;
+  --purple: #6a4fb0;
+  --purple-dark: #4a357f;
+  --line: #ded9ec;
+  --panel: #ffffff;
+  --soft: #f4f1fb;
+  --ok: #27865f;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--soft); color: var(--ink); }
+body { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); }
+
+.toolbar {
+  grid-row: 1;
+  min-height: 54px;
+  padding: 8px 9px 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, .97);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 7px rgba(47, 34, 83, .08);
+  z-index: 2;
+}
+
+.brand { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.brand-mark {
+  width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center;
+  border-radius: 9px; color: white; font-weight: 850; font-size: 16px;
+  background: linear-gradient(135deg, #b39cff, var(--purple));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+}
+.brand-copy { min-width: 0; display: grid; gap: 1px; line-height: 1.15; }
+.brand-copy strong { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-copy span { color: var(--muted); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-copy span.ready { color: var(--ok); }
+
+.actions { flex: none; display: flex; gap: 4px; }
+button {
+  appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--purple-dark);
+  border-radius: 8px; font: inherit; cursor: pointer;
+}
+.actions button { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; }
+.actions button:hover, .actions button:focus-visible { background: var(--soft); border-color: #c2b7df; }
+.actions svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+button:focus-visible, input:focus-visible { outline: 2px solid #8f72d6; outline-offset: 2px; }
+
+.page-scan-status {
+  grid-row: 2; min-width: 0; padding: 8px 10px; display: flex; align-items: start; justify-content: space-between;
+  gap: 8px; border-bottom: 1px solid var(--line); background: #f8f6fd; color: var(--muted); z-index: 1;
+}
+.page-scan-status[hidden] { display: none; }
+.page-scan-status .page-scan-copy { min-width: 0; display: grid; gap: 2px; }
+.page-scan-status strong { color: var(--ink); font-size: 11px; }
+.page-scan-status span { font-size: 10px; line-height: 1.35; }
+.page-scan-status.ok { background: #eff9f4; border-color: #cbe9db; }
+.page-scan-status.ok strong { color: var(--ok); }
+.page-scan-status.warning { background: #fff8e7; border-color: #efdcaa; }
+.page-scan-status.warning strong { color: #8a6416; }
+.page-scan-status.error { background: #fff1f1; border-color: #efcaca; }
+.page-scan-status.error strong { color: #b33c3c; }
+.page-scan-actions { flex: none; display: flex; align-items: center; gap: 2px; }
+.page-scan-status button { flex: none; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: currentColor; font-size: 18px; line-height: 1; display: grid; place-items: center; }
+.page-scan-status button:hover, .page-scan-status button:focus-visible { background: rgba(106, 79, 176, .09); }
+.page-scan-status button[hidden] { display: none; }
+.page-scan-status button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.page-scan-status button.copied { color: var(--ok); background: rgba(39, 134, 95, .1); }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+.actions button.loading svg { animation: scanPulse .8s ease-in-out infinite alternate; }
+@keyframes scanPulse { from { opacity: .35; } to { opacity: 1; } }
+
+.settings-panel { grid-row: 3; padding: 10px; border-bottom: 1px solid var(--line); background: #fbfaff; z-index: 1; }
+.settings-panel { max-height: min(62vh, 520px); overflow: auto; }
+.settings-panel label { display: block; margin: 8px 0 5px; font-size: 11px; font-weight: 750; }
+.source-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.source-row input, #pricingForm input { min-width: 0; width: 100%; height: 32px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--panel); font-size: 11px; }
+.source-row .save { padding: 0 12px; background: var(--purple); color: white; border-color: var(--purple); font-size: 11px; font-weight: 750; }
+.settings-panel p { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.settings-actions { margin-top: 7px; }
+.text-button { padding: 0; border: 0; background: transparent; color: var(--purple); font-size: 10.5px; font-weight: 700; }
+.settings-panel .error { color: #b33c3c; }
+.settings-divider { height: 1px; margin: 12px 0 10px; background: var(--line); }
+.settings-heading { font-size: 11.5px; font-weight: 800; color: var(--ink); }
+.pairing-id { margin-top: 8px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+.pairing-id code { color: var(--purple-dark); }
+.pricing-actions { display: flex; align-items: center; gap: 12px; }
+.pricing-actions .save { min-height: 32px; padding: 0 12px; background: var(--purple); color: #fff; border-color: var(--purple); font-size: 11px; font-weight: 750; }
+.settings-panel .pairing-status { margin-top: 7px; padding: 6px 8px; border-radius: 7px; background: var(--soft); }
+.settings-panel .pairing-status.ok { color: var(--ok); }
+.settings-panel .pairing-status.error { color: #b33c3c; }
+
+/* Keep the dashboard in the flexible third track even while the optional
+   settings and page-check panels are hidden. Without an explicit row, Grid
+   auto-placement moves main into an empty auto-height track and leaves the 1fr track
+   blank, reducing the iframe to its 150px intrinsic height. */
+main { grid-row: 4; min-height: 0; position: relative; background: white; }
+iframe { width: 100%; height: 100%; display: block; border: 0; background: white; }
+.load-error {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
+  padding: 28px; text-align: center; background: var(--soft);
+}
+.load-error[hidden] { display: none; }
+.load-error strong { font-size: 15px; }
+.load-error p { max-width: 260px; margin: 7px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.load-error button { padding: 8px 13px; background: var(--purple); color: white; border-color: var(--purple); font-weight: 700; }
+
+@media (max-width: 340px) {
+  .brand-copy strong { max-width: 118px; }
+  .brand-copy span { max-width: 118px; }
+}

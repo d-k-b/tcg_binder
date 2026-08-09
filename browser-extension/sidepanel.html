@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TCG Collection Tracker</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="toolbar">
+    <div class="brand" aria-label="TCG Collection Tracker">
+      <span class="brand-mark" aria-hidden="true">T</span>
+      <span class="brand-copy">
+        <strong>TCG Collection</strong>
+        <span id="status" role="status">Loading dashboard…</span>
+      </span>
+    </div>
+    <nav class="actions" aria-label="Dashboard actions">
+      <button id="scanPage" type="button" title="Mark collection needs on this page" aria-label="Mark collection needs on this page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="m8 12 2.5 2.5L16 9"/></svg>
+      </button>
+      <button id="refresh" type="button" title="Get the latest published dashboard" aria-label="Get the latest published dashboard">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/></svg>
+      </button>
+      <button id="openTab" type="button" title="Open dashboard in a full tab" aria-label="Open dashboard in a full tab">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg>
+      </button>
+      <button id="settings" type="button" title="Dashboard source" aria-label="Change dashboard source" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06-2.83 2.83-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21h-4v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06-2.83-2.83.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3v-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06 2.83-2.83.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3h4v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06 2.83 2.83-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21v4h-.09A1.65 1.65 0 0 0 19.4 15Z"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <section id="pageScanStatus" class="page-scan-status" role="status" hidden>
+    <div class="page-scan-copy">
+      <strong id="pageScanTitle">Checking this page…</strong>
+      <span id="pageScanMessage">Getting your current collection status.</span>
+    </div>
+    <div class="page-scan-actions">
+      <button id="copyPageScanDiagnostics" type="button" title="Copy error details" aria-label="Copy page-check error details" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+      </button>
+      <button id="closePageScanStatus" type="button" title="Dismiss" aria-label="Dismiss page check status">×</button>
+    </div>
+    <span id="pageScanCopyFeedback" class="visually-hidden" aria-live="polite"></span>
+  </section>
+
+  <section id="settingsPanel" class="settings-panel" hidden>
+    <form id="sourceForm">
+      <label for="dashboardUrl">Dashboard source</label>
+      <div class="source-row">
+        <input id="dashboardUrl" name="dashboardUrl" type="url" spellcheck="false" autocomplete="off" required>
+        <button class="save" type="submit">Use</button>
+      </div>
+      <p>Use the live GitHub Pages dashboard, or a local preview at <code>http://127.0.0.1:8765/</code>.</p>
+      <div class="settings-actions">
+        <button id="useLive" class="text-button" type="button">Reset to live dashboard</button>
+      </div>
+      <p id="sourceError" class="error" role="alert" hidden></p>
+    </form>
+    <div class="settings-divider" role="presentation"></div>
+    <form id="pricingForm">
+      <div class="settings-heading">TCG Comps live pricing</div>
+      <p>Pair with TCG Comps API v1. Provider release differences are informational when API v1 remains compatible. The capability token stays only in this extension's private storage.</p>
+      <label for="tcgCompsExtensionId">TCG Comps extension ID</label>
+      <input id="tcgCompsExtensionId" name="tcgCompsExtensionId" type="text" inputmode="text" spellcheck="false" autocomplete="off" pattern="[a-p]{32}" maxlength="32" required>
+      <label for="tcgCompsApiToken">Capability token</label>
+      <input id="tcgCompsApiToken" name="tcgCompsApiToken" type="password" spellcheck="false" autocomplete="new-password" placeholder="Paste to pair or rotate">
+      <div class="pairing-id">Trusted consumer ID: <code id="consumerExtensionId">Unavailable outside the extension</code></div>
+      <div class="settings-actions pricing-actions">
+        <button class="save" type="submit">Save &amp; test</button>
+        <button id="clearPricing" class="text-button" type="button">Remove pairing</button>
+      </div>
+      <p id="pricingStatus" class="pairing-status" role="status">Pricing is not paired.</p>
+    </form>
+  </section>
+
+  <main>
+    <iframe id="dashboard" title="TCG collection dashboard" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <section id="loadError" class="load-error" hidden>
+      <strong>The dashboard did not open here.</strong>
+      <p>Check your connection, then reload it or open it in a full tab.</p>
+      <button id="retry" type="button">Try again</button>
+    </section>
+  </main>
+
+  <script src="vendor/tcg-comps-2.40.0/pricing-contracts.js"></script>
+  <script src="vendor/tcg-comps-2.40.0/pricing-client.js"></script>
+  <script src="vendor/tcg-comps-2.40.0/pricing-bridge.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const pricingContracts = require('../../browser-extension/vendor/tcg-comps-2.40.0/pricing-contracts.js');
 
 let pass = 0, fail = 0;
 function ok(value, message) {
@@ -21,6 +22,7 @@ const legacy = {
     'collector|0|0|0': true,
     'packs|10|0|0': true,
     'lorcana|0|0|1': true,
+    'prerelease|0|7|0': true,
     'boxes|999|0|0': true,
   },
   ui: { active: 'collector', hideDone: false, closed: {} },
@@ -50,24 +52,71 @@ const result = JSON.parse(vm.runInContext(`JSON.stringify({
     it.slots.flatMap((sl, si) => slotRequired(sl) ? [keyFor(cl.id, it,si)] : [])))),
   productImages: DATA.checklists.flatMap(cl => cl.eras.flatMap(e => e.items.flatMap(it =>
     (it.images||[]).map(image => ({checklist:cl.id, ...image}))))),
+  pricingProducts: DATA.checklists.flatMap(cl => cl.eras.flatMap(e => e.items.flatMap(it =>
+    (it.pricingProducts||[]).map(product => ({checklist:cl.id,item:it.name,...product}))))),
   firstKey: keyFor(DATA.checklists[0].id, DATA.checklists[0].eras[0].items[0], 0)
 })`, context));
 
 const activeKeys = Object.keys(result.state.checks);
-ok(activeKeys.length === 3, 'maps every known legacy check to one active v2 key');
+ok(activeKeys.length === 4, 'maps every known legacy check to one active v2 key');
 ok(activeKeys.every(k => /^[^|]+\|v2\|[0-9a-f]{16}$/.test(k)), 'emits canonical checklist|v2|fingerprint keys');
-ok(Object.keys(result.state.legacyChecksV1).length === 4, 'retains known and unknown legacy keys as recovery data');
-ok(result.state.keyMigration.migrated === 3 && result.state.keyMigration.unknown === 1,
+ok(Object.keys(result.state.legacyChecksV1).length === 5, 'retains known and unknown legacy keys as recovery data');
+ok(result.state.keyMigration.migrated === 4 && result.state.keyMigration.unknown === 1,
   'records migration and unknown-key counts');
-ok(result.allKeys.length === 928 && new Set(result.allKeys).size === 928,
-  'all 928 required and bonus inventory keys are unique');
-ok(result.requiredKeys.length === 888 && new Set(result.requiredKeys).size === 888,
-  'keeps the collection goal at 888 required targets');
+ok(result.allKeys.length === 950 && new Set(result.allKeys).size === 950,
+  'all 950 required and bonus inventory keys are unique');
+ok(result.requiredKeys.length === 910 && new Set(result.requiredKeys).size === 910,
+  'keeps the collection goal at 910 required targets');
 ok(result.productImages.length === 33 &&
    result.productImages.every(image => /^(MTG Wiki|TCGplayer)$/.test(image.source)),
   'embeds only the 33 trusted sealed-product image mappings');
 ok(result.productImages.every(image => !image.url.includes('cards.scryfall.io/art_crop')),
   'never presents fallback card art as a sealed-product image');
+const pricingIds = result.pricingProducts.map(product => product.ref.productId);
+ok(result.pricingProducts.length === 686 && new Set(pricingIds).size === 686,
+  'generates one unique ProductRef identity for each of the 686 actual products and groups');
+ok(result.pricingProducts.every(product => pricingContracts.validateProductRef(product.ref).ok),
+  'validates every generated identity against the vendored ProductRef v1 contract');
+ok(result.pricingProducts.filter(product => product.checklist === 'prerelease').length === 148 &&
+   result.pricingProducts.filter(product => product.checklist === 'prerelease')
+     .every(product => Number.isInteger(product.slotOrdinal)),
+  'prices every distinct prerelease variant by its own exact ProductRef');
+ok(result.pricingProducts.some(product => product.ref.unit === 'pack') &&
+   result.pricingProducts.some(product => product.ref.unit === 'display') &&
+   result.pricingProducts.some(product => product.ref.unit === 'kit'),
+  'keeps packs, displays, and kits distinct in pricing identities');
+
+const prereleaseAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
+  const cl=DATA.checklists.find(x=>x.id==='prerelease');
+  const items=cl.eras.flatMap(e=>e.items),byName=name=>items.find(it=>it.name===name);
+  const names=name=>byName(name).variants;
+  const added=['Mirrodin Besieged','Modern Horizons 2',"Commander Legends: Battle for Baldur's Gate",'Modern Horizons 3'];
+  const m15=byName('Magic 2015');
+  return {mode:cl.progressMode,rows:items.length,total:clProgress(cl).total,
+    m15:names('Magic 2015'),dtk:names('Dragons of Tarkir'),bro:names("The Brothers' War"),
+    tdm:names('Tarkir: Dragonstorm'),atl:names('Avatar: The Last Airbender'),
+    mbs:names('Mirrodin Besieged'),mh2:names('Modern Horizons 2'),
+    clb:names("Commander Legends: Battle for Baldur's Gate"),mh3:names('Modern Horizons 3'),
+    firstLegacy:LEGACY_KEYS['prerelease|0|7|0']===keyFor(cl.id,m15,0),
+    expandedSlotsUnmapped:[m15,byName('Dragons of Tarkir'),byName("The Brothers' War"),
+      byName('Tarkir: Dragonstorm'),byName('Avatar: The Last Airbender')]
+      .every(it=>it.slots.slice(1).every(sl=>Object.prototype.hasOwnProperty.call(sl,'legacy')&&sl.legacy===null)),
+    addedRowsUnmapped:added.every(name=>byName(name).slots.every(sl=>sl.legacy===null))};
+})())`, context));
+ok(prereleaseAudit.mode === 'distinct_variants' && prereleaseAudit.rows === 69 && prereleaseAudit.total === 148,
+  'models 148 distinct prerelease variants across 69 product rows');
+ok(JSON.stringify(prereleaseAudit.m15) === JSON.stringify(['Hunt with Valor','Hunt with Guile','Hunt with Ambition','Hunt with Ferocity','Hunt with Strength']) &&
+   JSON.stringify(prereleaseAudit.dtk) === JSON.stringify(['Dromoka','Ojutai','Silumgar','Kolaghan','Atarka']) &&
+   JSON.stringify(prereleaseAudit.bro) === JSON.stringify(["Mishra's Burnished Banner","Urza's Iron Alliance"]),
+  'stores the corrected Magic 2015, Dragons of Tarkir, and Brothers War names');
+ok(JSON.stringify(prereleaseAudit.tdm) === JSON.stringify(['Abzan','Jeskai','Sultai','Mardu','Temur']) &&
+   JSON.stringify(prereleaseAudit.atl) === JSON.stringify(['Aang','Azula','Katara','Toph','Zuko']),
+  'stores the five Tarkir Dragonstorm clans and five Avatar characters');
+ok(JSON.stringify(prereleaseAudit.mbs) === JSON.stringify(['Mirran Faction Pack','Phyrexian Faction Pack']) &&
+   prereleaseAudit.mh2.length === 1 && prereleaseAudit.clb.length === 1 && prereleaseAudit.mh3.length === 1,
+  'adds the verified Mirrodin Besieged, MH2, CLB, and MH3 sealed products');
+ok(prereleaseAudit.firstLegacy && prereleaseAudit.expandedSlotsUnmapped && prereleaseAudit.addedRowsUnmapped,
+  'maps each old one-slot row only to its first named variant and never maps new slots');
 
 const productAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const boxes=DATA.checklists.find(cl=>cl.id==='boxes');
@@ -77,7 +126,9 @@ const productAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const boxType=name=>boxRows(name).find(it=>it.slots.some(slotRequired))?.tags[0]?.t;
   const boxGroups=name=>boxRows(name).flatMap(it=>it.slots.map(s=>s.g));
   const packGroups=name=>packItems.find(it=>it.name===name)?.slots.map(s=>s.g)||[];
+  const packVariants=name=>packItems.find(it=>it.name===name)?.variants||[];
   return {
+    packMode:packs.progressMode,
     clb:boxType("Commander Legends: Baldur's Gate"),
     cmm:boxType('Commander Masters'),
     aftermath:boxType('March of the Machine: Aftermath'),
@@ -96,7 +147,9 @@ const productAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
     rvrPacks:packGroups('Ravnica Remastered'),
     aftermathPacks:packGroups('March of the Machine: Aftermath'),
     acrPacks:packGroups("Assassin's Creed"),
-    mysteryPacks:packGroups('Mystery Booster 2')
+    mysteryPacks:packGroups('Mystery Booster 2'),
+    znrVariants:packVariants('Zendikar Rising'),
+    explicitPackLabels:packItems.every(it=>it.slots.every(slot=>/ Pack copy [12]$/.test(slot.l)))
   };
 })())`, context));
 ok(productAudit.clb === 'Set' && productAudit.cmm === 'Set',
@@ -127,6 +180,12 @@ ok(productAudit.clbPacks.includes('Set') && productAudit.cmmPacks.includes('Set'
 ok(productAudit.rvrPacks.includes('Draft') && productAudit.aftermathPacks.includes('Epilogue') &&
    productAudit.acrPacks.includes('Beyond') && productAudit.mysteryPacks.includes('Mystery'),
   'uses truthful special pack-type labels instead of the surrounding era label');
+ok(productAudit.packMode === 'group_variants' &&
+   JSON.stringify(productAudit.znrVariants) === JSON.stringify([
+     {name:'Draft Booster Pack',group:'Draft',target:2},
+     {name:'Set Booster Pack',group:'Set',target:2},
+     {name:'Collector Booster Pack',group:'Collector',target:2}]) && productAudit.explicitPackLabels,
+  'names every booster pack type and exposes multi-type rows as variants');
 
 const bonus = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const cl=DATA.checklists.find(x=>x.id==='boxes');
@@ -193,6 +252,91 @@ ok(quantity.afterExtraRemoval === 2 && quantity.restored === 1,
   'decrements extras first and preserves the underlying checked slots');
 ok(quantity.atTarget.lingering && quantity.aboveTarget.lingering && !quantity.lingeringAfterBelow,
   'keeps a newly completed row visible while adjusting and cancels below target');
+
+const variants = JSON.parse(vm.runInContext(`JSON.stringify((() => {
+  const cl=DATA.checklists.find(x=>x.id==='prerelease');
+  const items=cl.eras.flatMap(e=>e.items),m15=items.find(it=>it.name==='Magic 2015');
+  const mh2=items.find(it=>it.name==='Modern Horizons 2');
+  const group=groupedSlots(m15)[0],single=groupedSlots(mh2)[0];
+  group.items.forEach(({si})=>delete state.checks[keyFor(cl.id,m15,si)]);
+  single.items.forEach(({si})=>delete state.checks[keyFor(cl.id,mh2,si)]);
+  group.items.forEach(({si})=>delete state.extras[slotExtraKeyFor(cl.id,m15,si)]);
+  single.items.forEach(({si})=>delete state.extras[slotExtraKeyFor(cl.id,mh2,si)]);
+  changeQuantity(cl.id,m15,group,1);changeQuantity(cl.id,m15,group,1);
+  const firstTwo=group.items.map(({si})=>isChecked(keyFor(cl.id,m15,si)));
+  changeQuantity(cl.id,m15,group,1);changeQuantity(cl.id,m15,group,1);
+  changeQuantity(cl.id,m15,group,1);changeQuantity(cl.id,m15,group,1);
+  const aboveTarget={owned:ownedForGroup(cl.id,m15,group),quantities:group.items.map(({si})=>slotQuantity(cl.id,m15,si)),
+    complete:itemComplete(cl.id,m15),extra:state.extras[slotExtraKeyFor(cl.id,m15,0)]||0};
+  changeQuantity(cl.id,m15,group,-1);
+  const afterMinus=group.items.map(({si})=>slotQuantity(cl.id,m15,si));
+  changeSlotQuantity(cl.id,m15,2,1);changeSlotQuantity(cl.id,m15,2,1);
+  changeSlotQuantity(cl.id,m15,4,-1);
+  const duplicateMissing={owned:ownedForGroup(cl.id,m15,group),complete:itemComplete(cl.id,m15),
+    completed:group.items.filter(({si})=>slotQuantity(cl.id,m15,si)>=1).length};
+  changeQuantity(cl.id,m15,group,1);
+  const refilled={owned:ownedForGroup(cl.id,m15,group),complete:itemComplete(cl.id,m15)};
+  changeQuantity(cl.id,m15,group,-1);
+  const afterExtraRemoval={owned:ownedForGroup(cl.id,m15,group),complete:itemComplete(cl.id,m15),
+    quantities:group.items.map(({si})=>slotQuantity(cl.id,m15,si))};
+  changeQuantity(cl.id,mh2,single,1);changeQuantity(cl.id,mh2,single,1);
+  return {firstTwo,aboveTarget,afterMinus,duplicateMissing,refilled,afterExtraRemoval,
+    single:ownedForGroup(cl.id,mh2,single),directDrawerOpen:openDetails.has(detailKey(cl.id,m15)),
+    stableExtraKey:/^prerelease\\|slot-extra\\|[0-9a-f]{16}$/.test(slotExtraKeyFor(cl.id,m15,0))};
+})())`, context));
+ok(JSON.stringify(variants.firstTwo) === JSON.stringify([true,true,false,false,false]),
+  'aggregate plus fills named variant slots in deterministic listed order');
+ok(variants.aboveTarget.owned === 6 && variants.aboveTarget.complete && variants.aboveTarget.extra === 1 &&
+   JSON.stringify(variants.aboveTarget.quantities) === JSON.stringify([2,1,1,1,1]) && variants.stableExtraKey,
+  'stores duplicate prerelease copies against their stable named variant');
+ok(JSON.stringify(variants.afterMinus) === JSON.stringify([1,1,1,1,1]),
+  'aggregate minus removes a duplicate before clearing a required variant');
+ok(variants.duplicateMissing.owned === 6 && !variants.duplicateMissing.complete && variants.duplicateMissing.completed === 4,
+  'does not let duplicate copies substitute for a missing required variant');
+ok(variants.refilled.owned === 7 && variants.refilled.complete && variants.afterExtraRemoval.owned === 6 &&
+   variants.afterExtraRemoval.complete && JSON.stringify(variants.afterExtraRemoval.quantities) === JSON.stringify([1,1,2,1,1]),
+  'aggregate controls refill missing variants first and then adjust duplicate copies deterministically');
+ok(variants.single === 2 && variants.directDrawerOpen,
+  'keeps single-variant products compact while allowing their total quantity above one');
+
+const packVariantQuantities = JSON.parse(vm.runInContext(`JSON.stringify((() => {
+  const cl=DATA.checklists.find(x=>x.id==='packs');
+  const item=cl.eras.flatMap(e=>e.items).find(it=>it.name==='Zendikar Rising');
+  const groups=groupedSlots(item),draft=groups.find(g=>g.n==='Draft'),set=groups.find(g=>g.n==='Set'),collector=groups.find(g=>g.n==='Collector');
+  groups.forEach(g=>{g.items.forEach(({si})=>delete state.checks[keyFor(cl.id,item,si)]);delete state.extras[groupKeyFor(cl.id,item,g.k||g.n)];});
+  changeQuantity(cl.id,item,draft,1);changeQuantity(cl.id,item,draft,1);changeQuantity(cl.id,item,draft,1);
+  changeQuantity(cl.id,item,set,1);changeQuantity(cl.id,item,set,1);changeQuantity(cl.id,item,collector,1);
+  const missing={owned:groups.map(g=>ownedForGroup(cl.id,item,g)),total:groups.reduce((n,g)=>n+ownedForGroup(cl.id,item,g),0),complete:itemComplete(cl.id,item)};
+  changeQuantity(cl.id,item,collector,1);
+  return {missing,complete:itemComplete(cl.id,item),owned:groups.map(g=>ownedForGroup(cl.id,item,g))};
+})())`, context));
+ok(JSON.stringify(packVariantQuantities.missing.owned) === JSON.stringify([3,2,1]) &&
+   packVariantQuantities.missing.total === 6 && !packVariantQuantities.missing.complete &&
+   packVariantQuantities.complete && JSON.stringify(packVariantQuantities.owned) === JSON.stringify([3,2,2]),
+  'tracks named booster pack type quantities independently and completes each type at two');
+
+const focusEvents = [];
+context.document = {
+  documentElement: { dataset: {} },
+  querySelector: selector => ({
+    querySelector: child => ({
+      disabled: false,
+      focus: options => focusEvents.push({selector, child, preventScroll:!!(options&&options.preventScroll)}),
+    }),
+  }),
+};
+const repeated = JSON.parse(vm.runInContext(`JSON.stringify((() => {
+  const cl=DATA.checklists.find(x=>x.id==='lorcana');
+  const item=cl.eras[0].items[0],group=groupedSlots(item)[0];
+  const before=ownedForGroup(cl.id,item,group);
+  changeQuantity(cl.id,item,group,1,'plus');
+  changeQuantity(cl.id,item,group,1,'plus');
+  return {before,after:ownedForGroup(cl.id,item,group),key:groupKeyFor(cl.id,item,group.k||group.n)};
+})())`, context));
+ok(repeated.after === repeated.before + 2 && focusEvents.length === 2 &&
+   focusEvents.every(event => event.child === '.qtybtn.plus' && event.preventScroll &&
+     event.selector.includes(repeated.key)),
+  'restores focus to the replacement plus button for repeated clicks');
 
 console.log('─'.repeat(46));
 console.log(`${pass} passed, ${fail} failed\n`);
