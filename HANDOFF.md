@@ -631,6 +631,27 @@ commit `.env`, `node-app/.data/`, browser tokens, or progress snapshots.
 
 Python side needs `reportlab` and `pypdf`/`pypdfium2` for verification renders.
 
+### Wrapper-art opportunity model
+
+TCG Comps 2.43.0 owns the risk-adjusted fat-pack/bundle calculation in
+`services/price-monitor/wrapper-opportunity.js`. It compares the landed bundle route with buying
+the exact missing wrapper art, keeps one newly found missing art, treats duplicates as opened,
+uses net realizable pull outcomes, and applies a bounded fun premium rather than a hard pack-price
+ceiling. Fixed-price `STRONG_FAT_PACK_BUY` and `FUN_FAT_PACK_BUY` results may email instantly;
+open-then-fill and auctions are digest-only.
+
+The current Tracker pack checklist still tracks two generic copies and explicitly does not yet
+record distinct wrapper artwork. The provider therefore fails closed to `INVENTORY_FIRST` unless
+its authority has verified the total art count and the user's distinct owned-art count along with
+bundle composition, direct-art landed costs, and pull-value distribution. A future dashboard
+inventory pass should replace the generic two-copy assumption with reviewed wrapper-art counts;
+do not infer distinct art from the existing owned quantity.
+
+Local monitor bootstrap helpers live in `scripts/`. `run_local_price_monitor.command` validates
+the protected configuration, renews eBay Browse authorization, and runs the canonical TCG Comps
+service on loopback with durable state outside this repository. See `scripts/README.md`; never add
+the protected environment file or service data directory to Git.
+
 ---
 
 ## 6. Suggested backlog
