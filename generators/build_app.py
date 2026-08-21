@@ -10,6 +10,27 @@ _d   = os.path.join(ROOT, "data")
 DATA_DIR = _d if os.path.isdir(_d) else HERE
 base = HERE + os.sep                      # where the build_*.py modules live
 DATA=open(os.path.join(DATA_DIR,"binder_data.json")).read()
+WRAPPER_ART_PATH=os.path.join(DATA_DIR,"booster_wrapper_art_catalog.json")
+with open(WRAPPER_ART_PATH,encoding="utf-8") as _wrapper_file:
+    WRAPPER_ART_CATALOG=json.load(_wrapper_file)
+if WRAPPER_ART_CATALOG.get("schema") != "mtg-booster-wrapper-art-catalog/v1":
+    raise ValueError("unsupported booster wrapper-art catalog schema")
+_wrapper_sets=WRAPPER_ART_CATALOG.get("sets") or []
+_wrapper_arts=[art for wrapper_set in _wrapper_sets for art in wrapper_set.get("artworks",[])]
+if len(_wrapper_sets) != 96 or len(_wrapper_arts) != 378:
+    raise ValueError("booster wrapper-art catalog must contain 96 sets / 378 artworks")
+_wrapper_codes=[wrapper_set.get("setCode") for wrapper_set in _wrapper_sets]
+if len(set(_wrapper_codes)) != len(_wrapper_codes) or any(not code for code in _wrapper_codes):
+    raise ValueError("booster wrapper-art set codes must be present and unique")
+if any(wrapper_set.get("artCount") != len(wrapper_set.get("artworks",[])) for wrapper_set in _wrapper_sets):
+    raise ValueError("booster wrapper-art declared counts must match artwork rows")
+_wrapper_ids=[art.get("id") for art in _wrapper_arts]
+if len(set(_wrapper_ids)) != len(_wrapper_ids) or any(not art_id for art_id in _wrapper_ids):
+    raise ValueError("booster wrapper-art IDs must be present and unique")
+_wrapper_statuses={"exact_individual","group_reference","review_only","pending_image_source"}
+if any(art.get("imageStatus") not in _wrapper_statuses for art in _wrapper_arts):
+    raise ValueError("booster wrapper-art image status is not allowed")
+WRAPPER_ART=json.dumps(WRAPPER_ART_CATALOG,separators=(",",":"),ensure_ascii=False)
 USER_EMAIL="dustyn@blasig.us"
 
 HTML = r"""<!DOCTYPE html>
@@ -217,6 +238,9 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .item:last-child{border-bottom:none}
 .item:nth-child(even){background:var(--rowalt)}
 .item.done .meta,.item.done .val,.item.done .qtyctrl.goal{opacity:.62}
+/* Completed rows stay subdued at rest, but an active quantity control must be
+   fully legible — especially its floated owned/order/Receive actions. */
+.item.done .qtyctrl.goal:hover,.item.done .qtyctrl.goal:focus-within{opacity:1}
 .row{display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:9px}
 /* name, code and type on one line */
 .mline{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}
@@ -266,6 +290,51 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .variantqtybtn:disabled{cursor:default;color:var(--muted);opacity:.45}
 .variantqtynum{min-width:27px;border-inline:1px solid var(--line);font-variant-numeric:tabular-nums}
 .variantqtynum.met{background:color-mix(in srgb,var(--good) 18%,var(--card));color:var(--good)}
+.variantmanage,.wrappermanage{display:flex;align-items:center;gap:5px;flex:none}.wrappermanage{position:relative}
+.orderedqty{display:flex;align-items:center;flex:none;height:26px;border:1px solid var(--gold);border-radius:7px;
+  overflow:hidden;background:var(--card);color:var(--gold);box-shadow:0 2px 8px rgba(30,18,70,.08)}
+.orderedqty .ordericon{width:23px;height:24px;display:grid;place-items:center;background:color-mix(in srgb,var(--gold) 12%,var(--card))}
+.orderedqty .ordericon svg,.receiveqty svg,.incomingbadge svg{width:14px;height:14px;fill:none;stroke:currentColor;
+  stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.orderedqtybtn,.orderedqtynum,.receiveqty{height:24px;min-width:24px;border:0;border-left:1px solid var(--line);
+  background:transparent;color:var(--gold);font:700 11px/1 inherit;padding:0;display:grid;place-items:center}
+.orderedqtybtn,.receiveqty{cursor:pointer}.orderedqtybtn:hover,.orderedqtybtn:focus-visible,
+.receiveqty:hover,.receiveqty:focus-visible{background:var(--gold);color:#fff;outline:none}
+.orderedqtybtn:disabled,.receiveqty:disabled{cursor:default;opacity:.4;background:transparent;color:var(--muted)}
+.orderedqtynum{min-width:25px;font-variant-numeric:tabular-nums}.receiveqty{width:27px;color:var(--good)}
+.orderpeek{height:26px;min-width:32px;padding:0 4px;border:1px solid var(--gold);border-radius:7px;background:var(--card);
+  color:var(--gold);display:flex;align-items:center;justify-content:center;gap:2px;font:800 9px/1 inherit;cursor:pointer}
+.orderpeek:hover,.orderpeek:focus-visible{background:color-mix(in srgb,var(--gold) 14%,var(--card));outline:none}
+.orderpeek svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.detailordertray{position:absolute;z-index:8;right:0;top:29px;opacity:0;pointer-events:none;transform:translateY(-2px);transition:.15s ease}
+.wrappermanage:hover .detailordertray,.wrappermanage:focus-within .detailordertray{opacity:1;pointer-events:auto;transform:translateY(0)}
+.wrapperarts{grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px}
+.wrapperarts>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  cursor:pointer;color:var(--ink);font-weight:700;list-style:none;border-radius:7px;padding:3px 5px}
+.wrapperarts>summary::-webkit-details-marker{display:none}
+.wrapperarts>summary:hover,.wrapperarts>summary:focus-visible{background:var(--line);outline:none}
+.wrapperarts>summary::before{content:'›';color:var(--lpurple);font-size:18px;line-height:1;transition:transform .15s}
+.wrapperarts[open]>summary::before{transform:rotate(90deg)}
+.wrapperart-title{flex:1}.wrapperart-summary{font-size:10px;font-weight:650;color:var(--muted);text-align:right}
+.wrapperart-note{font-size:10px;color:var(--muted);margin:6px 5px 8px}
+.wrapperart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
+.wrapperart-card{position:relative;min-width:0;display:grid;gap:5px;border:1px solid var(--line);
+  border-radius:9px;padding:7px;background:var(--card);color:var(--ink)}
+.wrapperart-card:hover{border-color:var(--lpurple)}
+.wrapperart-card.owned{border-color:var(--good);background:color-mix(in srgb,var(--good) 10%,var(--card))}
+.wrapperart-card.ordered:not(.owned){border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,var(--card))}
+.wrapperart-media{position:relative;width:100%;aspect-ratio:3/4;display:grid;place-items:center;
+  overflow:hidden;border-radius:7px;border:1px solid var(--line);background:#fff}
+.wrapperart-media img{width:100%;height:100%;display:block;object-fit:contain;padding:3px}
+.wrapperart-fallback{display:grid;place-items:center;width:100%;height:100%;padding:8px;text-align:center;
+  color:#6b6680;background:linear-gradient(135deg,#f5f3fb,#e7e3f2);font-size:9.5px;font-weight:700}
+.wrapperart-fallback[hidden]{display:none}
+.wrapperart-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.wrapperart-check{min-width:0;font-size:10.5px;font-weight:700;overflow-wrap:anywhere}
+.wrapperart-status{font-size:8.5px;line-height:1.25;color:var(--muted);overflow-wrap:anywhere}
+.wrapperart-status.exact{color:var(--green)}
+.wrapperart-status.review,.wrapperart-status.group{color:var(--gold)}
+.wrapperart-status.pending{color:#c94d4d}
 .pricinglist{grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:7px}
 .pricingtitle{font-weight:700;color:var(--ink)}
 .pricecard{border:1px solid var(--line);border-radius:9px;padding:8px;background:var(--card);display:grid;gap:6px}
@@ -303,13 +372,14 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .qtyctrl:hover,.qtyctrl:focus-within{z-index:12}
 /* Once opened, this invisible bridge keeps :hover alive while the pointer crosses
    the 2px gap between the compact count and either translated button. */
-.qtyctrl::before{content:"";position:absolute;z-index:1;inset:-4px -32px;pointer-events:none}
+.qtyctrl::before{content:"";position:absolute;z-index:1;inset:-4px -190px -4px -32px;pointer-events:none}
 .qtyctrl:hover::before,.qtyctrl:focus-within::before{pointer-events:auto}
 .qtynum,.qtybtn{height:24px;border-radius:7px;border:1.6px solid var(--lpurple);
   font:700 12px/1 inherit;display:grid;place-items:center;cursor:pointer;transition:.18s ease}
 .qtynum{position:relative;z-index:3;width:30px;padding:0;background:var(--card);color:var(--ink);
   font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(30,18,70,.08)}
 .qtynum.met{background:var(--qtyc,var(--lpurple));border-color:var(--qtyc,var(--lpurple));color:#fff}
+.qtynum.covered{background:color-mix(in srgb,var(--gold) 18%,var(--card));border-color:var(--gold);color:var(--gold)}
 .qtyctrl.goal .qtynum{box-shadow:0 0 0 1.5px var(--gold),0 1px 3px rgba(30,18,70,.08)}
 .qtyctrl.goal::after{content:"★";position:absolute;z-index:5;right:-6px;top:-7px;color:var(--gold);
   font-size:8px;line-height:1;text-shadow:0 1px var(--card);pointer-events:none}
@@ -324,6 +394,13 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .qtyctrl:hover .qtybtn.plus,.qtyctrl:focus-within .qtybtn.plus{transform:translateX(30px) scale(1)}
 .qtybtn:hover,.qtybtn:focus-visible{background:var(--lpurple);color:#fff;outline:none}
 .qtybtn:disabled{opacity:0!important;pointer-events:none!important}
+.incomingbadge{position:absolute;z-index:6;right:-9px;bottom:-7px;height:15px;min-width:18px;padding:0 3px;
+  display:flex;align-items:center;justify-content:center;gap:1px;border-radius:8px;background:var(--gold);color:#fff;
+  font:800 8px/1 inherit;box-shadow:0 1px 3px rgba(30,18,70,.18);pointer-events:none}
+.incomingbadge svg{width:9px;height:9px;stroke-width:2.2}.incomingbadge[hidden]{display:none}
+.ordertray{position:absolute;z-index:8;top:-1px;left:58px;transform:translateX(-2px);
+  opacity:0;pointer-events:none;transition:.15s ease}
+.qtyctrl:hover .ordertray,.qtyctrl:focus-within .ordertray{opacity:1;pointer-events:auto;transform:translateX(0)}
 .meta{flex:1;min-width:0}
 .mname{font-size:13px;font-weight:650;line-height:1.2}
 .msub{display:flex;align-items:center;gap:7px;margin-top:3px;flex-wrap:wrap}
@@ -370,6 +447,21 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .monitor-sources label{display:flex;align-items:center;gap:7px;font-size:12px}
 .monitor-status{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 11px}
 .monitor-status b{display:block;font-size:12px;margin-bottom:3px}.monitor-status span{font-size:11px;color:var(--muted);line-height:1.45}
+.identify-modal{max-width:620px;max-height:calc(100vh - 36px);overflow:auto}
+.identify-layout{display:grid;grid-template-columns:170px minmax(0,1fr);gap:14px;margin-top:14px;align-items:start}
+.identify-preview{width:170px;aspect-ratio:3/4;object-fit:contain;border:1px solid var(--line);border-radius:11px;background:#fff}
+.identify-copy{min-width:0}.identify-state{font-size:12px;color:var(--muted);line-height:1.45;margin:0}
+.identify-results{display:grid;gap:8px;margin-top:10px}
+.identify-result{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:9px;align-items:center;
+  border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--bg)}
+.identify-result.best{border-color:var(--lpurple);background:color-mix(in srgb,var(--lpurple) 7%,var(--card))}
+.identify-result img,.identify-result-fallback{width:62px;height:78px;display:grid;place-items:center;object-fit:contain;
+  border-radius:7px;border:1px solid var(--line);background:#fff;font-size:9px;text-align:center;color:var(--muted);padding:3px}
+.identify-result-copy{min-width:0;display:grid;gap:3px}.identify-result-copy b{font-size:12px;overflow-wrap:anywhere}
+.identify-result-copy span{font-size:9.5px;color:var(--muted);line-height:1.3;overflow-wrap:anywhere}
+.identify-confidence{color:var(--good)!important;font-weight:750}.identify-result .variantqty{align-self:center}
+.identify-privacy{font-size:9.5px!important;margin-top:10px!important}
+@media(max-width:520px){.identify-modal{padding:17px}.identify-layout{grid-template-columns:1fr}.identify-preview{width:100%;max-height:210px;aspect-ratio:auto}.identify-result{grid-template-columns:52px minmax(0,1fr)}.identify-result img,.identify-result-fallback{width:52px;height:66px}.identify-result .variantqty{grid-column:2;justify-self:start}}
 
 /* ---- responsive multi-column: 1 col phone / 2 laptop / 3 big monitor ---- */
 #content{column-width:480px;column-gap:16px}
@@ -396,6 +488,10 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 @media(max-width:620px){
   .val{display:none}.tab{min-width:150px}.brand p{display:none}
   .row{gap:8px;padding-left:5px;padding-right:5px}
+  /* On phones, keep the temporary incoming tray clear of the set name by
+     docking it against the row's right edge. It still floats, so rows never
+     grow or shift while quantities are adjusted. */
+  .ordertray{left:calc(100vw - 187px)}
   .checkgrid{grid-template-columns:repeat(var(--n),38px);gap:5px}
   .checkgrid .slotlab{font-size:7px;white-space:normal;overflow-wrap:anywhere;
     line-height:1.05;text-align:center;min-height:15px;display:grid;place-items:end center}
@@ -407,6 +503,8 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 /* Tightest widths: the gear alone carries the View menu. */
 @media(max-width:480px){
   .clbtn{max-width:150px}
+  .controls{gap:6px;padding-left:9px;padding-right:9px}
+  .cbtns{gap:6px}
   .vlabel{display:none}
   .vbtn{width:33px;justify-content:center;padding:0}
   .search{min-width:120px}
@@ -475,6 +573,9 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
         <div class="search"><span class="sicon">&#128269;</span>
           <input id="search" placeholder="Search sets or codes…" aria-label="Search sets or codes"></div>
       </div>
+      <button class="iconbtn" id="identifyBtn" title="Identify a product from a photo" aria-label="Identify a product from a photo">
+        <svg viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1.2-2h4.6l1.2 2h2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+      </button>
       <div class="menuwrap">
         <button class="iconbtn" id="priceRefreshBtn" title="Refresh prices" aria-label="Refresh prices"
                 aria-haspopup="true" aria-expanded="false">
@@ -511,6 +612,23 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 
 <div class="toast" id="toast"></div>
 <input type="file" id="fileIn" accept="application/json" style="display:none">
+<input type="file" id="identifyFile" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none">
+
+<div class="modal-bg" id="identifyModal">
+ <div class="modal identify-modal" role="dialog" aria-modal="true" aria-labelledby="identifyHeading">
+   <h2 id="identifyHeading"><span class="gicon">&#128247;</span> Identify sealed product</h2>
+   <p>Take or choose a photo of one sealed product. The result is only a suggestion; your collection changes only when you press + or −.</p>
+   <div class="identify-layout">
+     <img class="identify-preview" id="identifyPreview" alt="Product photo preview">
+     <div class="identify-copy">
+       <p class="identify-state" id="identifyState">Choose a clear, front-facing photo with the packaging text and artwork visible.</p>
+       <div class="identify-results" id="identifyResults"></div>
+     </div>
+   </div>
+   <p class="identify-privacy">The resized photo is sent through the installed Tracker extension to the configured vision provider. Photos and identification results are not added to collection state, Gists, or exports.</p>
+   <div class="actions"><button class="pbtn g" id="identifyAnother">Choose another photo</button><button class="pbtn ghost" id="identifyClose">Close</button></div>
+ </div>
+</div>
 
 <div class="modal-bg" id="driveModal">
  <div class="modal">
@@ -556,7 +674,37 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 
 <script>
 const DATA = /*__DATA__*/;
+const WRAPPER_ART_CATALOG = /*__WRAPPER_ART__*/;
 const KEY = "mtgBinder_v1";
+
+const WRAPPER_ART_BY_CODE=new Map((WRAPPER_ART_CATALOG.sets||[]).map(wrapperSet=>
+  [String(wrapperSet.setCode||'').toUpperCase(),wrapperSet]));
+function wrapperArtKey(artId){return 'packs|wrapper-art|'+String(artId||'').toUpperCase();}
+function wrapperArtSetFor(checklistId,item){
+  if(checklistId!=='packs'||!item)return null;
+  const regularLane=!!item.wrapperArtOnly||(item.slots||[]).some(slot=>
+    ['booster','draft','play'].includes(String(slot.g||slot.k||slot.l||'').trim().toLowerCase()));
+  return regularLane?WRAPPER_ART_BY_CODE.get(String(item.code||'').toUpperCase())||null:null;
+}
+function wrapperArtStatusLabel(art){
+  if(art.imageStatus==='exact_individual')return {text:'Exact individual image',kind:'exact'};
+  if(art.imageStatus==='group_reference')return {text:'Group reference'+(art.positionHint?' · '+art.positionHint:''),kind:'group'};
+  if(art.imageStatus==='review_only')return {text:'Review-only image candidate',kind:'review'};
+  return {text:'Image source pending',kind:'pending'};
+}
+function ensureWrapperArtRows(){
+  const packs=DATA.checklists.find(checklist=>checklist.id==='packs');
+  if(!packs)return;
+  const existing=new Set(packs.eras.flatMap(era=>era.items).map(item=>String(item.code||'').toUpperCase()));
+  const missing=(WRAPPER_ART_CATALOG.sets||[]).filter(wrapperSet=>!existing.has(String(wrapperSet.setCode||'').toUpperCase()));
+  if(!missing.length)return;
+  packs.eras.push({name:'Wrapper-Art Inventory Only',items:missing.map(wrapperSet=>({
+    name:wrapperSet.setName,code:wrapperSet.setCode,
+    note:'Optional wrapper-art inventory row; no pack-type ownership target is added.',
+    tags:[{t:'Wrapper art',c:'#6a4fb0'}],slots:[],pricingProducts:[],wrapperArtOnly:true
+  }))});
+}
+ensureWrapperArtRows();
 
 const LEGACY_KEY_RE=/^([^|]+)\|(\d+)\|(\d+)\|(\d+)$/;
 function normKeyPart(v){return String(v||'').normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');}
@@ -615,6 +763,27 @@ function migrateChecks(checks){
 }
 const MONITOR_SOURCE_ORDER=['ebay','tcgplayer','heritage','store'];
 const MONITOR_GIST_CHECKLIST='collector';
+const WRAPPER_ART_GIST_CHECKLIST='packs';
+function normalizeWrapperArts(input){
+  const out={};
+  if(!input||typeof input!=='object'||Array.isArray(input))return out;
+  for(const[key,value]of Object.entries(input)){
+    const match=/^packs\|wrapper-art\|([A-Z0-9][A-Z0-9-]{1,31})$/i.exec(String(key));
+    const quantity=value===true?1:Math.max(0,Math.min(100000,Math.floor(Number(value)||0)));
+    if(quantity>0&&match)out['packs|wrapper-art|'+match[1].toUpperCase()]=quantity;
+  }
+  return out;
+}
+function normalizeOrdered(input){
+  const out={};
+  if(!input||typeof input!=='object'||Array.isArray(input))return out;
+  for(const[key,value]of Object.entries(input)){
+    if(!/^[a-z0-9_-]{1,64}\|(?:extra|slot-extra)\|[0-9a-f]{16}$/i.test(String(key)))continue;
+    const quantity=value===true?1:Math.max(0,Math.min(100000,Math.floor(Number(value)||0)));
+    if(quantity>0)out[String(key)]=quantity;
+  }
+  return out;
+}
 const MONITOR_DEFAULT_PREFERENCES={enabled:true,maxMarketRatio:.8,minimumConfidence:'medium',
   sources:MONITOR_SOURCE_ORDER.slice(),includeOptional:false,instantFixedPriceEmail:true,
   dailyDigest:{enabled:true,time:'07:00',timezone:'America/Chicago'}};
@@ -645,9 +814,13 @@ function monitorPreferenceEnvelope(payload){
 }
 function monitorGistFields(){return {monitorPreferences:normalizeMonitorPreferences(state.monitorPreferences),
   monitorPreferencesUpdatedAt:state.monitorPreferencesUpdatedAt||null};}
-function monitorGistSnapshot(cl,checks,extras,fields){
-  const snapshot={checks:checks||{},extras:extras||{}};
+function monitorGistSnapshot(cl,checks,extras,fields,wrapperArts,ordered,orderedWrapperArts){
+  const snapshot={checks:checks||{},extras:extras||{},ordered:normalizeOrdered(ordered)};
   if(cl===MONITOR_GIST_CHECKLIST&&fields)Object.assign(snapshot,fields);
+  if(cl===WRAPPER_ART_GIST_CHECKLIST&&wrapperArts!==undefined){
+    snapshot.wrapperArts=normalizeWrapperArts(wrapperArts);
+    snapshot.orderedWrapperArts=normalizeWrapperArts(orderedWrapperArts);
+  }
   return JSON.stringify(snapshot);
 }
 function migrateState(s){
@@ -661,6 +834,15 @@ function migrateState(s){
     s._needsMigrationSave=true;
   }
   s.extras=s.extras||{};
+  const normalizedOrdered=normalizeOrdered(s.ordered);
+  if(!s.ordered||JSON.stringify(s.ordered)!==JSON.stringify(normalizedOrdered))s._needsMigrationSave=true;
+  s.ordered=normalizedOrdered;
+  const normalizedWrapperArts=normalizeWrapperArts(s.wrapperArts);
+  if(!s.wrapperArts||JSON.stringify(s.wrapperArts)!==JSON.stringify(normalizedWrapperArts))s._needsMigrationSave=true;
+  s.wrapperArts=normalizedWrapperArts;
+  const normalizedOrderedWrapperArts=normalizeWrapperArts(s.orderedWrapperArts);
+  if(!s.orderedWrapperArts||JSON.stringify(s.orderedWrapperArts)!==JSON.stringify(normalizedOrderedWrapperArts))s._needsMigrationSave=true;
+  s.orderedWrapperArts=normalizedOrderedWrapperArts;
   const normalizedMonitor=normalizeMonitorPreferences(s.monitorPreferences);
   if(!s.monitorPreferences||JSON.stringify(s.monitorPreferences)!==JSON.stringify(normalizedMonitor))s._needsMigrationSave=true;
   s.monitorPreferences=normalizedMonitor;
@@ -673,6 +855,7 @@ if(state._needsMigrationSave){delete state._needsMigrationSave;save();}
 let active=state.ui.active||DATA.checklists[0].id;
 let search="";
 const openDetails=new Set();
+const openWrapperDetails=new Set();
 publishKeyDebug();
 function load(){
   try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.checks)return migrateState(s); }catch(e){}
@@ -692,16 +875,26 @@ function noteMonitorCollectionChange(){
 }
 
 function isChecked(k){ return !!state.checks[k]; }
+function wrapperArtQuantity(artId){return Math.max(0,Number(state.wrapperArts[wrapperArtKey(artId)]||0));}
+function orderedWrapperArtQuantity(artId){return Math.max(0,Number(state.orderedWrapperArts[wrapperArtKey(artId)]||0));}
+function orderedQuantity(key){return Math.max(0,Number(state.ordered[key]||0));}
 function slotQuantity(cl,it,si){return (isChecked(keyFor(cl,it,si))?1:0)+
   Math.max(0,Number(state.extras[slotExtraKeyFor(cl,it,si)]||0));}
+function orderedForSlot(cl,it,si){return orderedQuantity(slotExtraKeyFor(cl,it,si));}
 function checkedInGroup(cl,it,g){return g.items.filter(({si})=>isChecked(keyFor(cl,it,si))).length;}
 function ownedForGroup(cl,it,g){const checked=checkedInGroup(cl,it,g);
   return usesDistinctVariants(cl)?g.items.reduce((n,{si})=>n+slotQuantity(cl,it,si),0):
     checked+Math.max(0,Number(state.extras[groupKeyFor(cl,it,g.k||g.n)]||0));}
+function orderedForGroup(cl,it,g){return usesDistinctVariants(cl)?
+  g.items.reduce((n,{si})=>n+orderedForSlot(cl,it,si),0):orderedQuantity(groupKeyFor(cl,it,g.k||g.n));}
 function itemComplete(cl,it){const required=groupedSlots(it).filter(g=>groupTarget(g)>0);
   if(usesDistinctVariants(cl))return it.slots.some(slotRequired)&&it.slots.every((sl,si)=>
     !slotRequired(sl)||slotQuantity(cl,it,si)>=1);
   return required.length>0&&required.every(g=>ownedForGroup(cl,it,g)>=groupTarget(g));}
+function itemCovered(cl,it){const required=groupedSlots(it).filter(g=>groupTarget(g)>0);
+  if(usesDistinctVariants(cl))return it.slots.some(slotRequired)&&it.slots.every((sl,si)=>
+    !slotRequired(sl)||slotQuantity(cl,it,si)+orderedForSlot(cl,it,si)>=1);
+  return required.length>0&&required.every(g=>ownedForGroup(cl,it,g)+orderedForGroup(cl,it,g)>=groupTarget(g));}
 function quantityNoun(group,count){return group==='Copies'?(count===1?'copy':'copies'):group;}
 const COMPLETION_LINGER_MS=4000;
 const completionLinger=new Map();
@@ -732,7 +925,8 @@ function restoreQuantityFocus(cl,it,g,side){
   const key=groupKeyFor(cl,it,g.k||g.n);
   const ctrl=document.querySelector('[data-qty-key="'+key+'"]');
   if(!ctrl)return;
-  const sameSide=ctrl.querySelector('.qtybtn.'+side);
+  const sameSide=(side==='plus'||side==='minus')?ctrl.querySelector('.qtybtn.'+side):
+    ctrl.querySelector('[data-qty-action="'+side+'"]');
   const target=sameSide&&!sameSide.disabled?sameSide:ctrl.querySelector('.qtynum');
   if(!target)return;
   try{target.focus({preventScroll:true});}catch(e){target.focus();}
@@ -741,7 +935,15 @@ function restoreVariantFocus(key,side){
   if(!side||typeof document==='undefined')return;
   const ctrl=document.querySelector('[data-variant-qty-key="'+key+'"]');
   if(!ctrl)return;
-  const target=ctrl.querySelector('.variantqtybtn.'+side)||ctrl.querySelector('.variantqtynum');
+  const target=ctrl.querySelector('.variantqtybtn.'+side)||ctrl.querySelector('[data-qty-action="'+side+'"]')||ctrl.querySelector('.variantqtynum');
+  if(!target||target.disabled)return;
+  try{target.focus({preventScroll:true});}catch(e){target.focus();}
+}
+function restoreWrapperFocus(key,side){
+  if(!side||typeof document==='undefined')return;
+  const ctrl=document.querySelector('[data-wrapper-qty-key="'+key+'"]');
+  if(!ctrl)return;
+  const target=ctrl.querySelector('.variantqtybtn.'+side)||ctrl.querySelector('[data-qty-action="'+side+'"]')||ctrl.querySelector('.variantqtynum');
   if(!target||target.disabled)return;
   try{target.focus({preventScroll:true});}catch(e){target.focus();}
 }
@@ -749,7 +951,7 @@ function clearCompletionLinger(){
   completionLinger.clear();
   if(completionLingerTimer){clearTimeout(completionLingerTimer);completionLingerTimer=null;}
 }
-function changeQuantity(cl,it,g,delta,focusSide){
+function mutateGroupQuantity(cl,it,g,delta){
   const extraKey=groupKeyFor(cl,it,g.k||g.n),extra=Math.max(0,Number(state.extras[extraKey]||0));
   const distinct=usesDistinctVariants(cl);
   if(delta>0){
@@ -768,8 +970,48 @@ function changeQuantity(cl,it,g,delta,focusSide){
     else{const checked=g.items.filter(({si})=>isChecked(keyFor(cl,it,si)));const last=checked[checked.length-1];
       if(last)delete state.checks[keyFor(cl,it,last.si)];}
   }
+}
+function changeQuantity(cl,it,g,delta,focusSide){
+  mutateGroupQuantity(cl,it,g,delta);
   noteQuantityActivity(cl,it);
   save();driveTouch();noteMonitorCollectionChange();updateAll();restoreQuantityFocus(cl,it,g,focusSide);
+}
+function mutateOrderedGroup(cl,it,g,delta){
+  if(usesDistinctVariants(cl)){
+    if(delta>0){
+      const next=g.items.reduce((best,current)=>{
+        const currentTotal=slotQuantity(cl,it,current.si)+orderedForSlot(cl,it,current.si);
+        const bestTotal=slotQuantity(cl,it,best.si)+orderedForSlot(cl,it,best.si);
+        return currentTotal<bestTotal?current:best;
+      },g.items[0]);
+      const key=slotExtraKeyFor(cl,it,next.si);state.ordered[key]=orderedQuantity(key)+1;
+    }else{
+      const incoming=g.items.filter(({si})=>orderedForSlot(cl,it,si)>0);
+      const next=incoming.reduce((best,current)=>!best||orderedForSlot(cl,it,current.si)>=orderedForSlot(cl,it,best.si)?current:best,null);
+      if(next){const key=slotExtraKeyFor(cl,it,next.si),quantity=orderedQuantity(key);
+        if(quantity<=1)delete state.ordered[key];else state.ordered[key]=quantity-1;}
+    }
+    return;
+  }
+  const key=groupKeyFor(cl,it,g.k||g.n),quantity=orderedQuantity(key),next=Math.max(0,quantity+delta);
+  if(next>0)state.ordered[key]=next;else delete state.ordered[key];
+}
+function changeOrderedQuantity(cl,it,g,delta,focusSide){
+  mutateOrderedGroup(cl,it,g,delta);save();driveTouch();updateAll();restoreQuantityFocus(cl,it,g,focusSide);
+}
+function receiveQuantity(cl,it,g,focusSide){
+  if(orderedForGroup(cl,it,g)<=0)return;
+  if(usesDistinctVariants(cl)){
+    const incoming=g.items.filter(({si})=>orderedForSlot(cl,it,si)>0);
+    const next=incoming.reduce((best,current)=>!best||orderedForSlot(cl,it,current.si)>=orderedForSlot(cl,it,best.si)?current:best,null);
+    if(!next)return;
+    const key=slotExtraKeyFor(cl,it,next.si),quantity=orderedQuantity(key);
+    if(quantity<=1)delete state.ordered[key];else state.ordered[key]=quantity-1;
+    mutateSlotQuantity(cl,it,next.si,1);
+  }else{
+    mutateOrderedGroup(cl,it,g,-1);mutateGroupQuantity(cl,it,g,1);
+  }
+  noteQuantityActivity(cl,it);save();driveTouch();noteMonitorCollectionChange();updateAll();restoreQuantityFocus(cl,it,g,focusSide);
 }
 function detailKey(cl,it){return [cl,normKeyPart(it.name),normKeyPart(it.code)].join('|');}
 function mutateSlotQuantity(cl,it,si,delta){
@@ -783,12 +1025,39 @@ function changeSlotQuantity(cl,it,si,delta,focusSide){
   mutateSlotQuantity(cl,it,si,delta);openDetails.add(detailKey(cl,it));
   noteQuantityActivity(cl,it);save();driveTouch();noteMonitorCollectionChange();updateAll();restoreVariantFocus(slotExtraKeyFor(cl,it,si),focusSide);
 }
+function changeSlotOrderedQuantity(cl,it,si,delta,focusSide){
+  const key=slotExtraKeyFor(cl,it,si),next=Math.max(0,orderedQuantity(key)+delta);
+  if(next>0)state.ordered[key]=next;else delete state.ordered[key];
+  openDetails.add(detailKey(cl,it));save();driveTouch();updateAll();restoreVariantFocus(key,focusSide);
+}
+function receiveSlotQuantity(cl,it,si,focusSide){
+  const key=slotExtraKeyFor(cl,it,si),quantity=orderedQuantity(key);if(quantity<=0)return;
+  if(quantity===1)delete state.ordered[key];else state.ordered[key]=quantity-1;
+  mutateSlotQuantity(cl,it,si,1);openDetails.add(detailKey(cl,it));noteQuantityActivity(cl,it);
+  save();driveTouch();noteMonitorCollectionChange();updateAll();restoreVariantFocus(key,focusSide);
+}
 function setVariantChecked(cl,it,si,checked){
   const k=keyFor(cl,it,si);
   if(checked)state.checks[k]=true;else{delete state.checks[k];delete state.extras[slotExtraKeyFor(cl,it,si)];}
   openDetails.add(detailKey(cl,it));
   noteQuantityActivity(cl,it);
   save();driveTouch();noteMonitorCollectionChange();updateAll();
+}
+function changeWrapperArtQuantity(artId,delta,focusSide){
+  const key=wrapperArtKey(artId),current=wrapperArtQuantity(artId),next=Math.max(0,current+delta);
+  if(next>0)state.wrapperArts[key]=next;else delete state.wrapperArts[key];
+  save();driveTouch();updateAll();restoreWrapperFocus(key,focusSide);
+}
+function changeOrderedWrapperArtQuantity(artId,delta,focusSide){
+  const key=wrapperArtKey(artId),current=orderedWrapperArtQuantity(artId),next=Math.max(0,current+delta);
+  if(next>0)state.orderedWrapperArts[key]=next;else delete state.orderedWrapperArts[key];
+  save();driveTouch();updateAll();restoreWrapperFocus(key,focusSide);
+}
+function receiveWrapperArt(artId,focusSide){
+  const key=wrapperArtKey(artId),ordered=orderedWrapperArtQuantity(artId);if(ordered<=0)return;
+  if(ordered===1)delete state.orderedWrapperArts[key];else state.orderedWrapperArts[key]=ordered-1;
+  state.wrapperArts[key]=wrapperArtQuantity(artId)+1;
+  save();driveTouch();updateAll();restoreWrapperFocus(key,focusSide);
 }
 
 function clProgress(cl){
@@ -855,6 +1124,9 @@ const PRICING_CHANNEL='tcg-pricing/v1';
 const PRICING_QUERY='pricingConsumerOrigin';
 const PRICING_TIMEOUT_MS=20000;
 const PRICING_STALE_MS=24*60*60*1000;
+const IDENTIFY_CHANNEL='tcg-product-identify/v1';
+const IDENTIFY_RESULT_SCHEMA='tcg.product-identification/v1';
+const IDENTIFY_TIMEOUT_MS=90000;
 const COLLECTION_CHANNEL='tcg-collection/v1';
 const COLLECTION_SNAPSHOT_SCHEMA='tcg.collection-snapshot/v2';
 const COLLECTION_NAMESPACE='collection-tracker';
@@ -870,8 +1142,10 @@ const pricingConsumerOrigin=(()=>{
   }catch(e){return '';}
 })();
 const pricingPending=new Map();
+const identifyPending=new Map();
 const pricingStates=new Map();
 let pricingRequestSerial=0;
+let identifyRequestSerial=0;
 const PRICING_BATCH_CONCURRENCY=4;
 let pricingBatch={running:false,done:0,total:0,rows:0,label:'',checklistId:null};
 
@@ -900,6 +1174,30 @@ window.addEventListener('message',(event)=>{
   clearTimeout(pending.timer);pricingPending.delete(message.requestId);
   if(message.error)pending.reject(pricingError(message.error.code,message.error.message));
   else pending.resolve(message.result);
+});
+function identifyRequest(image){
+  if(!pricingConsumerOrigin)return Promise.reject(pricingError('MISSING_EXTENSION','Open this dashboard in the installed Tracker extension to identify a photo.'));
+  const requestId='identify-'+Date.now().toString(36)+'-'+(++identifyRequestSerial).toString(36);
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{identifyPending.delete(requestId);reject(pricingError('IDENTIFY_TIMEOUT','Photo identification timed out. Try a smaller or clearer image.'));},IDENTIFY_TIMEOUT_MS);
+    identifyPending.set(requestId,{resolve,reject,timer});
+    window.parent.postMessage({channel:IDENTIFY_CHANNEL,type:'identifyProduct',requestId,image,
+      activeChecklist:active,candidates:RECOGNITION_PUBLIC_CATALOG},pricingConsumerOrigin);
+  });
+}
+window.addEventListener('message',(event)=>{
+  if(!pricingConsumerOrigin||event.origin!==pricingConsumerOrigin||event.source!==window.parent)return;
+  const message=event.data;
+  if(!message||message.channel!==IDENTIFY_CHANNEL||message.type!=='identifyProductResult'||typeof message.requestId!=='string')return;
+  const pending=identifyPending.get(message.requestId);if(!pending)return;
+  clearTimeout(pending.timer);identifyPending.delete(message.requestId);
+  if(message.error){pending.reject(pricingError(String(message.error.code||'IDENTIFY_FAILED'),String(message.error.message||'Photo identification failed.').slice(0,500)));return;}
+  const result=message.result;
+  if(!result||result.schema!==IDENTIFY_RESULT_SCHEMA||!Array.isArray(result.matches)||result.matches.length>3){pending.reject(pricingError('INVALID_IDENTIFY_RESPONSE','The Tracker extension returned an invalid identification result.'));return;}
+  const seen=new Set();
+  for(const match of result.matches){if(!match||typeof match.candidateId!=='string'||!RECOGNITION_BY_ID.has(match.candidateId)||seen.has(match.candidateId)||
+      !Number.isInteger(match.confidence)||match.confidence<0||match.confidence>100){pending.reject(pricingError('INVALID_IDENTIFY_RESPONSE','The Tracker extension returned an unknown or invalid product match.'));return;}seen.add(match.candidateId);}
+  pending.resolve(result);
 });
 
 /* The extension may request a current collection catalog when the user asks it
@@ -952,6 +1250,28 @@ function collectionOwnership(cl,it,record){
   return {target:collectionCount(groupTarget(matches[0]),record.ref.productId+' target'),
     owned:collectionCount(ownedForGroup(cl.id,it,matches[0]),record.ref.productId+' owned')};
 }
+function buildRecognitionCatalog(){
+  const catalog=[];
+  DATA.checklists.forEach(cl=>cl.eras.forEach(era=>era.items.forEach(it=>(it.pricingProducts||[]).forEach(record=>{
+    const ref=collectionProductRef(record.ref),candidateId='product:'+ref.productId;
+    catalog.push({candidateId,kind:'product',cl,it,record,imageUrl:'',imageStatus:'',public:{candidateId,kind:'product',
+      game:ref.game,label:record.label||ref.productName,setCode:ref.setCode||'',setName:ref.setName,
+      productType:ref.productType,unit:ref.unit,variant:ref.variant||'',imageUrl:'',imageStatus:''}});
+  }))));
+  (WRAPPER_ART_CATALOG.sets||[]).forEach(wrapperSet=>(wrapperSet.artworks||[]).forEach(art=>{
+    const candidateId='wrapper:'+String(art.id||'').toUpperCase();
+    catalog.push({candidateId,kind:'wrapper_art',art,wrapperSet,imageUrl:art.imageUrl||'',imageStatus:art.imageStatus||'',public:{
+      candidateId,kind:'wrapper_art',game:'mtg',label:wrapperSet.setName+' booster wrapper '+art.label+' ('+art.id+')',
+      setCode:wrapperSet.setCode,setName:wrapperSet.setName,productType:'booster',unit:'pack',variant:art.id,
+      imageUrl:art.imageUrl||'',imageStatus:art.imageStatus||''}});
+  }));
+  const ids=new Set();catalog.forEach(candidate=>{if(ids.has(candidate.candidateId))throw new Error('Duplicate recognition candidate '+candidate.candidateId);ids.add(candidate.candidateId);});
+  if(!catalog.length||catalog.length>1200)throw new Error('Recognition catalog must contain 1 to 1200 candidates');
+  return catalog;
+}
+const RECOGNITION_CATALOG=buildRecognitionCatalog();
+const RECOGNITION_BY_ID=new Map(RECOGNITION_CATALOG.map(candidate=>[candidate.candidateId,candidate]));
+const RECOGNITION_PUBLIC_CATALOG=RECOGNITION_CATALOG.map(candidate=>candidate.public);
 function buildCollectionSnapshot(){
   const products={};let count=0;
   DATA.checklists.forEach(cl=>cl.eras.forEach(era=>era.items.forEach(it=>(it.pricingProducts||[]).forEach(record=>{
@@ -1258,6 +1578,102 @@ function applyCols(){
 }
 function checkSVG(){return '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>';}
 
+function wrapperArtOwnedCount(wrapperSet){
+  return (wrapperSet.artworks||[]).filter(art=>wrapperArtQuantity(art.id)>0).length;
+}
+function wrapperArtCopyCount(wrapperSet){
+  return (wrapperSet.artworks||[]).reduce((total,art)=>total+wrapperArtQuantity(art.id),0);
+}
+function wrapperArtOrderedCount(wrapperSet){
+  return (wrapperSet.artworks||[]).reduce((total,art)=>total+orderedWrapperArtQuantity(art.id),0);
+}
+function loadWrapperArtImages(root){
+  root.querySelectorAll('img[data-wrapper-src]').forEach(img=>{
+    img.src=img.dataset.wrapperSrc;delete img.dataset.wrapperSrc;
+  });
+}
+function packageIconSVG(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7.5 4.3 9 5.1v10.2l-9-5.1z"/><path d="m7.5 4.3-4 2.3v10.2l4 2.3 9-5.1V9.4z"/><path d="m3.5 6.6 9 5.1 4-2.3M12.5 11.7v5.1"/></svg>';}
+function receiveIconSVG(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l3 3v6H7z"/><path d="m7 3 5 3 5-3M12 6v6"/><path d="M3 15h5l2 2h5.5a2.5 2.5 0 0 1 2.5 2.5V21H9l-3-2H3z"/><path d="M18 16.5 21 14v5l-3 2"/></svg>';}
+function makeOrderedControl(quantity,label,onMinus,onPlus,onReceive){
+  const ctrl=document.createElement('div');ctrl.className='orderedqty';
+  const icon=document.createElement('span');icon.className='ordericon';icon.innerHTML=packageIconSVG();icon.title=quantity+' ordered';
+  const minus=document.createElement('button');minus.type='button';minus.className='orderedqtybtn';minus.textContent='−';minus.disabled=quantity===0;
+  minus.dataset.qtyAction='orderminus';minus.setAttribute('aria-label','Remove one ordered '+label);minus.onclick=onMinus;
+  const num=document.createElement('span');num.className='orderedqtynum';num.textContent=quantity;
+  num.setAttribute('aria-label',quantity+' ordered '+label);
+  const plus=document.createElement('button');plus.type='button';plus.className='orderedqtybtn';plus.textContent='+';
+  plus.dataset.qtyAction='orderplus';plus.setAttribute('aria-label','Add one ordered '+label);plus.onclick=onPlus;
+  const receive=document.createElement('button');receive.type='button';receive.className='receiveqty';receive.innerHTML=receiveIconSVG();
+  receive.disabled=quantity===0;receive.dataset.qtyAction='receive';receive.title='Receive one ordered '+label;
+  receive.setAttribute('aria-label','Receive one ordered '+label+' into your collection');receive.onclick=onReceive;
+  ctrl.appendChild(icon);ctrl.appendChild(minus);ctrl.appendChild(num);ctrl.appendChild(plus);ctrl.appendChild(receive);return ctrl;
+}
+function makeOrderPeek(quantity,label){
+  const peek=document.createElement('button');peek.type='button';peek.className='orderpeek';peek.innerHTML=packageIconSVG()+'<span>'+quantity+'</span>';
+  peek.setAttribute('aria-label',quantity+' ordered '+label+'. Focus to adjust or receive.');return peek;
+}
+function renderWrapperArtChecklist(cl,it,wrapperSet){
+  const details=document.createElement('details');details.className='wrapperarts';
+  const transientKey=detailKey(cl.id,it)+'|wrapper-art';
+  details.open=openWrapperDetails.has(transientKey);
+  const summary=document.createElement('summary');
+  const title=document.createElement('span');title.className='wrapperart-title';title.textContent='Wrapper artwork (optional)';
+  const progress=document.createElement('span');progress.className='wrapperart-summary';
+  const paintProgress=()=>{const owned=wrapperArtOwnedCount(wrapperSet),total=wrapperSet.artworks.length,copies=wrapperArtCopyCount(wrapperSet),
+    ordered=wrapperArtOrderedCount(wrapperSet);
+    progress.textContent=owned+' / '+total+' fronts · '+copies+' '+(copies===1?'copy':'copies')+(ordered?' · '+ordered+' ordered':'');};
+  paintProgress();summary.appendChild(title);summary.appendChild(progress);details.appendChild(summary);
+  const note=document.createElement('div');note.className='wrapperart-note';
+  note.textContent='Optional loose-wrapper inventory only — it does not affect pack targets or collection completion.';
+  details.appendChild(note);
+  const grid=document.createElement('div');grid.className='wrapperart-grid';
+  (wrapperSet.artworks||[]).forEach(art=>{
+    const owned=wrapperArtQuantity(art.id),ordered=orderedWrapperArtQuantity(art.id);
+    const card=document.createElement('div');card.className='wrapperart-card'+(owned>0?' owned':'')+(ordered>0?' ordered':'');
+    const media=document.createElement('span');media.className='wrapperart-media';
+    const fallback=document.createElement('span');fallback.className='wrapperart-fallback';fallback.textContent='Image unavailable';
+    if(art.imageUrl){
+      const img=document.createElement('img');img.alt=wrapperSet.setName+' '+art.label+' booster wrapper';
+      img.loading='lazy';img.decoding='async';img.dataset.wrapperSrc=art.imageUrl;
+      img.onerror=()=>{img.remove();fallback.hidden=false;};fallback.hidden=true;
+      media.appendChild(img);
+    }
+    media.appendChild(fallback);
+    const head=document.createElement('span');head.className='wrapperart-head';
+    const label=document.createElement('span');label.className='wrapperart-check';label.textContent=art.label+' · '+art.id;
+    const manage=document.createElement('div');manage.className='wrappermanage';manage.dataset.wrapperQtyKey=wrapperArtKey(art.id);
+    const ctrl=document.createElement('div');ctrl.className='variantqty';
+    const minus=document.createElement('button');minus.type='button';minus.className='variantqtybtn minus';minus.textContent='−';minus.disabled=owned===0;
+    minus.dataset.qtyAction='minus';
+    minus.setAttribute('aria-label','Remove one '+wrapperSet.setName+' '+art.label+' wrapper');
+    minus.onclick=()=>changeWrapperArtQuantity(art.id,-1,'minus');
+    const num=document.createElement('span');num.className='variantqtynum'+(owned>0?' met':'');num.textContent=owned;
+    num.setAttribute('aria-label',owned+' copies owned of '+wrapperSet.setName+' '+art.label+' wrapper');
+    const plus=document.createElement('button');plus.type='button';plus.className='variantqtybtn plus';plus.textContent='+';
+    plus.dataset.qtyAction='plus';
+    plus.setAttribute('aria-label','Add one '+wrapperSet.setName+' '+art.label+' wrapper');
+    plus.onclick=()=>changeWrapperArtQuantity(art.id,1,'plus');
+    ctrl.appendChild(minus);ctrl.appendChild(num);ctrl.appendChild(plus);
+    const orderedCtrl=makeOrderedControl(ordered,wrapperSet.setName+' '+art.label+' wrapper',
+      ()=>changeOrderedWrapperArtQuantity(art.id,-1,'orderminus'),
+      ()=>changeOrderedWrapperArtQuantity(art.id,1,'orderplus'),
+      ()=>receiveWrapperArt(art.id,'receive'));
+    orderedCtrl.classList.add('detailordertray');
+    manage.appendChild(ctrl);manage.appendChild(makeOrderPeek(ordered,wrapperSet.setName+' '+art.label+' wrapper'));
+    manage.appendChild(orderedCtrl);head.appendChild(label);head.appendChild(manage);
+    const status=wrapperArtStatusLabel(art),statusEl=document.createElement('span');
+    statusEl.className='wrapperart-status '+status.kind;statusEl.textContent=status.text;
+    card.appendChild(media);card.appendChild(head);card.appendChild(statusEl);grid.appendChild(card);
+  });
+  details.appendChild(grid);
+  details.addEventListener('toggle',()=>{
+    if(details.open){openWrapperDetails.add(transientKey);loadWrapperArtImages(details);}
+    else openWrapperDetails.delete(transientKey);
+  });
+  if(details.open)loadWrapperArtImages(details);
+  return details;
+}
+
 function renderContent(){
   const cl=DATA.checklists.find(c=>c.id===active);
   const host=document.getElementById('content'); host.innerHTML='';
@@ -1367,25 +1783,37 @@ function renderContent(){
         if(!wantHead && it.slots.length>1){
           const lab=document.createElement('i');lab.className='slotlab';lab.textContent=g.n;wrap.appendChild(lab);}
         const bx=document.createElement('div'); bx.className='slotboxes';
-        const target=groupTarget(g),goal=target>0,owned=ownedForGroup(cl.id,it,g),color=g.items[0].sl.c||'var(--lpurple)';
+        const target=groupTarget(g),goal=target>0,owned=ownedForGroup(cl.id,it,g),ordered=orderedForGroup(cl.id,it,g),
+          color=g.items[0].sl.c||'var(--lpurple)';
         const distinct=usesDistinctVariants(cl.id),completeVariants=distinct?
           g.items.filter(({sl,si})=>!slotRequired(sl)||slotQuantity(cl.id,it,si)>=1).length:0;
         const ctrl=document.createElement('div');ctrl.className='qtyctrl '+(goal?'goal':'bonus');
         ctrl.dataset.qtyKey=groupKeyFor(cl.id,it,g.k||g.n);ctrl.style.setProperty('--qtyc',color);
         const minus=document.createElement('button');minus.type='button';minus.className='qtybtn minus';minus.textContent='−';
+        minus.dataset.qtyAction='minus';
         minus.disabled=owned===0;minus.setAttribute('aria-label','Remove one '+(goal?'':'bonus ')+quantityNoun(g.n,1)+' from '+it.name);
         minus.onclick=()=>changeQuantity(cl.id,it,g,-1,'minus');
+        const physicallyComplete=distinct?itemComplete(cl.id,it):(goal&&owned>=target),covered=goal&&!physicallyComplete&&
+          (distinct?itemCovered(cl.id,it):owned+ordered>=target);
         const num=document.createElement('button');num.type='button';num.className='qtynum'+
-          (goal&&owned>=target?' met':(!goal&&owned>0?' owned':''));
-        if(distinct)num.className='qtynum'+(itemComplete(cl.id,it)?' met':'');
-        num.textContent=owned;num.title=distinct?(owned+' total copies · '+completeVariants+'/'+target+' variants complete'):
-          (goal?(owned+' owned · goal '+target):(owned+' owned · bonus inventory · not part of completion'));
-        num.setAttribute('aria-label',owned+' '+quantityNoun(g.n,owned)+' owned for '+it.name+'; '+
+          (physicallyComplete?' met':(covered?' covered':(!goal&&owned>0?' owned':'')));
+        num.textContent=owned;num.title=(distinct?(owned+' total copies · '+completeVariants+'/'+target+' variants complete'):
+          (goal?(owned+' owned · goal '+target):(owned+' owned · bonus inventory · not part of completion')))+
+          (ordered?' · '+ordered+' ordered':'');
+        num.setAttribute('aria-label',owned+' '+quantityNoun(g.n,owned)+' owned and '+ordered+' ordered for '+it.name+'; '+
           (distinct?(completeVariants+' of '+target+' distinct variants complete.'):
           (goal?('goal '+target+'.'):('bonus inventory, not part of completion.')))+' Focus to adjust.');
         const plus=document.createElement('button');plus.type='button';plus.className='qtybtn plus';plus.textContent='+';
+        plus.dataset.qtyAction='plus';
         plus.setAttribute('aria-label','Add one '+(goal?'':'bonus ')+quantityNoun(g.n,1)+' to '+it.name);plus.onclick=()=>changeQuantity(cl.id,it,g,1,'plus');
-        ctrl.appendChild(minus);ctrl.appendChild(num);ctrl.appendChild(plus);bx.appendChild(ctrl);
+        const incoming=document.createElement('span');incoming.className='incomingbadge';incoming.hidden=ordered===0;
+        incoming.innerHTML=packageIconSVG()+'<span>+'+ordered+'</span>';
+        const orderedCtrl=makeOrderedControl(ordered,quantityNoun(g.n,1)+' for '+it.name,
+          ()=>changeOrderedQuantity(cl.id,it,g,-1,'orderminus'),
+          ()=>changeOrderedQuantity(cl.id,it,g,1,'orderplus'),
+          ()=>receiveQuantity(cl.id,it,g,'receive'));
+        orderedCtrl.classList.add('ordertray');
+        ctrl.appendChild(minus);ctrl.appendChild(num);ctrl.appendChild(plus);ctrl.appendChild(incoming);ctrl.appendChild(orderedCtrl);bx.appendChild(ctrl);
         wrap.appendChild(bx); checks.appendChild(wrap);
       });
       const meta=document.createElement('div'); meta.className='meta';
@@ -1426,13 +1854,14 @@ function renderContent(){
       if(it.note) extra.push(it.note);
       if(it.est)  extra.push('Value is a best-effort estimate — verify before buying.');
       const productImages=it.images||[];
+      const wrapperArtSet=wrapperArtSetFor(cl.id,it);
       const namedVariants=usesDistinctVariants(cl.id)&&(it.variants||[]).length>1?
         (it.variants||[]).map((name,si)=>({name,si,target:1})):
         (usesGroupVariants(cl.id)&&(it.variants||[]).length>1?(it.variants||[]).map(variant=>{
           const group=groupedSlots(it).find(g=>g.n===variant.group);
           return {name:variant.name,group,target:variant.target||groupTarget(group)};
         }):[]);
-      if(extra.length||productImages.length||namedVariants.length||pricingProducts.length){
+      if(extra.length||productImages.length||namedVariants.length||pricingProducts.length||wrapperArtSet){
         const tog=document.createElement('button');
         tog.className='rowtog'; tog.setAttribute('aria-expanded',detailIsOpen?'true':'false');
         tog.setAttribute('aria-label',(detailIsOpen?'Hide':'Show')+' details for '+it.name);
@@ -1440,7 +1869,7 @@ function renderContent(){
         tog.onclick=(e)=>{ e.stopPropagation();
           const open=item.classList.toggle('open');
           if(open)openDetails.add(detailKey(cl.id,it));else openDetails.delete(detailKey(cl.id,it));
-          if(open)item.querySelectorAll('img[data-src]').forEach(img=>{
+          if(open)item.querySelectorAll('.productpic img[data-src]').forEach(img=>{
             img.src=img.dataset.src;delete img.dataset.src;});
           tog.setAttribute('aria-expanded', open?'true':'false');
           tog.setAttribute('aria-label',(open?'Hide':'Show')+' details for '+it.name); };
@@ -1467,6 +1896,7 @@ function renderContent(){
           if(!productImages.length)copy.classList.add('wide');
           copy.textContent=extra.join(' · ');det.appendChild(copy);
         }
+        if(wrapperArtSet)det.appendChild(renderWrapperArtChecklist(cl,it,wrapperArtSet));
         if(namedVariants.length){
           const variants=document.createElement('div');variants.className='variantlist';
           const title=document.createElement('div');title.className='varianttitle';
@@ -1474,10 +1904,12 @@ function renderContent(){
           titleText.textContent=usesDistinctVariants(cl.id)?'Distinct sealed variants':'Booster pack types';
           const totalOwned=namedVariants.reduce((n,variant)=>n+(variant.group?
             ownedForGroup(cl.id,it,variant.group):slotQuantity(cl.id,it,variant.si)),0);
+          const totalOrdered=namedVariants.reduce((n,variant)=>n+(variant.group?
+            orderedForGroup(cl.id,it,variant.group):orderedForSlot(cl.id,it,variant.si)),0);
           const metCount=namedVariants.filter(variant=>(variant.group?
             ownedForGroup(cl.id,it,variant.group):slotQuantity(cl.id,it,variant.si))>=variant.target).length;
           const summary=document.createElement('span');summary.className='variantsummary';
-          summary.textContent=totalOwned+' total · '+metCount+'/'+namedVariants.length+' complete';
+          summary.textContent=totalOwned+' owned'+(totalOrdered?' · '+totalOrdered+' ordered':'')+' · '+metCount+'/'+namedVariants.length+' complete';
           title.appendChild(titleText);title.appendChild(summary);variants.appendChild(title);
           const grid=document.createElement('div');grid.className='variantgrid';
           namedVariants.forEach(variant=>{
@@ -1485,20 +1917,32 @@ function renderContent(){
             const text=document.createElement('span');text.className='variantname';text.textContent=variant.name;
             const goal=document.createElement('span');goal.className='variantgoal';goal.textContent='goal '+variant.target;
             const owned=variant.group?ownedForGroup(cl.id,it,variant.group):slotQuantity(cl.id,it,variant.si);
+            const ordered=variant.group?orderedForGroup(cl.id,it,variant.group):orderedForSlot(cl.id,it,variant.si);
             const key=variant.group?groupKeyFor(cl.id,it,variant.group.k||variant.group.n):slotExtraKeyFor(cl.id,it,variant.si);
-            const ctrl=document.createElement('div');ctrl.className='variantqty';ctrl.dataset.variantQtyKey=key;
+            const manage=document.createElement('div');manage.className='variantmanage';manage.dataset.variantQtyKey=key;
+            const ctrl=document.createElement('div');ctrl.className='variantqty';
             const minus=document.createElement('button');minus.type='button';minus.className='variantqtybtn minus';minus.textContent='−';minus.disabled=owned===0;
+            minus.dataset.qtyAction='minus';
             minus.setAttribute('aria-label','Remove one '+variant.name+' from '+it.name);
             minus.onclick=()=>{if(variant.group){changeQuantity(cl.id,it,variant.group,-1);restoreVariantFocus(key,'minus');}
               else changeSlotQuantity(cl.id,it,variant.si,-1,'minus');};
             const num=document.createElement('span');num.className='variantqtynum'+(owned>=variant.target?' met':'');num.textContent=owned;
             num.setAttribute('aria-label',owned+' owned; goal '+variant.target+' for '+variant.name);
             const plus=document.createElement('button');plus.type='button';plus.className='variantqtybtn plus';plus.textContent='+';
+            plus.dataset.qtyAction='plus';
             plus.setAttribute('aria-label','Add one '+variant.name+' to '+it.name);
             plus.onclick=()=>{if(variant.group){changeQuantity(cl.id,it,variant.group,1);restoreVariantFocus(key,'plus');}
               else changeSlotQuantity(cl.id,it,variant.si,1,'plus');};
             ctrl.appendChild(minus);ctrl.appendChild(num);ctrl.appendChild(plus);
-            variantRow.appendChild(text);variantRow.appendChild(goal);variantRow.appendChild(ctrl);grid.appendChild(variantRow);
+            const orderedCtrl=makeOrderedControl(ordered,variant.name+' from '+it.name,
+              ()=>{if(variant.group)changeOrderedQuantity(cl.id,it,variant.group,-1,'orderminus');
+                else changeSlotOrderedQuantity(cl.id,it,variant.si,-1,'orderminus');},
+              ()=>{if(variant.group)changeOrderedQuantity(cl.id,it,variant.group,1,'orderplus');
+                else changeSlotOrderedQuantity(cl.id,it,variant.si,1,'orderplus');},
+              ()=>{if(variant.group)receiveQuantity(cl.id,it,variant.group,'receive');
+                else receiveSlotQuantity(cl.id,it,variant.si,'receive');});
+            manage.appendChild(ctrl);manage.appendChild(orderedCtrl);
+            variantRow.appendChild(text);variantRow.appendChild(goal);variantRow.appendChild(manage);grid.appendChild(variantRow);
           });
           variants.appendChild(grid);det.appendChild(variants);
         }
@@ -1567,20 +2011,30 @@ async function ghDiscover(){const r=await fetch(GH_API+"/gists?per_page=100",{he
   return out;}
 
 async function ghPull(firstConnect){if(!gh.token)return;
-  gh.ids=await ghDiscover();const merged={},mergedExtras={},legacy={};let remoteMonitor=null;
+  gh.ids=await ghDiscover();const merged={},mergedExtras={},legacy={},remoteWrapperArts={},remoteOrdered={},remoteOrderedWrapperArts={};
+  let remoteMonitor=null,sawWrapperArts=false,sawOrderedWrapperArts=false;const sawOrdered=new Set();
   await Promise.all(Object.entries(gh.ids).map(async([cl,id])=>{
     try{const r=await fetch(GH_API+"/gists/"+id,{headers:ghH()});if(!r.ok)return;
       const j=await r.json(),f=(j.files||{})[fileFor(cl)];if(!f)return;
       let c=f.content; if(f.truncated&&f.raw_url)c=await (await fetch(f.raw_url)).text();
       const b=JSON.parse(c),m=migrateChecks(b.checks||{});Object.assign(merged,m.checks);
       Object.assign(mergedExtras,b.extras||{});
+      const hasOrdered=Object.prototype.hasOwnProperty.call(b,'ordered'),pulledOrdered=normalizeOrdered(b.ordered);
+      if(hasOrdered){sawOrdered.add(cl);Object.assign(remoteOrdered,pulledOrdered);}
       Object.assign(legacy,b.legacyChecksV1||{},m.legacy,m.unknown);
+      const hasWrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST&&Object.prototype.hasOwnProperty.call(b,'wrapperArts');
+      const pulledWrapperArts=hasWrapperArts?normalizeWrapperArts(b.wrapperArts):undefined;
+      if(hasWrapperArts){sawWrapperArts=true;Object.assign(remoteWrapperArts,pulledWrapperArts);}
+      const hasOrderedWrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST&&Object.prototype.hasOwnProperty.call(b,'orderedWrapperArts');
+      const pulledOrderedWrapperArts=hasOrderedWrapperArts?normalizeWrapperArts(b.orderedWrapperArts):undefined;
+      if(hasOrderedWrapperArts){sawOrderedWrapperArts=true;Object.assign(remoteOrderedWrapperArts,pulledOrderedWrapperArts);}
       const candidate=monitorPreferenceEnvelope(b);
       if(candidate&&(!remoteMonitor||String(candidate.updatedAt||'')>String(remoteMonitor.updatedAt||'')||
           String(candidate.updatedAt||'')===String(remoteMonitor.updatedAt||'')&&
           JSON.stringify(candidate.preferences)>JSON.stringify(remoteMonitor.preferences)))remoteMonitor=candidate;
       gh.snap[cl]=monitorGistSnapshot(cl,b.checks||{},b.extras||{},candidate?{
-        monitorPreferences:candidate.preferences,monitorPreferencesUpdatedAt:candidate.updatedAt}:null);
+        monitorPreferences:candidate.preferences,monitorPreferencesUpdatedAt:candidate.updatedAt}:null,pulledWrapperArts,
+        pulledOrdered,pulledOrderedWrapperArts);
       if(m.migrated||Object.keys(m.unknown).length)ghDirty=true;}catch(e){}}));
   let changed=false;
   if(Object.keys(merged).length||Object.keys(mergedExtras).length){
@@ -1590,6 +2044,32 @@ async function ghPull(firstConnect){if(!gh.token)return;
     state.extras = firstConnect ? Object.assign({},mergedExtras,state.extras||{}) : mergedExtras;
     state.legacyChecksV1=Object.assign({},legacy,state.legacyChecksV1||{});
     state=migrateState(state);delete state._needsMigrationSave;changed=true;}
+  const beforeOrdered=JSON.stringify(state.ordered||{});
+  if(firstConnect)state.ordered=Object.assign({},remoteOrdered,state.ordered||{});
+  else{
+    const nextOrdered=Object.assign({},remoteOrdered);
+    for(const[key,value]of Object.entries(state.ordered||{})){
+      const cl=key.split('|')[0];if(!sawOrdered.has(cl)){nextOrdered[key]=value;if(gh.ids[cl])ghDirty=true;}
+    }
+    state.ordered=nextOrdered;
+  }
+  if(beforeOrdered!==JSON.stringify(state.ordered||{}))changed=true;
+  if(sawWrapperArts){
+    const nextWrapperArts=firstConnect?Object.assign({},remoteWrapperArts,state.wrapperArts||{}):remoteWrapperArts;
+    if(JSON.stringify(state.wrapperArts||{})!==JSON.stringify(nextWrapperArts))changed=true;
+    state.wrapperArts=nextWrapperArts;
+  }else if(Object.keys(state.wrapperArts||{}).length){
+    // An older packs Gist has no wrapper-art field. Preserve local artwork state
+    // and queue a compatible payload instead of interpreting omission as empty.
+    ghDirty=true;
+  }
+  if(sawOrderedWrapperArts){
+    const nextOrderedWrapperArts=firstConnect?Object.assign({},remoteOrderedWrapperArts,state.orderedWrapperArts||{}):remoteOrderedWrapperArts;
+    if(JSON.stringify(state.orderedWrapperArts||{})!==JSON.stringify(nextOrderedWrapperArts))changed=true;
+    state.orderedWrapperArts=nextOrderedWrapperArts;
+  }else if(Object.keys(state.orderedWrapperArts||{}).length){
+    ghDirty=true;
+  }
   if(remoteMonitor){
     const localStamp=state.monitorPreferencesUpdatedAt;
     const useRemote=!firstConnect||!localStamp||!!remoteMonitor.updatedAt&&remoteMonitor.updatedAt>=localStamp;
@@ -1611,19 +2091,29 @@ async function ghPush(unloading){if(!gh.token||gh.busy)return;gh.busy=true;
     const extraGroups={};
     for(const[k,v]of Object.entries(state.extras||{})){if(Number(v)<=0)continue;
       const cl=k.split("|")[0];(extraGroups[cl]=extraGroups[cl]||{})[k]=Number(v);}
+    const orderedGroups={};
+    for(const[k,v]of Object.entries(state.ordered||{})){if(Number(v)<=0)continue;
+      const cl=k.split("|")[0];(orderedGroups[cl]=orderedGroups[cl]||{})[k]=Number(v);}
     const legacyGroups={};
     for(const[k,v]of Object.entries(state.legacyChecksV1||{})){if(!v)continue;
       const cl=k.split("|")[0];(legacyGroups[cl]=legacyGroups[cl]||{})[k]=v;}
-    const clIds=new Set([...Object.keys(gh.ids),...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(legacyGroups)]);
+    const localWrapperArts=normalizeWrapperArts(state.wrapperArts),localOrderedWrapperArts=normalizeWrapperArts(state.orderedWrapperArts);
+    const clIds=new Set([...Object.keys(gh.ids),...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(orderedGroups),...Object.keys(legacyGroups)]);
+    if(Object.keys(localWrapperArts).length)clIds.add(WRAPPER_ART_GIST_CHECKLIST);
+    if(Object.keys(localOrderedWrapperArts).length)clIds.add(WRAPPER_ART_GIST_CHECKLIST);
     if(state.monitorPreferencesUpdatedAt)clIds.add(MONITOR_GIST_CHECKLIST);
-    for(const cl of clIds){const checks=groups[cl]||{},extras=extraGroups[cl]||{},legacy=legacyGroups[cl]||{};
+    for(const cl of clIds){const checks=groups[cl]||{},extras=extraGroups[cl]||{},ordered=orderedGroups[cl]||{},legacy=legacyGroups[cl]||{};
       const monitorFields=cl===MONITOR_GIST_CHECKLIST?monitorGistFields():null;
-      const snap=monitorGistSnapshot(cl,checks,extras,monitorFields);
+      const wrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST?localWrapperArts:undefined;
+      const orderedWrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST?localOrderedWrapperArts:undefined;
+      const snap=monitorGistSnapshot(cl,checks,extras,monitorFields,wrapperArts,ordered,orderedWrapperArts);
       if(gh.snap[cl]===snap&&gh.ids[cl])continue;            // unchanged → skip
       const title=titleFor(cl);
-      const payload={checklist:cl,title,keyVersion:2,checks,extras,legacyChecksV1:legacy,
+      const payload={checklist:cl,title,keyVersion:2,checks,extras,ordered,legacyChecksV1:legacy,
         updatedAt:new Date().toISOString()};
       if(monitorFields)Object.assign(payload,monitorFields);
+      if(wrapperArts!==undefined)payload.wrapperArts=wrapperArts;
+      if(orderedWrapperArts!==undefined)payload.orderedWrapperArts=orderedWrapperArts;
       const body={description:"MTG Binder · "+title,
         files:{[fileFor(cl)]:{content:JSON.stringify(payload,null,2)}}};
       if(gh.ids[cl]){await fetch(GH_API+"/gists/"+gh.ids[cl],
@@ -1777,6 +2267,103 @@ function saveMonitoringPreferences(){
   toast(changed?'Monitoring preferences saved':'Monitoring preferences unchanged');
 }
 
+/* ---- photo identification ----
+   The dashboard owns capture, catalog mapping, and explicit quantity controls.
+   The extension owns the remembered API key and provider call. The model never
+   receives collection state and cannot mutate it; returned candidate IDs are
+   accepted only when they already exist in RECOGNITION_BY_ID. */
+let identifyPreviewUrl='',identifyLastResult=null,identifyBusy=false;
+function identifyOwned(candidate){
+  if(candidate.kind==='wrapper_art')return wrapperArtQuantity(candidate.art.id);
+  return collectionOwnership(candidate.cl,candidate.it,candidate.record).owned;
+}
+function adjustIdentifiedCandidate(candidate,delta,focusSide){
+  if(candidate.kind==='wrapper_art')changeWrapperArtQuantity(candidate.art.id,delta);
+  else if(Object.prototype.hasOwnProperty.call(candidate.record,'slotOrdinal'))
+    changeSlotQuantity(candidate.cl.id,candidate.it,candidate.record.slotOrdinal,delta);
+  else{
+    const group=groupedSlots(candidate.it).find(value=>value.n===candidate.record.slotGroup);
+    if(!group){toast('This product is not mapped to a quantity control');return;}
+    changeQuantity(candidate.cl.id,candidate.it,group,delta);
+  }
+  renderIdentifyResults(identifyLastResult,candidate.candidateId,focusSide);
+}
+function identifyReference(candidate){
+  if(candidate.imageUrl){
+    const img=document.createElement('img');img.src=candidate.imageUrl;img.alt='Reference for '+candidate.public.label;
+    img.loading='lazy';img.decoding='async';img.onerror=()=>{const fallback=document.createElement('span');fallback.className='identify-result-fallback';fallback.textContent='Reference unavailable';img.replaceWith(fallback);};
+    return img;
+  }
+  const fallback=document.createElement('span');fallback.className='identify-result-fallback';fallback.textContent='No reference image';return fallback;
+}
+function renderIdentifyResults(result,focusId,focusSide){
+  identifyLastResult=result;
+  const host=document.getElementById('identifyResults'),stateEl=document.getElementById('identifyState');host.innerHTML='';
+  if(!result||!result.matches||!result.matches.length){
+    const observation=result&&result.observation;
+    stateEl.textContent=observation&&observation.status==='not_tcg'
+      ?'This does not appear to be a sealed TCG product.'
+      :'No exact catalog match was confident enough. Try a straight-on photo with the set name, booster type, and full wrapper artwork visible.';
+    return;
+  }
+  const observation=result.observation||{};
+  const observed=[observation.setName,observation.boosterType,observation.variantName].filter(Boolean).join(' · ');
+  stateEl.textContent=(result.status==='matched'?'Identified':'Possible matches')+(observed?' · '+observed:'')+'. Verify the reference, then use − or + to change your quantity.';
+  result.matches.forEach((match,index)=>{
+    const candidate=RECOGNITION_BY_ID.get(match.candidateId);if(!candidate)return;
+    const owned=identifyOwned(candidate),card=document.createElement('div');card.className='identify-result'+(index===0?' best':'');
+    card.appendChild(identifyReference(candidate));
+    const copy=document.createElement('div');copy.className='identify-result-copy';
+    const label=document.createElement('b');label.textContent=candidate.public.label;
+    const confidence=document.createElement('span');confidence.className='identify-confidence';confidence.textContent=match.confidence+'% confidence'+(index===0?' · best match':'');
+    const reason=document.createElement('span');reason.textContent=String(match.reason||'Catalog-constrained visual match').slice(0,240);
+    copy.appendChild(label);copy.appendChild(confidence);copy.appendChild(reason);
+    if(candidate.kind==='wrapper_art'){
+      const evidence=document.createElement('span'),status=wrapperArtStatusLabel(candidate.art);
+      evidence.textContent=candidate.art.id+' · '+status.text;evidence.className='wrapperart-status '+status.kind;copy.appendChild(evidence);
+    }
+    const ctrl=document.createElement('div');ctrl.className='variantqty';ctrl.dataset.identifyCandidate=candidate.candidateId;
+    const minus=document.createElement('button');minus.type='button';minus.className='variantqtybtn minus';minus.textContent='−';minus.disabled=owned===0;
+    minus.setAttribute('aria-label','Remove one '+candidate.public.label);minus.onclick=()=>adjustIdentifiedCandidate(candidate,-1,'minus');
+    const num=document.createElement('span');num.className='variantqtynum'+(owned>0?' met':'');num.textContent=owned;num.setAttribute('aria-label',owned+' owned of '+candidate.public.label);
+    const plus=document.createElement('button');plus.type='button';plus.className='variantqtybtn plus';plus.textContent='+';
+    plus.setAttribute('aria-label','Add one '+candidate.public.label);plus.onclick=()=>adjustIdentifiedCandidate(candidate,1,'plus');
+    ctrl.appendChild(minus);ctrl.appendChild(num);ctrl.appendChild(plus);
+    card.appendChild(copy);card.appendChild(ctrl);host.appendChild(card);
+  });
+  if(focusId&&focusSide){
+    const ctrl=host.querySelector('[data-identify-candidate="'+CSS.escape(focusId)+'"]');
+    const target=ctrl&&(ctrl.querySelector('.'+focusSide+':not(:disabled)')||ctrl.querySelector('.variantqtynum'));
+    if(target)try{target.focus({preventScroll:true});}catch(e){target.focus();}
+  }
+}
+function imageBlobData(blob){
+  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');reader.onerror=()=>reject(new Error('Could not read the resized photo.'));reader.readAsDataURL(blob);});
+}
+async function prepareIdentifyImage(file){
+  if(!file||!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Choose a JPEG, PNG, or WebP photo.');
+  if(file.size>20*1024*1024)throw new Error('Choose a photo smaller than 20 MB.');
+  let bitmap;
+  try{bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});}catch(e){bitmap=await createImageBitmap(file);}
+  const maxDimension=1600,scale=Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));
+  const width=Math.max(1,Math.round(bitmap.width*scale)),height=Math.max(1,Math.round(bitmap.height*scale));
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  const context=canvas.getContext('2d',{alpha:false});context.fillStyle='#fff';context.fillRect(0,0,width,height);context.drawImage(bitmap,0,0,width,height);bitmap.close&&bitmap.close();
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('Could not resize the photo.')),'image/jpeg',.86));
+  if(identifyPreviewUrl)URL.revokeObjectURL(identifyPreviewUrl);identifyPreviewUrl=URL.createObjectURL(blob);
+  document.getElementById('identifyPreview').src=identifyPreviewUrl;
+  return {mimeType:'image/jpeg',dataBase64:await imageBlobData(blob),width,height};
+}
+async function identifyFile(file){
+  const modal=document.getElementById('identifyModal'),another=document.getElementById('identifyAnother');
+  modal.classList.add('show');identifyBusy=true;another.disabled=true;identifyLastResult=null;
+  document.getElementById('identifyResults').innerHTML='';document.getElementById('identifyState').textContent='Preparing and analyzing the photo…';
+  try{const image=await prepareIdentifyImage(file),result=await identifyRequest(image);renderIdentifyResults(result);}
+  catch(error){document.getElementById('identifyState').textContent=String(error&&error.message||error||'Photo identification failed.');}
+  finally{identifyBusy=false;another.disabled=false;}
+}
+function closeIdentify(){document.getElementById('identifyModal').classList.remove('show');}
+
 /* ---- wire up ---- */
 function openSync(){
   const info=document.getElementById('driveInfo'),act=document.getElementById('modalActions'),
@@ -1871,6 +2458,11 @@ on('driveModal','click',(e)=>{ if(e.target.id==='driveModal')e.target.classList.
 on('monitorModal','click',(e)=>{ if(e.target.id==='monitorModal')e.target.classList.remove('show'); });
 on('monitorClose','click',()=>document.getElementById('monitorModal').classList.remove('show'));
 on('monitorSave','click',saveMonitoringPreferences);
+on('identifyBtn','click',()=>{if(!pricingConsumerOrigin){toast('Open the dashboard inside the Tracker extension to identify photos');return;}document.getElementById('identifyFile').click();});
+on('identifyAnother','click',()=>{if(!identifyBusy)document.getElementById('identifyFile').click();});
+on('identifyClose','click',closeIdentify);
+on('identifyModal','click',(e)=>{if(e.target.id==='identifyModal'&&!identifyBusy)closeIdentify();});
+on('identifyFile','change',(e)=>{const file=e.target.files&&e.target.files[0];e.target.value='';if(file)identifyFile(file);});
 on('drivePill','click',openSync);
 document.getElementById('exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -1928,7 +2520,9 @@ ghBoot();
 
 import datetime
 BUILD = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-out = HTML.replace("/*__DATA__*/", DATA).replace("__BUILD__", BUILD)
+out = (HTML.replace("/*__DATA__*/", DATA)
+       .replace("/*__WRAPPER_ART__*/", WRAPPER_ART)
+       .replace("__BUILD__", BUILD))
 targets=[
     os.path.join(ROOT,"mtg_binder_app.html"),
     os.path.join(ROOT,"index.html"),

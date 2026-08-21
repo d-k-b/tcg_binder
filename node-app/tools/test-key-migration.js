@@ -54,6 +54,8 @@ const result = JSON.parse(vm.runInContext(`JSON.stringify({
     (it.images||[]).map(image => ({checklist:cl.id, ...image}))))),
   pricingProducts: DATA.checklists.flatMap(cl => cl.eras.flatMap(e => e.items.flatMap(it =>
     (it.pricingProducts||[]).map(product => ({checklist:cl.id,item:it.name,...product}))))),
+  wrapperArtSets: WRAPPER_ART_CATALOG.sets,
+  wrapperMappedCodes: DATA.checklists.find(cl=>cl.id==='packs').eras.flatMap(e=>e.items).map(it=>it.code),
   firstKey: keyFor(DATA.checklists[0].id, DATA.checklists[0].eras[0].items[0], 0)
 })`, context));
 
@@ -73,6 +75,14 @@ ok(result.allKeys.length === 950 && new Set(result.allKeys).size === 950,
   'all 950 required and bonus inventory keys are unique');
 ok(result.requiredKeys.length === 910 && new Set(result.requiredKeys).size === 910,
   'keeps the collection goal at 910 required targets');
+ok(Object.keys(result.state.wrapperArts).length === 0,
+  'loads older saved state into an empty, separate wrapper-art namespace');
+ok(Object.keys(result.state.ordered).length === 0 && Object.keys(result.state.orderedWrapperArts).length === 0,
+  'loads older saved state with empty, separate incoming-quantity namespaces');
+ok(result.wrapperArtSets.length === 96 && result.wrapperArtSets.reduce((n, set) => n + set.artworks.length, 0) === 378,
+  'embeds the reviewed 96-set / 378-front wrapper-art catalog');
+ok(result.wrapperArtSets.every(set => result.wrapperMappedCodes.includes(set.setCode)),
+  'exposes every catalog set in a matching Packs row, including three wrapper-only rows');
 ok(result.productImages.length === 33 &&
    result.productImages.every(image => /^(MTG Wiki|TCGplayer)$/.test(image.source)),
   'embeds only the 33 trusted sealed-product image mappings');
@@ -91,6 +101,33 @@ ok(result.pricingProducts.some(product => product.ref.unit === 'pack') &&
    result.pricingProducts.some(product => product.ref.unit === 'display') &&
    result.pricingProducts.some(product => product.ref.unit === 'kit'),
   'keeps packs, displays, and kits distinct in pricing identities');
+
+const wrapperArtAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
+  const packs=DATA.checklists.find(x=>x.id==='packs');
+  const collector=DATA.checklists.find(x=>x.id==='collector');
+  const item=packs.eras.flatMap(e=>e.items).find(it=>it.code==='4ED');
+  const regular2xm=packs.eras.flatMap(e=>e.items).find(it=>it.name==='Double Masters');
+  const vip2xm=packs.eras.flatMap(e=>e.items).find(it=>it.name==='Double Masters VIP Edition');
+  const wrapperSet=wrapperArtSetFor(packs.id,item),key=wrapperArtKey(wrapperSet.artworks[0].id);
+  const progressBefore=clProgress(packs);
+  state.wrapperArts[key]=3;save();
+  const persisted=JSON.parse(localStorage.getItem(KEY));
+  const restored=migrateState(JSON.parse(JSON.stringify(persisted)));
+  const progressAfter=clProgress(packs);
+  return {key,owned:restored.wrapperArts[key],count:wrapperSet.artworks.filter(art=>restored.wrapperArts[wrapperArtKey(art.id)]).length,
+    packMatch:wrapperSet.setCode,collectorMatch:wrapperArtSetFor(collector.id,item),
+    regular2xm:wrapperArtSetFor(packs.id,regular2xm)&&wrapperArtSetFor(packs.id,regular2xm).setCode,
+    vip2xm:wrapperArtSetFor(packs.id,vip2xm),
+    progressBefore,progressAfter};
+})())`, context));
+ok(wrapperArtAudit.key === 'packs|wrapper-art|4ED-1' && wrapperArtAudit.owned === 3 && wrapperArtAudit.count === 1,
+  'persists wrapper quantities under the stable packs|wrapper-art|SET-N namespace');
+ok(wrapperArtAudit.packMatch === '4ED' && wrapperArtAudit.collectorMatch === null,
+  'attaches wrapper art only to its matching Packs row, never another checklist');
+ok(wrapperArtAudit.regular2xm === '2XM' && wrapperArtAudit.vip2xm === null,
+  'attaches 2XM art to the regular Draft row but not the same-code VIP row');
+ok(JSON.stringify(wrapperArtAudit.progressBefore) === JSON.stringify(wrapperArtAudit.progressAfter),
+  'keeps wrapper-art ownership outside required pack and overall completion');
 
 const monitorPreferencesAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const normalized=normalizeMonitorPreferences({enabled:false,maxMarketRatio:.75,minimumConfidence:'high',
