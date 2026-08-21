@@ -106,13 +106,15 @@ regular Packs row details, including three zero-slot wrapper-only rows; the same
 the 2XM missing-image fallback remains visible, toggles persist across reload, and
 the collection stays at 910 required targets / 950 inventory slots.
 Incoming-order tracking was regenerated and HTTP-browser-verified on build
-`2026-08-20 21:19`: ordered-only copies remain outside owned completion, acquiring
+`2026-08-20 22:30`: ordered-only copies remain outside owned completion, acquiring
 an additional owned copy leaves the order intact, and Receive transfers exactly one
 copy from ordered to owned. The compact package badge and package-into-hand Receive
 control were exercised at desktop, 390px, and 360px with persisted reload state and
 no horizontal overflow. Completed rows remain subdued at rest, but their quantity,
 ordered, and Receive controls return to full opacity on hover or keyboard focus. The
-full offline suite, including Gist and key migration coverage, passed.
+360px and 390px layouts keep the ordered tray directly adjacent to the owned plus
+button, avoiding a hover dead zone while omitting the redundant package icon. The full
+offline suite, including Gist and key migration coverage, passed.
 
 ---
 

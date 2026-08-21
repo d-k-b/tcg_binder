@@ -488,10 +488,11 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 @media(max-width:620px){
   .val{display:none}.tab{min-width:150px}.brand p{display:none}
   .row{gap:8px;padding-left:5px;padding-right:5px}
-  /* On phones, keep the temporary incoming tray clear of the set name by
-     docking it against the row's right edge. It still floats, so rows never
-     grow or shift while quantities are adjusted. */
-  .ordertray{left:calc(100vw - 187px)}
+  /* Keep the phone tray contiguous with the owned + button so pointer hover
+     cannot fall through the row before reaching the ordered actions. The
+     amber badge already supplies the package cue, so omit the duplicate icon. */
+  .ordertray{left:58px}
+  .ordertray .ordericon{display:none}
   .checkgrid{grid-template-columns:repeat(var(--n),38px);gap:5px}
   .checkgrid .slotlab{font-size:7px;white-space:normal;overflow-wrap:anywhere;
     line-height:1.05;text-align:center;min-height:15px;display:grid;place-items:end center}
