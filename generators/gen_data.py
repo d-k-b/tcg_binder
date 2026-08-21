@@ -424,7 +424,7 @@ data = {
     "eras":box_eras()},
    dict(build("packs","MTG Booster Packs",
          "Two of every booster pack, for every set — one pair per pack type that set was sold in. "
-         "Open details on sets with multiple pack types to adjust each named type independently. Wrapper art variants are not tracked separately.",
+         "Open details on sets with multiple pack types to adjust each named type independently. Optional wrapper artwork checklists live inside matching row details and do not affect completion.",
          packs.ERAS, pack_items), progressMode="group_variants"),
    dict(build("prerelease","MTG Prerelease Packs",
          "One of every distinct sealed prerelease pack or kit variant. Named guild, clan, faction, color, character, and college versions each count once; duplicate copies are tracked but do not increase completion. "

@@ -1,0 +1,97 @@
+set_code,set_name,release_year,art_count
+4ED,Fourth Edition,1995,5
+ICE,Ice Age,1995,5
+MIR,Mirage,1996,5
+5ED,Fifth Edition,1997,5
+POR,Portal,1997,4
+TMP,Tempest,1997,3
+USG,Urza's Saga,1998,3
+MMQ,Mercadian Masques,1999,3
+INV,Invasion,2000,3
+7ED,Seventh Edition,2001,5
+ODY,Odyssey,2001,3
+ONS,Onslaught,2002,5
+LGN,Legions,2003,3
+SCG,Scourge,2003,3
+8ED,Eighth Edition,2003,5
+MRD,Mirrodin,2003,5
+DST,Darksteel,2004,3
+5DN,Fifth Dawn,2004,3
+CHK,Champions of Kamigawa,2004,5
+UNH,Unhinged,2004,3
+BOK,Betrayers of Kamigawa,2005,3
+SOK,Saviors of Kamigawa,2005,3
+9ED,Ninth Edition,2005,5
+RAV,Ravnica: City of Guilds,2005,5
+GPT,Guildpact,2006,3
+DIS,Dissension,2006,3
+CSP,Coldsnap,2006,3
+TSP,Time Spiral,2006,5
+PLC,Planar Chaos,2007,3
+FUT,Future Sight,2007,3
+10E,Tenth Edition,2007,5
+LRW,Lorwyn,2007,5
+MOR,Morningtide,2008,3
+SHM,Shadowmoor,2008,5
+EVE,Eventide,2008,3
+ALA,Shards of Alara,2008,5
+CON,Conflux,2009,3
+ARB,Alara Reborn,2009,3
+M10,Magic 2010,2009,5
+ZEN,Zendikar,2009,5
+WWK,Worldwake,2010,3
+ROE,Rise of the Eldrazi,2010,5
+M11,Magic 2011,2010,5
+SOM,Scars of Mirrodin,2010,5
+MBS,Mirrodin Besieged,2011,3
+NPH,New Phyrexia,2011,3
+M12,Magic 2012,2011,5
+ISD,Innistrad,2011,5
+DKA,Dark Ascension,2012,3
+AVR,Avacyn Restored,2012,5
+M13,Magic 2013,2012,5
+RTR,Return to Ravnica,2012,5
+GTC,Gatecrash,2013,5
+DGM,Dragon's Maze,2013,3
+MMA,Modern Masters,2013,3
+M14,Magic 2014,2013,5
+THS,Theros,2013,5
+BNG,Born of the Gods,2014,3
+JOU,Journey into Nyx,2014,3
+CNS,Conspiracy,2014,3
+M15,Magic 2015,2014,5
+KTK,Khans of Tarkir,2014,5
+FRF,Fate Reforged,2015,3
+MM2,Modern Masters 2015,2015,3
+DTK,Dragons of Tarkir,2015,5
+ORI,Magic Origins,2015,5
+BFZ,Battle for Zendikar,2015,5
+OGW,Oath of the Gatewatch,2016,4
+SOI,Shadows over Innistrad,2016,5
+EMA,Eternal Masters,2016,3
+EMN,Eldritch Moon,2016,3
+CN2,Conspiracy: Take the Crown,2016,3
+KLD,Kaladesh,2016,5
+AER,Aether Revolt,2017,3
+MM3,Modern Masters 2017,2017,3
+AKH,Amonkhet,2017,5
+HOU,Hour of Devastation,2017,5
+IMA,Iconic Masters,2017,3
+XLN,Ixalan,2017,5
+UST,Unstable,2017,3
+RIX,Rivals of Ixalan,2018,5
+A25,Masters 25,2018,3
+DOM,Dominaria,2018,5
+BBD,Battlebond,2018,3
+M19,Core Set 2019,2018,5
+GRN,Guilds of Ravnica,2018,5
+UMA,Ultimate Masters,2018,3
+RNA,Ravnica Allegiance,2019,5
+WAR,War of the Spark,2019,3
+MH1,Modern Horizons,2019,3
+M20,Core Set 2020,2019,3
+ELD,Throne of Eldraine,2019,3
+THB,Theros Beyond Death,2020,3
+IKO,Ikoria: Lair of Behemoths,2020,3
+M21,Core Set 2021,2020,3
+2XM,Double Masters,2020,3
