@@ -453,10 +453,11 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 @media(max-width:620px){
   .val{display:none}.tab{min-width:150px}.brand p{display:none}
   .row{gap:8px;padding-left:5px;padding-right:5px}
-  /* On phones, keep the temporary incoming tray clear of the set name by
-     docking it against the row's right edge. It still floats, so rows never
-     grow or shift while quantities are adjusted. */
-  .ordertray{left:calc(100vw - 187px)}
+  /* Keep the phone tray contiguous with the owned + button so pointer hover
+     cannot fall through the row before reaching the ordered actions. The
+     amber badge already supplies the package cue, so omit the duplicate icon. */
+  .ordertray{left:58px}
+  .ordertray .ordericon{display:none}
   .checkgrid{grid-template-columns:repeat(var(--n),38px);gap:5px}
   .checkgrid .slotlab{font-size:7px;white-space:normal;overflow-wrap:anywhere;
     line-height:1.05;text-align:center;min-height:15px;display:grid;place-items:end center}
@@ -483,7 +484,7 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
  <div class="top-in">
    <div class="brand">
      <div class="logo">M</div>
-     <div><h1>MTG Sealed Collecting Binder</h1><p>Live checklist &bull; auto-saved &bull; build 2026-08-20 21:19</p></div>
+     <div><h1>MTG Sealed Collecting Binder</h1><p>Live checklist &bull; auto-saved &bull; build 2026-08-20 22:30</p></div>
    </div>
    <div class="spacer"></div>
    <div class="hright">
@@ -1937,7 +1938,7 @@ function updateOverall(){
 }
 
 /* ---- GitHub Gist sync — runs entirely in this browser ---- */
-const BUILD="2026-08-20 21:19";
+const BUILD="2026-08-20 22:30";
 const GH_KEY="mtgBinder_gh", GH_API="https://api.github.com";
 /* The whole connection is persisted, not just the token — so a refresh restores
    the username, the gist ids and the "synced Xm ago" state instead of looking
