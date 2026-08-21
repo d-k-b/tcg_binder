@@ -1,0 +1,3462 @@
+{
+  "schema": "mtg-booster-wrapper-art-catalog/v1",
+  "catalogAsOf": "2026-08-14",
+  "scope": {
+    "language": "English",
+    "product": "regular retail booster pack",
+    "range": "Revised onward through Double Masters (2020)",
+    "filter": "sets with more than one distinct wrapper-art front",
+    "exclusions": [
+      "single-art or non-card-art wrappers",
+      "Collector, Set, Theme, VIP, faction, promo, sample, and outer sleeved packaging"
+    ]
+  },
+  "totals": {
+    "sets": 96,
+    "artworks": 378,
+    "imageStatusCounts": {
+      "exact_individual": 366,
+      "group_reference": 6,
+      "review_only": 3,
+      "pending_image_source": 3
+    }
+  },
+  "sources": {
+    "countManifest": "https://raw.githubusercontent.com/Card-Forge/forge/master/forge-gui/res/lists/booster-images.txt",
+    "imageRepository": "https://github.com/Card-Forge/forge-extras/tree/main/images/boosters",
+    "boosterReference": "https://mtg.fandom.com/wiki/Booster_pack",
+    "portalReference": "https://mtg.fandom.com/wiki/Portal",
+    "unstableReference": "https://mtg.fandom.com/wiki/Unstable",
+    "battlebondReference": "https://mtg.fandom.com/wiki/Battlebond",
+    "doubleMastersReference": "https://mtg.fandom.com/wiki/Double_Masters",
+    "marketWorkbook": "outputs/019fe7d2-ce14-7c22-83f9-375a014d5e3a/MTG_Booster_Wrapper_Art_Budget_2026-08-14.xlsx"
+  },
+  "sets": [
+    {
+      "setCode": "4ED",
+      "setName": "Fourth Edition",
+      "releaseYear": 1995,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "4ED-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/4ED_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "4ED-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/4ED_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "4ED-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/4ED_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "4ED-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/4ED_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "4ED-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/4ED_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ICE",
+      "setName": "Ice Age",
+      "releaseYear": 1995,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "ICE-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ICE_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ICE-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ICE_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ICE-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ICE_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ICE-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ICE_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ICE-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ICE_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MIR",
+      "setName": "Mirage",
+      "releaseYear": 1996,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "MIR-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MIR_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MIR-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MIR_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MIR-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MIR_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MIR-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MIR_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MIR-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MIR_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "5ED",
+      "setName": "Fifth Edition",
+      "releaseYear": 1997,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "5ED-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/5ED_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "5ED-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/5ED_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "5ED-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/5ED_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "5ED-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/5ED_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "5ED-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/5ED_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "POR",
+      "setName": "Portal",
+      "releaseYear": 1997,
+      "artCount": 4,
+      "artworks": [
+        {
+          "id": "POR-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/POR_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "POR-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/POR_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "POR-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/POR_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "POR-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/POR_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ],
+      "validationNote": "The acquisition count is four English fronts. Forge also exposes POR_5.jpg; verify the four physical fronts against the dedicated Portal reference before production labeling."
+    },
+    {
+      "setCode": "TMP",
+      "setName": "Tempest",
+      "releaseYear": 1997,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "TMP-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/TMP_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "TMP-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/TMP_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "TMP-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/TMP_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "USG",
+      "setName": "Urza's Saga",
+      "releaseYear": 1998,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "USG-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/USG_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "USG-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/USG_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "USG-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/USG_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MMQ",
+      "setName": "Mercadian Masques",
+      "releaseYear": 1999,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "MMQ-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MMQ_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MMQ-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MMQ_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MMQ-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MMQ_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "INV",
+      "setName": "Invasion",
+      "releaseYear": 2000,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "INV-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/INV_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "INV-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/INV_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "INV-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/INV_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "7ED",
+      "setName": "Seventh Edition",
+      "releaseYear": 2001,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "7ED-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/7ED_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "7ED-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/7ED_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "7ED-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/7ED_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "7ED-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/7ED_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "7ED-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/7ED_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ODY",
+      "setName": "Odyssey",
+      "releaseYear": 2001,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "ODY-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ODY_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ODY-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ODY_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ODY-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ODY_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ONS",
+      "setName": "Onslaught",
+      "releaseYear": 2002,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "ONS-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ONS_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ONS-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ONS_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ONS-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ONS_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ONS-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ONS_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ONS-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ONS_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "LGN",
+      "setName": "Legions",
+      "releaseYear": 2003,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "LGN-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/LGN_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "LGN-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/LGN_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "LGN-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/LGN_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "SCG",
+      "setName": "Scourge",
+      "releaseYear": 2003,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "SCG-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SCG_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SCG-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SCG_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SCG-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SCG_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "8ED",
+      "setName": "Eighth Edition",
+      "releaseYear": 2003,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "8ED-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/8ED_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "8ED-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/8ED_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "8ED-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/8ED_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "8ED-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/8ED_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "8ED-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/8ED_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MRD",
+      "setName": "Mirrodin",
+      "releaseYear": 2003,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "MRD-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MRD_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MRD-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MRD_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MRD-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MRD_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MRD-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MRD_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MRD-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MRD_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "DST",
+      "setName": "Darksteel",
+      "releaseYear": 2004,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "DST-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DST_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DST-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DST_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DST-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DST_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "5DN",
+      "setName": "Fifth Dawn",
+      "releaseYear": 2004,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "5DN-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/5DN_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "5DN-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/5DN_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "5DN-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/5DN_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "CHK",
+      "setName": "Champions of Kamigawa",
+      "releaseYear": 2004,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "CHK-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CHK_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CHK-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CHK_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CHK-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CHK_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CHK-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CHK_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CHK-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CHK_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "UNH",
+      "setName": "Unhinged",
+      "releaseYear": 2004,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "UNH-1",
+          "label": "Art 1",
+          "imageUrl": "https://i.ebayimg.com/images/g/-v8AAOSwjyBcfXlM/s-l1200.jpg",
+          "imageStatus": "group_reference",
+          "source": "curated_reference",
+          "positionHint": "left"
+        },
+        {
+          "id": "UNH-2",
+          "label": "Art 2",
+          "imageUrl": "https://i.ebayimg.com/images/g/-v8AAOSwjyBcfXlM/s-l1200.jpg",
+          "imageStatus": "group_reference",
+          "source": "curated_reference",
+          "positionHint": "center"
+        },
+        {
+          "id": "UNH-3",
+          "label": "Art 3",
+          "imageUrl": "https://i.ebayimg.com/images/g/-v8AAOSwjyBcfXlM/s-l1200.jpg",
+          "imageStatus": "group_reference",
+          "source": "curated_reference",
+          "positionHint": "right"
+        }
+      ],
+      "validationNote": "One reference photo contains all three fronts; create reviewed crops or replace with durable individual images before treating thumbnails as exact."
+    },
+    {
+      "setCode": "BOK",
+      "setName": "Betrayers of Kamigawa",
+      "releaseYear": 2005,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "BOK-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BOK_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "BOK-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BOK_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "BOK-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BOK_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "SOK",
+      "setName": "Saviors of Kamigawa",
+      "releaseYear": 2005,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "SOK-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOK_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOK-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOK_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOK-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOK_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "9ED",
+      "setName": "Ninth Edition",
+      "releaseYear": 2005,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "9ED-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/9ED_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "9ED-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/9ED_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "9ED-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/9ED_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "9ED-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/9ED_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "9ED-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/9ED_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "RAV",
+      "setName": "Ravnica: City of Guilds",
+      "releaseYear": 2005,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "RAV-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RAV_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RAV-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RAV_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RAV-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RAV_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RAV-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RAV_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RAV-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RAV_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "GPT",
+      "setName": "Guildpact",
+      "releaseYear": 2006,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "GPT-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GPT_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GPT-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GPT_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GPT-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GPT_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "DIS",
+      "setName": "Dissension",
+      "releaseYear": 2006,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "DIS-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DIS_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DIS-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DIS_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DIS-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DIS_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "CSP",
+      "setName": "Coldsnap",
+      "releaseYear": 2006,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "CSP-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CSP_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CSP-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CSP_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CSP-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CSP_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "TSP",
+      "setName": "Time Spiral",
+      "releaseYear": 2006,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "TSP-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/TSP_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "TSP-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/TSP_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "TSP-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/TSP_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "TSP-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/TSP_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "TSP-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/TSP_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "PLC",
+      "setName": "Planar Chaos",
+      "releaseYear": 2007,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "PLC-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/PLC_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "PLC-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/PLC_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "PLC-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/PLC_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "FUT",
+      "setName": "Future Sight",
+      "releaseYear": 2007,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "FUT-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/FUT_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "FUT-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/FUT_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "FUT-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/FUT_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "10E",
+      "setName": "Tenth Edition",
+      "releaseYear": 2007,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "10E-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/10E_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "10E-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/10E_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "10E-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/10E_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "10E-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/10E_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "10E-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/10E_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "LRW",
+      "setName": "Lorwyn",
+      "releaseYear": 2007,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "LRW-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/LRW_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "LRW-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/LRW_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "LRW-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/LRW_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "LRW-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/LRW_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "LRW-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/LRW_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MOR",
+      "setName": "Morningtide",
+      "releaseYear": 2008,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "MOR-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MOR_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MOR-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MOR_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MOR-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MOR_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "SHM",
+      "setName": "Shadowmoor",
+      "releaseYear": 2008,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "SHM-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SHM_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SHM-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SHM_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SHM-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SHM_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SHM-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SHM_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SHM-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SHM_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "EVE",
+      "setName": "Eventide",
+      "releaseYear": 2008,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "EVE-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EVE_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "EVE-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EVE_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "EVE-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EVE_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ALA",
+      "setName": "Shards of Alara",
+      "releaseYear": 2008,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "ALA-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ALA_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ALA-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ALA_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ALA-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ALA_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ALA-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ALA_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ALA-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ALA_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "CON",
+      "setName": "Conflux",
+      "releaseYear": 2009,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "CON-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CON_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CON-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CON_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CON-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CON_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ARB",
+      "setName": "Alara Reborn",
+      "releaseYear": 2009,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "ARB-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ARB_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ARB-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ARB_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ARB-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ARB_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "M10",
+      "setName": "Magic 2010",
+      "releaseYear": 2009,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "M10-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M10_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M10-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M10_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M10-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M10_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M10-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M10_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M10-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M10_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ZEN",
+      "setName": "Zendikar",
+      "releaseYear": 2009,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "ZEN-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ZEN_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ZEN-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ZEN_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ZEN-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ZEN_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ZEN-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ZEN_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ZEN-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ZEN_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "WWK",
+      "setName": "Worldwake",
+      "releaseYear": 2010,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "WWK-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/WWK_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "WWK-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/WWK_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "WWK-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/WWK_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ROE",
+      "setName": "Rise of the Eldrazi",
+      "releaseYear": 2010,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "ROE-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ROE_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ROE-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ROE_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ROE-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ROE_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ROE-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ROE_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ROE-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ROE_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "M11",
+      "setName": "Magic 2011",
+      "releaseYear": 2010,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "M11-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M11_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M11-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M11_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M11-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M11_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M11-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M11_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M11-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M11_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "SOM",
+      "setName": "Scars of Mirrodin",
+      "releaseYear": 2010,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "SOM-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOM_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOM-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOM_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOM-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOM_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOM-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOM_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOM-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOM_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MBS",
+      "setName": "Mirrodin Besieged",
+      "releaseYear": 2011,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "MBS-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MBS_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MBS-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MBS_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MBS-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MBS_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "NPH",
+      "setName": "New Phyrexia",
+      "releaseYear": 2011,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "NPH-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/NPH_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "NPH-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/NPH_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "NPH-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/NPH_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "M12",
+      "setName": "Magic 2012",
+      "releaseYear": 2011,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "M12-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M12_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M12-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M12_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M12-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M12_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M12-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M12_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M12-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M12_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ISD",
+      "setName": "Innistrad",
+      "releaseYear": 2011,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "ISD-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ISD_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ISD-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ISD_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ISD-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ISD_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ISD-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ISD_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ISD-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ISD_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "DKA",
+      "setName": "Dark Ascension",
+      "releaseYear": 2012,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "DKA-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DKA_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DKA-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DKA_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DKA-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DKA_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "AVR",
+      "setName": "Avacyn Restored",
+      "releaseYear": 2012,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "AVR-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AVR_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AVR-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AVR_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AVR-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AVR_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AVR-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AVR_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AVR-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AVR_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "M13",
+      "setName": "Magic 2013",
+      "releaseYear": 2012,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "M13-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M13_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M13-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M13_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M13-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M13_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M13-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M13_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M13-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M13_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "RTR",
+      "setName": "Return to Ravnica",
+      "releaseYear": 2012,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "RTR-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RTR_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RTR-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RTR_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RTR-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RTR_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RTR-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RTR_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RTR-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RTR_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "GTC",
+      "setName": "Gatecrash",
+      "releaseYear": 2013,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "GTC-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GTC_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GTC-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GTC_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GTC-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GTC_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GTC-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GTC_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GTC-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GTC_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "DGM",
+      "setName": "Dragon's Maze",
+      "releaseYear": 2013,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "DGM-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DGM_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DGM-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DGM_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DGM-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DGM_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MMA",
+      "setName": "Modern Masters",
+      "releaseYear": 2013,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "MMA-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MMA_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MMA-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MMA_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MMA-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MMA_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "M14",
+      "setName": "Magic 2014",
+      "releaseYear": 2013,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "M14-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M14_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M14-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M14_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M14-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M14_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M14-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M14_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M14-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M14_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "THS",
+      "setName": "Theros",
+      "releaseYear": 2013,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "THS-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/THS_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "THS-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/THS_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "THS-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/THS_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "THS-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/THS_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "THS-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/THS_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "BNG",
+      "setName": "Born of the Gods",
+      "releaseYear": 2014,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "BNG-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BNG_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "BNG-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BNG_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "BNG-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BNG_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "JOU",
+      "setName": "Journey into Nyx",
+      "releaseYear": 2014,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "JOU-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/JOU_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "JOU-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/JOU_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "JOU-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/JOU_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "CNS",
+      "setName": "Conspiracy",
+      "releaseYear": 2014,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "CNS-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CNS_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CNS-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CNS_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CNS-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CNS_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "M15",
+      "setName": "Magic 2015",
+      "releaseYear": 2014,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "M15-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M15_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M15-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M15_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M15-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M15_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M15-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M15_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M15-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M15_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "KTK",
+      "setName": "Khans of Tarkir",
+      "releaseYear": 2014,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "KTK-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KTK_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "KTK-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KTK_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "KTK-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KTK_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "KTK-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KTK_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "KTK-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KTK_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "FRF",
+      "setName": "Fate Reforged",
+      "releaseYear": 2015,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "FRF-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/FRF_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "FRF-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/FRF_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "FRF-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/FRF_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MM2",
+      "setName": "Modern Masters 2015",
+      "releaseYear": 2015,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "MM2-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MM2_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MM2-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MM2_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MM2-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MM2_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "DTK",
+      "setName": "Dragons of Tarkir",
+      "releaseYear": 2015,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "DTK-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DTK_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DTK-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DTK_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DTK-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DTK_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DTK-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DTK_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DTK-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DTK_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ORI",
+      "setName": "Magic Origins",
+      "releaseYear": 2015,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "ORI-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ORI_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ORI-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ORI_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ORI-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ORI_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ORI-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ORI_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ORI-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ORI_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "BFZ",
+      "setName": "Battle for Zendikar",
+      "releaseYear": 2015,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "BFZ-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BFZ_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "BFZ-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BFZ_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "BFZ-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BFZ_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "BFZ-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BFZ_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "BFZ-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/BFZ_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "OGW",
+      "setName": "Oath of the Gatewatch",
+      "releaseYear": 2016,
+      "artCount": 4,
+      "artworks": [
+        {
+          "id": "OGW-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/OGW_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "OGW-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/OGW_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "OGW-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/OGW_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "OGW-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/OGW_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "SOI",
+      "setName": "Shadows over Innistrad",
+      "releaseYear": 2016,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "SOI-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOI_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOI-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOI_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOI-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOI_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOI-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOI_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "SOI-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/SOI_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "EMA",
+      "setName": "Eternal Masters",
+      "releaseYear": 2016,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "EMA-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EMA_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "EMA-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EMA_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "EMA-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EMA_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "EMN",
+      "setName": "Eldritch Moon",
+      "releaseYear": 2016,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "EMN-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EMN_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "EMN-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EMN_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "EMN-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/EMN_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "CN2",
+      "setName": "Conspiracy: Take the Crown",
+      "releaseYear": 2016,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "CN2-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CN2_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CN2-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CN2_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "CN2-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/CN2_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "KLD",
+      "setName": "Kaladesh",
+      "releaseYear": 2016,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "KLD-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KLD_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "KLD-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KLD_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "KLD-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KLD_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "KLD-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KLD_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "KLD-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/KLD_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "AER",
+      "setName": "Aether Revolt",
+      "releaseYear": 2017,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "AER-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AER_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AER-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AER_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AER-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AER_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MM3",
+      "setName": "Modern Masters 2017",
+      "releaseYear": 2017,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "MM3-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MM3_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MM3-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MM3_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MM3-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MM3_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "AKH",
+      "setName": "Amonkhet",
+      "releaseYear": 2017,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "AKH-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AKH_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AKH-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AKH_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AKH-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AKH_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AKH-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AKH_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "AKH-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/AKH_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "HOU",
+      "setName": "Hour of Devastation",
+      "releaseYear": 2017,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "HOU-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/HOU_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "HOU-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/HOU_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "HOU-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/HOU_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "HOU-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/HOU_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "HOU-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/HOU_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "IMA",
+      "setName": "Iconic Masters",
+      "releaseYear": 2017,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "IMA-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ICO_1.png",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "IMA-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ICO_2.png",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "IMA-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ICO_3.png",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ],
+      "validationNote": "Forge uses the legacy filename prefix ICO for Iconic Masters."
+    },
+    {
+      "setCode": "XLN",
+      "setName": "Ixalan",
+      "releaseYear": 2017,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "XLN-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/XLN_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "XLN-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/XLN_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "XLN-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/XLN_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "XLN-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/XLN_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "XLN-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/XLN_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "UST",
+      "setName": "Unstable",
+      "releaseYear": 2017,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "UST-1",
+          "label": "Art 1",
+          "imageUrl": "https://www.radartoys.com/cdn/shop/products/Magic_The_Gathering_Unstable_Booster_Pack_Trading_Card_Game_d6f94dda-ed31-4fc5-b049-eacb2914ba95_grande.jpg?v=1546890040",
+          "imageStatus": "review_only",
+          "source": "curated_reference"
+        },
+        {
+          "id": "UST-2",
+          "label": "Art 2",
+          "imageUrl": "https://www.bazaargames.nl/images/products/480x427/bp_unstable_2.jpg",
+          "imageStatus": "review_only",
+          "source": "curated_reference"
+        },
+        {
+          "id": "UST-3",
+          "label": "Art 3",
+          "imageUrl": "https://www.bazaargames.nl/images/products/480x427/bp_unstable_3.jpg",
+          "imageStatus": "review_only",
+          "source": "curated_reference"
+        }
+      ],
+      "validationNote": "Three distinct retailer-hosted candidates; visually verify and replace with a durable source before production use."
+    },
+    {
+      "setCode": "RIX",
+      "setName": "Rivals of Ixalan",
+      "releaseYear": 2018,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "RIX-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RIX_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RIX-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RIX_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RIX-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RIX_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RIX-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RIX_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RIX-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RIX_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "A25",
+      "setName": "Masters 25",
+      "releaseYear": 2018,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "A25-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/A25_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "A25-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/A25_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "A25-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/A25_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "DOM",
+      "setName": "Dominaria",
+      "releaseYear": 2018,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "DOM-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DOM_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DOM-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DOM_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DOM-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DOM_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DOM-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DOM_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "DOM-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/DOM_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "BBD",
+      "setName": "Battlebond",
+      "releaseYear": 2018,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "BBD-1",
+          "label": "Art 1",
+          "imageUrl": "https://2.bp.blogspot.com/-ZRo-oOGkNDg/WvMdOnUSu_I/AAAAAAAAhiQ/J93CM43XmnkwCxYHfI0Rj2i5GpnkWqSXwCLcBGAs/s1600/mtg%2Bbattlebond%2Bbooster%2Bpkg.jpg",
+          "imageStatus": "group_reference",
+          "source": "curated_reference",
+          "positionHint": "top"
+        },
+        {
+          "id": "BBD-2",
+          "label": "Art 2",
+          "imageUrl": "https://2.bp.blogspot.com/-ZRo-oOGkNDg/WvMdOnUSu_I/AAAAAAAAhiQ/J93CM43XmnkwCxYHfI0Rj2i5GpnkWqSXwCLcBGAs/s1600/mtg%2Bbattlebond%2Bbooster%2Bpkg.jpg",
+          "imageStatus": "group_reference",
+          "source": "curated_reference",
+          "positionHint": "middle"
+        },
+        {
+          "id": "BBD-3",
+          "label": "Art 3",
+          "imageUrl": "https://2.bp.blogspot.com/-ZRo-oOGkNDg/WvMdOnUSu_I/AAAAAAAAhiQ/J93CM43XmnkwCxYHfI0Rj2i5GpnkWqSXwCLcBGAs/s1600/mtg%2Bbattlebond%2Bbooster%2Bpkg.jpg",
+          "imageStatus": "group_reference",
+          "source": "curated_reference",
+          "positionHint": "bottom"
+        }
+      ],
+      "validationNote": "One reference image contains all three fronts; create reviewed crops or replace with durable individual images."
+    },
+    {
+      "setCode": "M19",
+      "setName": "Core Set 2019",
+      "releaseYear": 2018,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "M19-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M19_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M19-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M19_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M19-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M19_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M19-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M19_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M19-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M19_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "GRN",
+      "setName": "Guilds of Ravnica",
+      "releaseYear": 2018,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "GRN-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GRN_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GRN-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GRN_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GRN-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GRN_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GRN-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GRN_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "GRN-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/GRN_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "UMA",
+      "setName": "Ultimate Masters",
+      "releaseYear": 2018,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "UMA-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/UMA_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "UMA-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/UMA_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "UMA-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/UMA_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "RNA",
+      "setName": "Ravnica Allegiance",
+      "releaseYear": 2019,
+      "artCount": 5,
+      "artworks": [
+        {
+          "id": "RNA-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RNA_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RNA-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RNA_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RNA-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RNA_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RNA-4",
+          "label": "Art 4",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RNA_4.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "RNA-5",
+          "label": "Art 5",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/RNA_5.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "WAR",
+      "setName": "War of the Spark",
+      "releaseYear": 2019,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "WAR-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/WAR_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "WAR-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/WAR_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "WAR-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/WAR_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "MH1",
+      "setName": "Modern Horizons",
+      "releaseYear": 2019,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "MH1-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MH1_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MH1-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MH1_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "MH1-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/MH1_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "M20",
+      "setName": "Core Set 2020",
+      "releaseYear": 2019,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "M20-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M20_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M20-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M20_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M20-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M20_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "ELD",
+      "setName": "Throne of Eldraine",
+      "releaseYear": 2019,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "ELD-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ELD_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ELD-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ELD_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "ELD-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/ELD_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "THB",
+      "setName": "Theros Beyond Death",
+      "releaseYear": 2020,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "THB-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/THB_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "THB-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/THB_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "THB-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/THB_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "IKO",
+      "setName": "Ikoria: Lair of Behemoths",
+      "releaseYear": 2020,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "IKO-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/IKO_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "IKO-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/IKO_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "IKO-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/IKO_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "M21",
+      "setName": "Core Set 2021",
+      "releaseYear": 2020,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "M21-1",
+          "label": "Art 1",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M21_1.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M21-2",
+          "label": "Art 2",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M21_2.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        },
+        {
+          "id": "M21-3",
+          "label": "Art 3",
+          "imageUrl": "https://raw.githubusercontent.com/Card-Forge/forge-extras/refs/heads/main/images/boosters/M21_3.jpg",
+          "imageStatus": "exact_individual",
+          "source": "forge-extras"
+        }
+      ]
+    },
+    {
+      "setCode": "2XM",
+      "setName": "Double Masters",
+      "releaseYear": 2020,
+      "artCount": 3,
+      "artworks": [
+        {
+          "id": "2XM-1",
+          "label": "Art 1",
+          "imageUrl": null,
+          "imageStatus": "pending_image_source",
+          "source": "pending"
+        },
+        {
+          "id": "2XM-2",
+          "label": "Art 2",
+          "imageUrl": null,
+          "imageStatus": "pending_image_source",
+          "source": "pending"
+        },
+        {
+          "id": "2XM-3",
+          "label": "Art 3",
+          "imageUrl": null,
+          "imageStatus": "pending_image_source",
+          "source": "pending"
+        }
+      ],
+      "validationNote": "The three Draft Booster fronts need a trustworthy image source; do not substitute VIP Edition or outer sleeved-pack art."
+    }
+  ]
+}

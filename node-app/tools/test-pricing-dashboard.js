@@ -68,7 +68,9 @@ function createContext(search, initialData = { checklists: [] }) {
     slotQuantity,
     ownedForGroup,
     itemComplete: (checklistId, item) => !!item.complete,
-    DATA: initialData, active: '',
+    DATA: initialData, WRAPPER_ART_CATALOG: { sets: [{ setCode: 'TST', setName: 'Test Set', artworks: [
+      { id: 'TST-1', label: 'Art 1', imageUrl: '', imageStatus: 'pending' },
+    ] }] }, active: '',
     save: () => { ownership.persistWrites += 1; },
     document: { getElementById: () => null },
   });

@@ -51,6 +51,17 @@ ID/token in `chrome.storage.local`; generated HTML, page `localStorage`, Gist st
 and debug state contain no pricing token. TCG Comps owns all marketplace fetches,
 matching, prompts, valuation math, and watch persistence.
 
+**Photo-identification boundary:** extension 1.4 adds a generator-owned
+camera/upload modal and an extension-owned BYOK OpenAI bridge on
+`tcg-product-identify/v1`. The dashboard re-encodes photos before sending them,
+supplies 686 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
+accepts only returned IDs that exist in that in-memory catalog. The extension
+remembers the user's key in private `chrome.storage.local` when **Remember on this
+device** is selected; the key never enters generated HTML, iframe messages,
+dashboard localStorage, Gists, exports, URLs, or diagnostics. Identification is
+suggestion-only. Collection quantities change only through the explicit −/+ controls
+shown beside a result.
+
 **Read first:** §1 (the collecting rules — they are the product), §2's data-model note
 on `slots[].g` and checkbox keys, then §4. §4 is not boilerplate; almost every entry
 in it is a bug that actually shipped, with the reason it was not obvious.
@@ -88,6 +99,20 @@ the desktop and 390x844 layouts have no horizontal overflow; the missing-extensi
 state shows a labeled static fallback and no watch controls. Offline generated-code
 tests also prove exact-origin/frame rejection, unauthorized and no-price handling,
 exact-product watch gating, and absence of the capability token from dashboard HTML.
+The optional booster wrapper-art inventory was regenerated and HTTP-browser-verified
+on build `2026-08-14 13:54`: all 378 stable fronts across 96 sets are reachable in
+regular Packs row details, including three zero-slot wrapper-only rows; the same-code
+2XM VIP row is excluded. Desktop, 390px, and 360px views have no horizontal overflow,
+the 2XM missing-image fallback remains visible, toggles persist across reload, and
+the collection stays at 910 required targets / 950 inventory slots.
+Incoming-order tracking was regenerated and HTTP-browser-verified on build
+`2026-08-20 21:19`: ordered-only copies remain outside owned completion, acquiring
+an additional owned copy leaves the order intact, and Receive transfers exactly one
+copy from ordered to owned. The compact package badge and package-into-hand Receive
+control were exercised at desktop, 390px, and 360px with persisted reload state and
+no horizontal overflow. Completed rows remain subdued at rest, but their quantity,
+ordered, and Receive controls return to full opacity on hover or keyboard focus. The
+full offline suite, including Gist and key migration coverage, passed.
 
 ---
 
@@ -100,7 +125,7 @@ change them without asking. Everything else is implementation detail.
 |---|---|---|---|---|
 | **MTG Collector Boxes** (`collector`) | One of each Collector Booster display ever made, incl. premium/all-foil/VIP boxes | 54 | 54 | 54 |
 | **MTG Booster Boxes** (`boxes`) | One preferred non-Collector display per set/distinct edition; other display types are bonus inventory | 202 (180 goal + 22 bonus) | 180 | 220 |
-| **MTG Booster Packs** (`packs`) | **Two** of every booster pack, per pack type per set | 176 | 488 | 488 |
+| **MTG Booster Packs** (`packs`) | **Two** of every booster pack, per pack type per set; optional wrapper-front inventory | 179 (176 ownership + 3 wrapper-only) | 488 | 488 |
 | **MTG Prerelease Packs** (`prerelease`) | One of every distinct sealed prerelease pack/kit **variant** | 69 | 148 | 148 |
 | **Lorcana Booster Boxes** (`lorcana`) | One booster box **per kid** (2 kids) | 15 | 30 | 30 |
 | **Lorcana Prerelease Boxes** (`lorcana_pre`) | One prerelease box per kid | 4 | 8 | 8 |
@@ -184,6 +209,14 @@ than one pack type show those quantities again in the detail drawer and show the
 sum as a `N total` tag. Pack completion remains two of every type; extra Draft packs,
 for example, cannot substitute for a missing Set or Collector pack. Wrapper artwork
 is intentionally outside this model.
+
+Packs also expose a separate optional wrapper-art checklist inside each matching
+row's detail drawer. Its 378 stable keys use `packs|wrapper-art|SET-N` and live only
+in `state.wrapperArts`; they never create ownership slots, change the two-per-type
+pack goal, affect Hide completed, or enter pricing/monitor collection snapshots.
+Unhinged, Unstable, and Ultimate Masters were not in the 176-row pack ownership
+model, so the dashboard adds three zero-slot `Wrapper-Art Inventory Only` rows to
+expose their reviewed fronts without changing the 488 pack targets.
 
 When a previously generic row expands, its original v2 slot remains ordinal zero.
 Only that first named variant inherits the old v1 positional migration key; every
@@ -300,6 +333,15 @@ row drawer opens, so closed rows remain just as compact and the page does not fe
 dozens of invisible images at startup. Adding or replacing an image must never
 change `slots`, `k`, or any progress key.
 
+**Wrapper-front images are a separate reviewed catalog.**
+`data/booster_wrapper_art_counts.csv` is the auditable count input and
+`scripts/build_wrapper_art_handoff_catalog.py` deterministically builds
+`data/booster_wrapper_art_catalog.json` (96 sets / 378 fronts). `build_app.py`
+validates and embeds that catalog without changing `binder_data.json`. Thumbnails
+receive `src` only when the nested wrapper section opens; missing sources and load
+failures retain an `Image unavailable` card, and every card truthfully labels exact,
+group-reference, review-only, or pending evidence.
+
 ---
 
 ## 3. The two apps
@@ -330,6 +372,20 @@ swallowing them, that was the original bug.
 - Only checklists whose content hash changed are written
 - **First connect on a device unions local+remote** (local wins) so connecting can
   never wipe existing local checks; later pulls are remote-wins
+
+The `packs` Gist payload also carries `wrapperArts`. Older packs Gists that omit the
+field leave local wrapper state untouched and are upgraded on the next sync; first
+connect unions wrapper keys, while later pulls replace the wrapper map so unchecking
+a front syncs correctly. Export/import includes the same separate map.
+
+Every checklist Gist also carries `ordered`, a map of stable group/slot quantity
+keys to incoming counts. The Packs Gist additionally carries
+`orderedWrapperArts`, keyed by the existing `packs|wrapper-art|SET-N` IDs. Older
+Gists that omit either field preserve local incoming quantities and queue an
+upgrade; first connect unions local and remote incoming state, while later pulls
+replace only namespaces explicitly present in the remote payload. Existing
+`checks`, `extras`, `wrapperArts`, `legacyChecksV1`, keyVersion, and migration
+metadata are unchanged.
 
 ### A2. Dashboard UI structure (all of this is generated by `build_app.py`)
 
@@ -404,6 +460,25 @@ click restarts the countdown, while dropping below target cancels it. Multi-vari
 prerelease drawers list named, independently adjustable quantities and stay open across
 their row re-render. This state is
 deliberately transient and must not be added to localStorage or Gist payloads.
+
+**Incoming orders.** Physical ownership and incoming quantities are deliberately
+separate. The compact count remains the owned number; a small amber package badge
+shows `+N` incoming without widening the row. Hover/focus reveals a floating
+ordered −/count/+ tray and an icon-only Receive action depicting a package entering
+a hand. Receive atomically decrements ordered and increments owned. The ordinary
+owned + never consumes an order, so acquiring another copy while one is still in
+transit leaves the incoming count intact. Amber means incoming copies cover the
+target; green still requires physical ownership. Completion, progress, Hide
+completed, and the four-second completion linger all remain owned-only.
+
+`state.ordered` uses the already-stable `checklist|extra|fingerprint` group keys or
+`checklist|slot-extra|fingerprint` exact-variant keys. Named prerelease and pack
+variants expose their own incoming quantities in the detail drawer, and aggregate
+ordered/receive actions choose exact slots deterministically. Wrapper-front orders
+use the separate `state.orderedWrapperArts` namespace. Export/import and Gist sync
+round-trip both maps. The existing `tcg.collection-snapshot/v2` pricing/monitor
+contract remains physical-ownership-only; do not mislabel incoming items as owned
+or add fields to that external contract without a separately coordinated version.
 
 **Expanding controls.** Two elements collapse to an icon and expand *leftward* by
 being absolutely positioned against the right edge of a fixed-width slot, so they
@@ -534,9 +609,13 @@ tools/test-pricing-dashboard.js generated pricing/collection/monitor bridge, rev
   `main_pack_label()` in `gen_data.py` maps era → `Booster` (pre-2019) / `Draft`
   (2019–2023) / `Play` (2024+). Before this, every set back to 1993 was tagged
   "Draft/Play", which is anachronistic. If you add an era, check that mapping.
-- **Pack art-variant counts were abandoned.** An earlier version tried "2 of every
-  wrapper art"; exact per-set art counts aren't catalogued anywhere reliable, so it
-  was simplified to "2 per pack type." Don't reintroduce without a real data source.
+- **Wrapper art is optional inventory, not the pack goal.** The reviewed catalog now
+  exposes one checkbox per distinct front while the collecting rule remains two per
+  pack type. Do not turn wrapper fronts into required ownership slots. UNH and BBD
+  still use group-reference images, UST uses review-only retailer candidates, and
+  2XM intentionally has no image URLs pending a trustworthy regular Draft source.
+  IMA state IDs remain `IMA-N` although Forge filenames use `ICO_N.png`; Portal stays
+  at four fronts even though Forge exposes a fifth file.
 - **Open the app over http, never as a `file://` document.** Chrome gives `file://`
   pages no persistent storage, so the token AND all checkmarks vanish on refresh —
   and it looks like a sync bug, because reconnecting pulls the checks back from the
@@ -605,6 +684,13 @@ python3 import_cursor_product_images.py \
 ```
 The importer is conservative by design: a product kind and visible slot type must
 match the current curated row, and fallback card art/set icons are not imported.
+
+For a newly released multi-art regular booster, follow the fail-closed wrapper-art
+intake in `docs/BOOSTER_WRAPPER_ART_DASHBOARD_HANDOFF.md`: start with official
+loose-wrapper packaging, validate the exact product lane (never Collector, Set,
+Theme, VIP, sleeved, promo, or foreign-language packaging), assign permanent
+`SET-N` IDs, and keep ambiguous imagery in the review queue. A count or candidate
+image is not promoted to `exact_individual` without reviewed physical evidence.
 
 **Release checklist:**
 ```bash
@@ -676,12 +762,17 @@ generators/import_cursor_product_images.py  trusted image-cache adapter
 generators/build_app.py       binder_data.json → all 3 dashboard HTML copies (UI lives here)
 data/binder_data.json         unified data model — 7 checklists, 910 required / 950 inventory slots
 data/product_images.json      reviewed image metadata (33 exact products initially)
+data/booster_wrapper_art_counts.csv  audited multi-art regular-booster counts
+data/booster_wrapper_art_catalog.json  96 sets / 378 optional wrapper fronts
+scripts/build_wrapper_art_handoff_catalog.py  deterministic wrapper catalog builder
+docs/BOOSTER_WRAPPER_ART_DASHBOARD_HANDOFF.md  scope, exceptions, and intake workflow
 pdfs/*.pdf                    5 printable checklists
 lists/mtg_booster_box_names.txt   180 box names for label printing
 index.html                    generated GitHub Pages entry point
 apps/static/index.html        identical static-app staging copy
 serve_binder.command          double-click: serves the folder on localhost:8765
 node-app/                     Express app + Chrome extension + tools (UI is stale)
+  tools/test-wrapper-art-dashboard.js  catalog/UI/optional-state regression
 browser-extension/            current Chrome/Edge side-panel dashboard launcher
   README.md                    user install and update workflow
   HANDOFF.md                   extension ownership and dashboard/pricing contracts
