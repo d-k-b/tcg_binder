@@ -56,7 +56,7 @@ call a versioned API, never copy its semantics into another browser-only path. S
 
 **Current pricing boundary:** `gen_data.py` adds 686 unique, contract-valid pricing
 products outside ownership slots. `build_app.py` renders per-product refresh/value,
-lowest verified ask, confidence, observation time, explicit unavailable/error, and
+verified Buy Now low, confidence, observation time, explicit unavailable/error, and
 static fallback states. Pricing prefers the configured read-only TCG Pricing REST
 transport and falls back to the extension bridge for backward compatibility.
 Standalone Safari/Chrome/Edge users enter an HTTPS base URL and the separate
@@ -64,6 +64,15 @@ least-privilege REST access key under **More → Pricing API settings**; an expl
 **Remember on this device** choice stores it only in
 `localStorage["tcgDashboardPricingRest_v1"]`. The record is separate from collection
 state and never enters generated source, URLs, Gists, exports, or debug reports.
+
+TCG Comps 2.43.40 may also return an additive `lowestAuction`. The dashboard renders
+that provider-qualified listing in a visually separate **Current auction bid** block
+only when it is non-null, with its landed amount, current bid, known shipping, end
+time, available bidder counts, safe HTTPS link, and an explicit provisional-bid
+warning. The dashboard does not classify auctions or calculate a final price,
+savings, value, or recommendation. `cache.mode === "stale-fallback"` suppresses the
+auction block and labels the valuation stale. Auction candidates never enter Market,
+verified Buy Now asks, fixed-price watches/alerts, or collection/Gist state.
 
 Watches remain extension-only and appear only after an exact returned `productId`
 matches the requested ProductRef and an extension bridge exists. The extension
@@ -136,6 +145,17 @@ removed slot that still has owned or ordered data, replaces the live definition,
 patches the existing private Gist. Discarding the staged revision returns to the live
 collection without touching GitHub. Staged revisions are excluded from global progress
 and every Gist-sync partition so they cannot double-count or leak before publication.
+
+**Photo-identification boundary:** extension 1.4 adds a generator-owned
+camera/upload modal and an extension-owned BYOK OpenAI bridge on
+`tcg-product-identify/v1`. The dashboard re-encodes photos before sending them,
+supplies 686 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
+accepts only returned IDs that exist in that in-memory catalog. The extension
+remembers the user's key in private `chrome.storage.local` when **Remember on this
+device** is selected; the key never enters generated HTML, iframe messages,
+dashboard localStorage, Gists, exports, URLs, or diagnostics. Identification is
+suggestion-only. Collection quantities change only through the explicit −/+ controls
+shown beside a result.
 
 **Read first:** §1 (the collecting rules — they are the product), §2's data-model note
 on `slots[].g` and checkbox keys, then §4. §4 is not boilerplate; almost every entry

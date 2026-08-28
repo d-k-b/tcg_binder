@@ -147,7 +147,9 @@ The generated static dashboard has a separate current integration under **More â
 Pricing API settings**. It accepts an HTTPS TCG Pricing REST base URL and the
 dedicated read-only access key, optionally remembered on that device. Those fields
 are not part of this historical Node pricing frontend and never enter collection
-state or Gists. See `../docs/API_CREDENTIALS.md`.
+state or Gists. Qualified current auctions supplied by TCG Comps render separately
+from the verified Buy Now low, with a provisional-current-bid warning; they never
+change Market value or fixed-price watch semantics. See `../docs/API_CREDENTIALS.md`.
 
 ---
 

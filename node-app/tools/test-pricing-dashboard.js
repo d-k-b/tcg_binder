@@ -14,6 +14,18 @@ const end = html.indexOf(endMarker, begin);
 assert.ok(begin >= 0 && end > begin, 'generated pricing bridge section must exist');
 const source = html.slice(begin, end + endMarker.length);
 
+function nodeText(node) {
+  if (!node || typeof node !== 'object') return '';
+  return String(node.textContent || '') + (node.childNodes || []).map(nodeText).join('');
+}
+
+function findNodes(node, predicate, found = []) {
+  if (!node || typeof node !== 'object') return found;
+  if (predicate(node)) found.push(node);
+  (node.childNodes || []).forEach(child => findNodes(child, predicate, found));
+  return found;
+}
+
 function createContext(search, initialData = { checklists: [] }, options = {}) {
   const posted = [];
   const listeners = {};
@@ -50,6 +62,16 @@ function createContext(search, initialData = { checklists: [] }, options = {}) {
   if (options.restSettings) storage.set('tcgDashboardPricingRest_v1', JSON.stringify(options.restSettings));
   const localStorage = { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) };
   const restCalls = [];
+  const makeNode = tagName => ({
+    tagName: String(tagName || '').toUpperCase(), childNodes: [], textContent: '', className: '',
+    appendChild(node) { this.childNodes.push(node); return node; },
+    setAttribute(name, value) { this[name] = String(value); },
+  });
+  const document = {
+    getElementById: () => null,
+    createElement: makeNode,
+    createTextNode: value => ({ nodeType: 3, textContent: String(value), childNodes: [] }),
+  };
   const TCGPricingRestClient = {
     normalizeBaseUrl: value => String(value || '').replace(/\/$/, ''),
     createClient: config => ({ priceProduct: async (target, priceOptions) => {
@@ -85,7 +107,7 @@ function createContext(search, initialData = { checklists: [] }, options = {}) {
       { id: 'TST-1', label: 'Art 1', imageUrl: '', imageStatus: 'pending' },
     ] }] }, active: '',
     save: () => { ownership.persistWrites += 1; },
-    document: { getElementById: () => null },
+    document,
   });
   vm.runInContext(source, context);
   return {
@@ -328,9 +350,17 @@ const product = {
 
   bridge.context.testProduct = product;
   bridge.context.live = {
-    apiVersion: 1, schema: 'tcg.valuation/v1', engineVersion: '2.34.0', product,
+    apiVersion: 1, schema: 'tcg.valuation/v1', engineVersion: '2.43.40', product,
     observedAt: new Date().toISOString(), market: { value: 123, confidence: 'high' },
     lowestAsk: { landedPrice: 119, url: 'https://example.com/ask' },
+    lowestAuction: {
+      source: 'ebay', listingId: 'auction-1', title: 'Exact sealed auction',
+      price: 82, currentBid: 82, shipping: 8, shippingKnown: true,
+      landedPrice: 90, url: 'https://example.com/auction', confidence: 'high',
+      verified: true, verifiedBy: 'ai', verificationReason: 'Exact sealed product',
+      bidCount: 4, uniqueBidderCount: 3, endTime: '2026-08-29T20:00:00.000Z',
+      buyingOptions: ['AUCTION'],
+    },
   };
   assert.strictEqual(vm.runInContext('interpretPriceResponse(testProduct,live).status', bridge.context), 'success');
   assert.strictEqual(vm.runInContext(`interpretPriceResponse(testProduct,{apiVersion:1,error:{code:'NO_VERIFIED_PRICE',message:'none'}}).status`, bridge.context), 'unavailable');
@@ -341,6 +371,42 @@ const product = {
     'exact successful pricing must enable watch controls');
   assert.strictEqual(vm.runInContext(`pricingCanWatch(interpretPriceResponse(testProduct,{apiVersion:1,error:{code:'NO_VERIFIED_PRICE'}}),testProduct)`, bridge.context), false,
     'no-price responses must not enable watch controls');
+
+  const auctionView = JSON.parse(JSON.stringify(vm.runInContext('pricingAuctionView(live)', bridge.context)));
+  assert.deepStrictEqual(auctionView, {
+    landedPrice: 90, currentBid: 82, shipping: 8, endTime: '2026-08-29T20:00:00.000Z',
+    bidCount: 4, uniqueBidderCount: 3, url: 'https://example.com/auction',
+  }, 'provider-qualified auction fields must remain a separate, display-only view');
+  const auctionNode = vm.runInContext('renderPricingAuction(live)', bridge.context);
+  assert.strictEqual(auctionNode.className, 'priceauction');
+  const auctionText = nodeText(auctionNode);
+  ['Current auction bid', 'Landed price:', '$90.00', 'Current bid:', '$82.00', 'Known shipping:', '$8.00',
+    'Ends:', 'Bids:', '4', 'Unique bidders:', '3', 'Current bid — provisional; not the final sale price.']
+    .forEach(label => assert.ok(auctionText.includes(label), 'auction block must render ' + label));
+  const auctionLinks = findNodes(auctionNode, node => node.tagName === 'A');
+  assert.strictEqual(auctionLinks.length, 1);
+  assert.strictEqual(auctionLinks[0].href, 'https://example.com/auction');
+  assert.strictEqual(auctionLinks[0].rel, 'noopener noreferrer');
+
+  assert.strictEqual(vm.runInContext(`renderPricingAuction(Object.assign({},live,{lowestAuction:null}))`, bridge.context), null,
+    'null lowestAuction must omit the optional block without becoming an error');
+  assert.strictEqual(vm.runInContext(`renderPricingAuction(Object.assign({},live,{lowestAuction:null,verifiedAuctions:[live.lowestAuction]}))`, bridge.context), null,
+    'verified auction candidates alone must never enter the qualified auction presentation');
+  const sparseAuction = vm.runInContext(`renderPricingAuction(Object.assign({},live,{lowestAuction:{landedPrice:75,currentBid:null,shippingKnown:false,endTime:null,bidCount:null,uniqueBidderCount:null,url:null}}))`, bridge.context);
+  assert.ok(nodeText(sparseAuction).includes('Landed price: $75.00'));
+  assert.ok(!nodeText(sparseAuction).includes('Current bid:'), 'missing optional auction fields must not display as zero');
+  const unsafeAuction = vm.runInContext(`renderPricingAuction(Object.assign({},live,{lowestAuction:Object.assign({},live.lowestAuction,{url:'http://unsafe.example/auction'})}))`, bridge.context);
+  assert.strictEqual(findNodes(unsafeAuction, node => node.tagName === 'A').length, 0,
+    'unsafe auction URLs must render no listing link');
+  assert.strictEqual(vm.runInContext(`renderPricingAuction(Object.assign({},live,{cache:{mode:'stale-fallback'}}))`, bridge.context), null,
+    'stale-fallback valuations must suppress auction presentation');
+  assert.strictEqual(vm.runInContext(`pricingIsStale(Object.assign({},live,{cache:{mode:'stale-fallback'}}))`, bridge.context), true,
+    'stale-fallback valuations must be labeled stale explicitly');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(vm.runInContext(`watchRule(testProduct,99.5).threshold`, bridge.context))),
+    { maxLandedPrice: 99.5, maxUnitPrice: null, maxMarketRatio: null },
+    'auction data must not change verified Buy Now watch thresholds');
+  assert.doesNotMatch(vm.runInContext('watchRule.toString()', bridge.context), /lowestAuction|verifiedAuctions|currentBid/,
+    'auction fields must never enter watch eligibility or watch rules');
 
   vm.runInContext(`pricingStates.set('other-product',{status:'success',marker:'unchanged'})`, bridge.context);
   const refresh = vm.runInContext('refreshPrice(testProduct)', bridge.context);
@@ -405,7 +471,7 @@ const product = {
 
   const restSettings = { schema: 'tcg.dashboard-pricing-rest-settings/v1', baseUrl: 'https://pricing.example.test',
     accessToken: 'tcg_price_test_0123456789abcdef0123456789abcdef', savedAt: '2026-08-28T12:00:00.000Z' };
-  const rest = createContext('', { checklists: [] }, { restSettings });
+  const rest = createContext('', { checklists: [] }, { restSettings, restResult: bridge.context.live });
   assert.strictEqual(vm.runInContext('pricingTransport()', rest.context), 'rest');
   const restValuation = await vm.runInContext(`pricingRequest('priceProduct',{target:${JSON.stringify(product)},options:{includeActive:true,includeRecentSales:true,userInitiated:true,include130point:true}})`, rest.context);
   assert.strictEqual(restValuation.product.productId, product.productId);
@@ -413,6 +479,8 @@ const product = {
   assert.strictEqual(rest.restCalls.length, 1);
   assert.strictEqual(rest.restCalls[0].config.accessToken, restSettings.accessToken);
   assert.strictEqual(rest.restCalls[0].options.requestId.startsWith('tracker-'), true);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(vm.runInContext(`pricingAuctionView(${JSON.stringify(restValuation)})`, rest.context))), auctionView,
+    'standalone REST and extension bridge valuations must expose identical additive auction fields');
   assert.strictEqual(vm.runInContext(`pricingCanWatch(interpretPriceResponse(${JSON.stringify(product)},${JSON.stringify(restValuation)}),${JSON.stringify(product)})`, rest.context), false,
     'REST-only pricing must not expose extension-owned watch controls');
   const exportedState = JSON.stringify(vm.runInContext('state', rest.context));
@@ -423,7 +491,11 @@ const product = {
   assert.match(html, /id="dashboardPricingAccessToken" type="password"/);
   assert.match(html, /tcgDashboardPricingRest_v1/);
   assert.match(html, /Live value/);
-  assert.match(html, /Lowest verified ask/);
+  assert.match(html, /Buy Now low/);
+  assert.match(html, /Current auction bid/);
+  assert.match(html, /Current bid — provisional; not the final sale price\./);
+  assert.match(html, /Alert when verified Buy Now landed price ≤ \$/);
+  assert.match(html, /className='priceauction'/, 'qualified auctions must render as a separate compact block');
   assert.match(html, /Confidence/);
   assert.match(html, /Static fallback/);
   assert.match(html, /id="priceRefreshBtn"/, 'toolbar refresh menu must be generated');
@@ -434,7 +506,7 @@ const product = {
   assert.match(html, /data-monitor-source="ebay"/, 'monitoring UI must expose the contract source choices');
   assert.match(html, /@media\(max-width:480px\)[\s\S]*\.monitor-grid\{grid-template-columns:1fr\}/,
     'monitoring preferences must collapse to one column at narrow side-panel widths');
-  console.log('pricing dashboard tests: exact pricing/collection/monitor bridges, deterministic 686-product subscription, batch scopes, status, hint, and watch gate passing');
+  console.log('pricing dashboard tests: exact bridges, deterministic 686-product subscription, Buy Now/watch isolation, and provisional auction presentation passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);

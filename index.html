@@ -314,6 +314,14 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .pricebadge.stale{background:rgba(181,133,42,.16);color:var(--gold)}
 .pricefacts{display:flex;flex-wrap:wrap;gap:5px 13px;color:var(--muted)}
 .pricefacts span{white-space:nowrap}.pricefacts b{color:var(--ink)}
+.priceauction{min-width:0;border:1px solid color-mix(in srgb,var(--gold) 55%,var(--line));border-radius:8px;
+  padding:7px;background:color-mix(in srgb,var(--gold) 7%,var(--card));display:grid;gap:5px}
+.priceauction-head{font-size:10.5px;font-weight:800;color:var(--gold);letter-spacing:.02em}
+.priceauction-total{font-size:12px;color:var(--ink)}
+.priceauction-total b{font-size:14px;font-variant-numeric:tabular-nums}
+.priceauction .pricefacts{font-size:10px;gap:4px 11px}
+.priceauction-warning{font-size:10px;font-weight:700;color:var(--gold);overflow-wrap:anywhere}
+.priceauction a{font-size:10.5px;overflow-wrap:anywhere}
 .pricefallback{font-size:10.5px;color:var(--muted)}
 .pricefallback b{color:var(--gold)}
 .priceerror{font-size:10.5px;color:#c94d4d;overflow-wrap:anywhere}
@@ -528,7 +536,7 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
  <div class="top-in">
    <div class="brand">
      <div class="logo">M</div>
-     <div><h1>MTG Sealed Collecting Binder</h1><p>Live checklist &bull; auto-saved &bull; build 2026-08-28 11:20</p></div>
+     <div><h1>MTG Sealed Collecting Binder</h1><p>Live checklist &bull; auto-saved &bull; build 2026-08-28 12:00</p></div>
    </div>
    <div class="spacer"></div>
    <div class="hright">
@@ -1680,7 +1688,6 @@ function syncCustomChecklists(){
     progressMode:'distinct_variants',custom:true,lifecycle:definition.lifecycle,revision:definition.revision,eras:definition.eras});}
 }
 function customKeyFor(cl,slotId){return cl+'|v2|'+contentHash(normKeyPart(cl)+'\u001f'+boundedText(slotId,120));}
-
 const LEGACY_KEY_RE=/^([^|]+)\|(\d+)\|(\d+)\|(\d+)$/;
 function normKeyPart(v){return String(v||'').normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');}
 function contentHash(v){
@@ -2465,7 +2472,6 @@ window.addEventListener('message',(event)=>{
       !Number.isInteger(match.confidence)||match.confidence<0||match.confidence>100){pending.reject(pricingError('INVALID_IDENTIFY_RESPONSE','The Tracker extension returned an unknown or invalid product match.'));return;}seen.add(match.candidateId);}
   pending.resolve(result);
 });
-
 const AUTHOR_SOURCE_ITEMS=new Map();
 function buildAuthorCatalog(){
   const rows=[];
@@ -2829,6 +2835,12 @@ function pricingTime(value){
   const n=Date.parse(value||'');
   return Number.isFinite(n)?new Date(n).toLocaleString():'Unavailable';
 }
+function pricingIsStale(valuation){
+  if(!valuation||typeof valuation!=='object')return false;
+  if(valuation.cache&&valuation.cache.mode==='stale-fallback')return true;
+  const observed=Date.parse(valuation.observedAt||'');
+  return Number.isFinite(observed)&&Date.now()-observed>PRICING_STALE_MS;
+}
 function safePriceUrl(value){
   try{const u=new URL(value);return /^https:$/.test(u.protocol)?u.toString():'';}catch(e){return '';}
 }
@@ -2935,6 +2947,41 @@ function appendFact(host,label,value){
   const span=document.createElement('span'),b=document.createElement('b');b.textContent=label+': ';
   span.appendChild(b);span.appendChild(document.createTextNode(value));host.appendChild(span);
 }
+function pricingAuctionView(valuation){
+  if(!valuation||typeof valuation!=='object'||(valuation.cache&&valuation.cache.mode==='stale-fallback'))return null;
+  const auction=valuation.lowestAuction;
+  const present=value=>value!==null&&value!==undefined&&value!=='';
+  const optionalMoney=value=>present(value)&&Number.isFinite(Number(value))?Number(value):null;
+  const optionalCount=value=>present(value)&&Number.isInteger(Number(value))&&Number(value)>=0?Number(value):null;
+  if(!auction||typeof auction!=='object'||optionalMoney(auction.landedPrice)===null)return null;
+  const endTime=Date.parse(auction.endTime||'');
+  return {
+    landedPrice:Number(auction.landedPrice),
+    currentBid:optionalMoney(auction.currentBid),
+    shipping:auction.shippingKnown===true?optionalMoney(auction.shipping):null,
+    endTime:Number.isFinite(endTime)?auction.endTime:null,
+    bidCount:optionalCount(auction.bidCount),
+    uniqueBidderCount:optionalCount(auction.uniqueBidderCount),
+    url:safePriceUrl(auction.url)
+  };
+}
+function renderPricingAuction(valuation){
+  const auction=pricingAuctionView(valuation);if(!auction)return null;
+  const block=document.createElement('div');block.className='priceauction';
+  const head=document.createElement('div');head.className='priceauction-head';head.textContent='Current auction bid';block.appendChild(head);
+  const total=document.createElement('div');total.className='priceauction-total';
+  total.appendChild(document.createTextNode('Landed price: '));const amount=document.createElement('b');amount.textContent=pricingMoney(auction.landedPrice);total.appendChild(amount);block.appendChild(total);
+  const facts=document.createElement('div');facts.className='pricefacts';
+  if(auction.currentBid!==null)appendFact(facts,'Current bid',pricingMoney(auction.currentBid));
+  if(auction.shipping!==null)appendFact(facts,'Known shipping',pricingMoney(auction.shipping));
+  if(auction.endTime!==null)appendFact(facts,'Ends',pricingTime(auction.endTime));
+  if(auction.bidCount!==null)appendFact(facts,'Bids',String(auction.bidCount));
+  if(auction.uniqueBidderCount!==null)appendFact(facts,'Unique bidders',String(auction.uniqueBidderCount));
+  if(facts.childNodes.length)block.appendChild(facts);
+  if(auction.url){const link=document.createElement('a');link.href=auction.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open verified auction listing';block.appendChild(link);}
+  const warning=document.createElement('div');warning.className='priceauction-warning';warning.textContent='Current bid — provisional; not the final sale price.';block.appendChild(warning);
+  return block;
+}
 function renderPricingList(products){
   const list=document.createElement('div');list.className='pricinglist';
   const title=document.createElement('div');title.className='pricingtitle';title.textContent='TCG Comps live pricing';list.appendChild(title);
@@ -2945,7 +2992,7 @@ function renderPricingList(products){
     const badge=document.createElement('span');badge.className='pricebadge';
     if(ps.status==='loading'){badge.classList.add('loading');badge.textContent='Refreshing';}
     else if(ps.status==='success'){
-      const observed=Date.parse(ps.valuation.observedAt||''),stale=Number.isFinite(observed)&&Date.now()-observed>PRICING_STALE_MS;
+      const stale=pricingIsStale(ps.valuation);
       badge.classList.add(stale?'stale':'live');badge.textContent=stale?'Stale':'Live';
     }else if(ps.status==='error'){badge.classList.add('error');badge.textContent='Error';}
     else if(ps.status==='unavailable'){badge.textContent=ps.code==='PRICING_NOT_CONFIGURED'?'Setup needed':'Unavailable';}
@@ -2954,11 +3001,12 @@ function renderPricingList(products){
     if(ps.status==='success'){
       const valuation=ps.valuation,facts=document.createElement('div');facts.className='pricefacts';
       appendFact(facts,'Live value',pricingMoney(valuation.market&&valuation.market.value));
-      appendFact(facts,'Lowest verified ask',pricingMoney(valuation.lowestAsk&&valuation.lowestAsk.landedPrice));
+      appendFact(facts,'Buy Now low',pricingMoney(valuation.lowestAsk&&valuation.lowestAsk.landedPrice));
       appendFact(facts,'Confidence',String(valuation.market&&valuation.market.confidence||'unavailable'));
       appendFact(facts,'Checked',pricingTime(valuation.observedAt));card.appendChild(facts);
       const askUrl=safePriceUrl(valuation.lowestAsk&&valuation.lowestAsk.url);
-      if(askUrl){const link=document.createElement('a');link.href=askUrl;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open verified lowest ask';card.appendChild(link);}
+      if(askUrl){const link=document.createElement('a');link.href=askUrl;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open verified Buy Now low';card.appendChild(link);}
+      const auction=renderPricingAuction(valuation);if(auction)card.appendChild(auction);
     }else if(ps.status==='unavailable'||ps.status==='error'){
       const error=document.createElement('div');error.className=ps.status==='error'?'priceerror':'pricefallback';error.textContent=ps.message||'Live pricing is unavailable.';card.appendChild(error);
     }
@@ -2969,7 +3017,7 @@ function renderPricingList(products){
     refresh.disabled=ps.status==='loading'||pricingBatch.running||!pricingAvailable();refresh.onclick=()=>refreshPrice(product,{userInitiated:true});actions.appendChild(refresh);card.appendChild(actions);
     if(pricingCanWatch(ps,product)){
       const box=document.createElement('div');box.className='watchbox';
-      const watchLabel=document.createElement('label');watchLabel.textContent='Alert at landed price ≤ $';
+      const watchLabel=document.createElement('label');watchLabel.textContent='Alert when verified Buy Now landed price ≤ $';
       const input=document.createElement('input');input.type='number';input.min='0.01';input.step='0.01';input.inputMode='decimal';input.value=ps.watchThreshold||'';
       input.setAttribute('aria-label','Maximum landed price for '+record.label);
       input.oninput=()=>{const latest=pricingState(product.productId);latest.watchThreshold=input.value;pricingStates.set(product.productId,latest);};
@@ -3404,7 +3452,7 @@ function updateOverall(){
 }
 
 /* ---- GitHub Gist sync — runs entirely in this browser ---- */
-const BUILD="2026-08-28 11:20";
+const BUILD="2026-08-28 12:00";
 const GH_KEY="mtgBinder_gh", GH_API="https://api.github.com";
 /* The whole connection is persisted, not just the token — so a refresh restores
    the username, the gist ids and the "synced Xm ago" state instead of looking
@@ -3912,7 +3960,6 @@ async function sendAuthorTurn(){
   catch(error){authorMessages.push({role:'error',text:String(error&&error.message||error||'Collection authoring failed.')});if(error&&error.code==='OPENAI_KEY_MISSING')setTimeout(openAISettings,0);}
   finally{authorBusy=false;document.getElementById('authorSend').disabled=false;renderAuthorChat();input.focus();}
 }
-
 /* ---- wire up ---- */
 function openSync(){
   const info=document.getElementById('driveInfo'),act=document.getElementById('modalActions'),
