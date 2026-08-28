@@ -65,7 +65,17 @@ least-privilege REST access key under **More → Pricing API settings**; an expl
 `localStorage["tcgDashboardPricingRest_v1"]`. The record is separate from collection
 state and never enters generated source, URLs, Gists, exports, or debug reports.
 
-TCG Comps 2.43.40 may also return an additive `lowestAuction`. The dashboard renders
+TCG Comps 2.43.41 deploys the standalone facade at the non-secret base URL
+`https://gogo.tail903ec0.ts.net`. New devices receive that URL as a prefilled value;
+the dedicated bearer token is still user-supplied and device-local. **Save & test**
+must pass authenticated `tcg.pricing-rest-readiness/v1` with `ready`,
+`authenticated`, and `providerAvailable` all true before the UI claims the canonical
+authority is connected. The compact row, detail, and toolbar refresh controls all
+gate on `pricingAvailable()`, so either REST or the exact extension bridge enables
+them. The public facade supports readiness and exact-product valuation only—never
+extension watches, monitor mutation, page decoration, or 130point.
+
+TCG Comps 2.43.41 may also return an additive `lowestAuction`. The dashboard renders
 that provider-qualified listing in a visually separate **Current auction bid** block
 only when it is non-null, with its landed amount, current bid, known shipping, end
 time, available bidder counts, safe HTTPS link, and an explicit provisional-bid

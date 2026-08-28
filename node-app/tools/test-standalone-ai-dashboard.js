@@ -55,6 +55,7 @@ const sandbox = {
 vm.createContext(sandbox);
 vm.runInContext(`const DASHBOARD_OPENAI_SETTINGS_KEY='tcgDashboardOpenAI_v1';\n` +
   `const DASHBOARD_OPENAI_SETTINGS_SCHEMA='tcg.dashboard-openai-settings/v1';\n` +
+  `const DASHBOARD_PRICING_DEFAULT_URL='https://gogo.tail903ec0.ts.net';\n` +
   html.slice(start, end) +
   `\nglobalThis.__settingsTest={persistDashboardOpenAI,forgetDashboardOpenAI,hasDashboardOpenAI,get:()=>dashboardOpenAI};`, sandbox);
 

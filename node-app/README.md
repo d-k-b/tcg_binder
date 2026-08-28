@@ -149,7 +149,9 @@ dedicated read-only access key, optionally remembered on that device. Those fiel
 are not part of this historical Node pricing frontend and never enter collection
 state or Gists. Qualified current auctions supplied by TCG Comps render separately
 from the verified Buy Now low, with a provisional-current-bid warning; they never
-change Market value or fixed-price watch semantics. See `../docs/API_CREDENTIALS.md`.
+change Market value or fixed-price watch semantics. The deployed non-secret base URL
+is `https://gogo.tail903ec0.ts.net`; **Save & test** verifies authenticated readiness
+before use. See `../docs/API_CREDENTIALS.md`.
 
 ---
 

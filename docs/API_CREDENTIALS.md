@@ -17,6 +17,18 @@ Pricing and OpenAI records are separate from the exported collection object. The
 debug report exposes only configured/remembered booleans and transport state—not
 keys, endpoints, request bodies, chat contents, prices, or account identity.
 
+## Pricing transports
+
+| Transport | Path and credential | Supported surface | Credential boundary |
+| --- | --- | --- | --- |
+| Tracker extension | Dashboard iframe → exact-origin `postMessage` → Tracker extension → TCG Comps extension. Provider extension ID and capability token stay in the Tracker extension's `chrome.storage.local`. | Exact-product pricing plus privileged extension-owned watches, monitor controls, and page decoration where applicable. | Never place the capability token in page `localStorage` or Pricing REST settings. |
+| Standalone Pricing REST | Dashboard page → `https://gogo.tail903ec0.ts.net`. Uses the separate least-privilege read-only Pricing REST token, held in memory or `localStorage["tcgDashboardPricingRest_v1"]` only after **Remember on this device**. | Authenticated readiness and exact-product `priceProduct` only. No watches, monitor mutation, page decoration, buying/bidding, or 130point. | Never place the REST token in source, URLs, Gists, exports, diagnostics, or extension-pairing fields. |
+
+The standalone settings prefill the non-secret production base URL. **Save & test**
+calls authenticated `GET /v1/readiness` before describing the canonical authority as
+available. Pricing requests then use `POST /v1/price`; both routes remain fail-closed
+behind the dedicated bearer token and strict `https://d-k-b.github.io` CORS policy.
+
 An application that uses more than one API must request each required credential
 in a separately labeled password field, explain its scope, and store it in a
 separate local namespace. It must never silently copy a credential from another
@@ -40,10 +52,11 @@ accepted by the static dashboard:
 - Resend and Discord delivery credentials
 - marketplace cookies or browser sessions
 
-The Pricing REST server translates one limited consumer request into provider work
-without returning any upstream credential. Its separate access key authorizes only
-`POST /v1/price`; it cannot create watches, run monitoring, decorate pages, buy,
-bid, offer, or modify collection data.
+The Pricing REST server at `https://gogo.tail903ec0.ts.net` translates one limited
+consumer request into provider work without returning any upstream credential. Its
+separate access key authorizes only authenticated readiness and `POST /v1/price`;
+it cannot create watches, run monitoring, decorate pages, buy, bid, offer, or modify
+collection data.
 
 ## Creating and rotating the Pricing REST key
 

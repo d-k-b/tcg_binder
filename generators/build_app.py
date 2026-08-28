@@ -32,7 +32,7 @@ if any(art.get("imageStatus") not in _wrapper_statuses for art in _wrapper_arts)
     raise ValueError("booster wrapper-art image status is not allowed")
 WRAPPER_ART=json.dumps(WRAPPER_ART_CATALOG,separators=(",",":"),ensure_ascii=False)
 _openai_client_paths=[
-    os.path.join(ROOT,"generators","vendor","tcg-comps-2.43.38","tcg-pricing-rest-client.js"),
+    os.path.join(ROOT,"generators","vendor","tcg-comps-2.43.41","tcg-pricing-rest-client.js"),
     os.path.join(ROOT,"generators","catalog_author_client.js"),
     os.path.join(ROOT,"browser-extension","collection-author-bridge.js"),
     os.path.join(ROOT,"browser-extension","identify-bridge.js"),
@@ -730,13 +730,13 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 <div class="modal-bg" id="pricingSettingsModal">
  <div class="modal pricing-settings-modal" role="dialog" aria-modal="true" aria-labelledby="pricingSettingsHeading">
    <h2 id="pricingSettingsHeading"><span class="gicon">$</span> Pricing API settings</h2>
-   <p>Use the read-only TCG Pricing REST API from this web app on Safari, Chrome, or Edge. Enter the same access key on each trusted device.</p>
+   <p>Use the read-only TCG Pricing REST API from this web app on Safari, Chrome, or Edge. The deployed endpoint is prefilled; enter the separate access key on each trusted device.</p>
    <label class="ai-field" for="dashboardPricingBaseUrl"><b>Pricing API base URL</b><input id="dashboardPricingBaseUrl" type="url" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="https://pricing.example.com"></label>
    <label class="ai-field" for="dashboardPricingAccessToken"><b>Read-only pricing access key</b><input id="dashboardPricingAccessToken" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="tcg_price_…"></label>
    <label class="ai-remember" for="dashboardPricingRemember"><input id="dashboardPricingRemember" type="checkbox" checked><span><b>Remember on this device</b><small>Keep this endpoint and key for this dashboard origin after the browser closes.</small></span></label>
    <div class="ai-warning"><b>Treat this access key as a secret.</b> It is limited to read-only exact-product valuations, but anyone with it can consume your pricing service. It is stored separately from collection data and never included in Gists, exports, URLs, or diagnostics. Rotate it server-side if exposed.</div>
    <div class="info" id="pricingSettingsStatus"></div>
-   <div class="actions"><button class="pbtn g" id="pricingSettingsSave">Save on this device</button><button class="pbtn ghost" id="pricingSettingsForget">Forget key</button><button class="pbtn ghost" id="pricingSettingsClose">Close</button></div>
+   <div class="actions"><button class="pbtn g" id="pricingSettingsSave">Save &amp; test</button><button class="pbtn ghost" id="pricingSettingsTest">Test connection</button><button class="pbtn ghost" id="pricingSettingsForget">Forget key</button><button class="pbtn ghost" id="pricingSettingsClose">Close</button></div>
  </div>
 </div>
 
@@ -1511,6 +1511,8 @@ const DASHBOARD_OPENAI_SETTINGS_KEY='tcgDashboardOpenAI_v1';
 const DASHBOARD_OPENAI_SETTINGS_SCHEMA='tcg.dashboard-openai-settings/v1';
 const DASHBOARD_PRICING_SETTINGS_KEY='tcgDashboardPricingRest_v1';
 const DASHBOARD_PRICING_SETTINGS_SCHEMA='tcg.dashboard-pricing-rest-settings/v1';
+const DASHBOARD_PRICING_DEFAULT_URL='https://gogo.tail903ec0.ts.net';
+const PRICING_READINESS_SCHEMA='tcg.pricing-rest-readiness/v1';
 const COLLECTION_CHANNEL='tcg-collection/v1';
 const COLLECTION_SNAPSHOT_SCHEMA='tcg.collection-snapshot/v2';
 const COLLECTION_NAMESPACE='collection-tracker';
@@ -1564,9 +1566,10 @@ function loadDashboardPricing(){
       return {baseUrl:TCGPricingRestClient.normalizeBaseUrl(value.baseUrl),accessToken:value.accessToken.trim(),remembered:true};
     }
   }catch(_error){}
-  return {baseUrl:'',accessToken:'',remembered:false};
+  return {baseUrl:DASHBOARD_PRICING_DEFAULT_URL,accessToken:'',remembered:false};
 }
 let dashboardPricing=loadDashboardPricing();
+let dashboardPricingReadiness={status:'idle',message:''};
 function hasDashboardPricing(){return !!(dashboardPricing.baseUrl&&dashboardPricing.accessToken);}
 function pricingAvailable(){return hasDashboardPricing()||!!pricingConsumerOrigin;}
 function pricingTransport(){return hasDashboardPricing()?'rest':(pricingConsumerOrigin?'extension':'none');}
@@ -1574,6 +1577,7 @@ function persistDashboardPricing(baseUrl,accessToken,remember){
   const normalized=TCGPricingRestClient.normalizeBaseUrl(baseUrl),clean=String(accessToken||'').trim();
   if(clean.length<32)throw pricingError('PRICING_KEY_INVALID','Paste the complete read-only pricing access key.');
   dashboardPricing={baseUrl:normalized,accessToken:clean,remembered:!!remember};
+  dashboardPricingReadiness={status:'idle',message:''};
   try{
     if(remember)localStorage.setItem(DASHBOARD_PRICING_SETTINGS_KEY,JSON.stringify({schema:DASHBOARD_PRICING_SETTINGS_SCHEMA,
       baseUrl:normalized,accessToken:clean,savedAt:new Date().toISOString()}));
@@ -1581,17 +1585,47 @@ function persistDashboardPricing(baseUrl,accessToken,remember){
   }catch(error){dashboardPricing.remembered=false;throw pricingError('PRICING_STORAGE_FAILED','Pricing is ready for this session, but this browser could not remember it: '+String(error&&error.message||error));}
 }
 function forgetDashboardPricing(){
-  dashboardPricing={baseUrl:'',accessToken:'',remembered:false};
+  dashboardPricing={baseUrl:DASHBOARD_PRICING_DEFAULT_URL,accessToken:'',remembered:false};
+  dashboardPricingReadiness={status:'idle',message:''};
   try{localStorage.removeItem(DASHBOARD_PRICING_SETTINGS_KEY);}catch(_error){}
+}
+async function testDashboardPricingConnection(baseUrl,accessToken){
+  const client=TCGPricingRestClient.createClient({baseUrl,accessToken,timeoutMs:PRICING_TIMEOUT_MS});
+  const result=await client.readiness();
+  if(!result||Number(result.apiVersion)!==1||result.schema!==PRICING_READINESS_SCHEMA||result.ready!==true||
+      result.authenticated!==true||result.providerAvailable!==true){
+    throw pricingError('PRICING_NOT_READY','Pricing REST authenticated, but the canonical pricing authority is not ready.');
+  }
+  return {providerVersion:boundedText(result.providerVersion,40)||'available'};
 }
 function paintPricingSettings(){
   const url=document.getElementById('dashboardPricingBaseUrl'),token=document.getElementById('dashboardPricingAccessToken'),
     remember=document.getElementById('dashboardPricingRemember'),status=document.getElementById('pricingSettingsStatus');
   if(url)url.value=dashboardPricing.baseUrl;if(token)token.value=dashboardPricing.accessToken;
   if(remember)remember.checked=dashboardPricing.remembered||!dashboardPricing.accessToken;
-  if(status)status.textContent=hasDashboardPricing()
-    ?'Read-only Pricing REST is ready. '+(dashboardPricing.remembered?'The connection will remain on this device.':'The connection will be forgotten when this page reloads.')
-    :(pricingConsumerOrigin?'No REST key is configured. Pricing can still use the paired extension on this browser.':'No live-pricing connection is configured yet.');
+  if(status)status.textContent=dashboardPricingReadiness.message||(hasDashboardPricing()
+    ?'Pricing REST is configured but has not been tested in this page session. '+(dashboardPricing.remembered?'The connection is remembered on this device.':'The connection will be forgotten when this page reloads.')
+    :(pricingConsumerOrigin?'No REST key is configured. Pricing can still use the paired extension on this browser.':'Paste the dedicated read-only key, then use Save & test.'));
+}
+async function runPricingSettingsTest(saveFirst){
+  const baseUrl=document.getElementById('dashboardPricingBaseUrl').value,
+    accessToken=document.getElementById('dashboardPricingAccessToken').value,
+    remember=document.getElementById('dashboardPricingRemember').checked,
+    status=document.getElementById('pricingSettingsStatus'),
+    buttons=['pricingSettingsSave','pricingSettingsTest','pricingSettingsForget'].map(id=>document.getElementById(id)).filter(Boolean);
+  try{
+    if(saveFirst)persistDashboardPricing(baseUrl,accessToken,remember);
+    dashboardPricingReadiness={status:'testing',message:'Testing the authenticated Pricing REST connection…'};
+    status.textContent=dashboardPricingReadiness.message;buttons.forEach(button=>button.disabled=true);
+    const result=await testDashboardPricingConnection(baseUrl,accessToken);
+    dashboardPricingReadiness={status:'ready',message:'Connected to TCG Comps '+result.providerVersion+'. Exact-product pricing is ready.'};
+    status.textContent=dashboardPricingReadiness.message;
+    if(saveFirst){pricingStates.clear();paintPricingBatch();updateAll();toast(dashboardPricing.remembered?'Pricing API connected and remembered on this device':'Pricing API connected for this session');}
+    return true;
+  }catch(error){
+    const message=String(error&&error.message||error||'Pricing connection failed.').replace(/Bearer\s+\S+/gi,'Bearer [REDACTED]').slice(0,600);
+    dashboardPricingReadiness={status:'error',message:'Connection failed: '+message};status.textContent=dashboardPricingReadiness.message;return false;
+  }finally{buttons.forEach(button=>button.disabled=false);}
 }
 function openPricingSettings(){paintPricingSettings();const modal=document.getElementById('pricingSettingsModal');if(!modal)return;modal.classList.add('show');setTimeout(()=>{const input=document.getElementById('dashboardPricingBaseUrl');if(input)input.focus();},0);}
 function closePricingSettings(){const modal=document.getElementById('pricingSettingsModal');if(modal)modal.classList.remove('show');}
@@ -2544,9 +2578,10 @@ function renderContent(){
         const priceStatus=pricingItemStatus(it),priceRefresh=document.createElement('button');
         priceRefresh.type='button';priceRefresh.className='rowpricebtn '+priceStatus;
         priceRefresh.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><polyline points="20 4 20 11 13 11"/></svg>';
-        priceRefresh.disabled=!pricingConsumerOrigin||pricingBatch.running||priceStatus==='loading';
+        const priceReady=pricingAvailable();
+        priceRefresh.disabled=!priceReady||pricingBatch.running||priceStatus==='loading';
         const priceLabel=(priceStatus==='loading'?'Refreshing prices for ':'Refresh prices for ')+it.name;
-        priceRefresh.title=!pricingConsumerOrigin?'Open in the tracker extension for live pricing':priceLabel;
+        priceRefresh.title=!priceReady?'Add a Pricing REST connection or use the tracker extension':priceLabel;
         priceRefresh.setAttribute('aria-label',priceRefresh.title);
         priceRefresh.onclick=(event)=>{event.stopPropagation();startPricingRefresh('all',it);};
         row.appendChild(priceRefresh);
@@ -3303,12 +3338,8 @@ on('aiSettingsSave','click',()=>{
 on('aiSettingsForget','click',()=>{forgetDashboardOpenAI();paintAISettings();paintAuthorAIStatus();toast('AI key removed from this device');});
 on('aiSettingsClose','click',closeAISettings);
 on('aiSettingsModal','click',(e)=>{if(e.target.id==='aiSettingsModal')closeAISettings();});
-on('pricingSettingsSave','click',()=>{
-  try{persistDashboardPricing(document.getElementById('dashboardPricingBaseUrl').value,
-      document.getElementById('dashboardPricingAccessToken').value,document.getElementById('dashboardPricingRemember').checked);
-    paintPricingSettings();paintPricingBatch();closePricingSettings();updateAll();toast(dashboardPricing.remembered?'Pricing API remembered on this device':'Pricing API ready for this session');}
-  catch(error){document.getElementById('pricingSettingsStatus').textContent=String(error&&error.message||error);}
-});
+on('pricingSettingsSave','click',()=>runPricingSettingsTest(true));
+on('pricingSettingsTest','click',()=>runPricingSettingsTest(false));
 on('pricingSettingsForget','click',()=>{forgetDashboardPricing();pricingStates.clear();paintPricingSettings();paintPricingBatch();updateAll();toast('Pricing API key removed from this device');});
 on('pricingSettingsClose','click',closePricingSettings);
 on('pricingSettingsModal','click',(e)=>{if(e.target.id==='pricingSettingsModal')closePricingSettings();});
