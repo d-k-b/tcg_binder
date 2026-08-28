@@ -8,7 +8,7 @@ const vm = require('vm');
 
 const root = path.join(__dirname, '..', '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const vendor = fs.readFileSync(path.join(root, 'generators', 'vendor', 'tcg-comps-2.43.41', 'tcg-pricing-rest-client.js'), 'utf8');
+const vendor = fs.readFileSync(path.join(root, 'generators', 'vendor', 'tcg-comps-2.43.42', 'tcg-pricing-rest-client.js'), 'utf8');
 
 assert.ok(html.includes(vendor), 'generated dashboard must embed the exact reviewed browser REST client');
 assert.match(html, /id="pricingSettingsItem"/);
@@ -37,7 +37,7 @@ assert.ok(start > 0 && end > start, 'standalone pricing settings implementation 
 const storage = new Map();
 const clientConfigs = [];
 let readinessResult = { apiVersion: 1, schema: 'tcg.pricing-rest-readiness/v1', ready: true,
-  authenticated: true, providerAvailable: true, providerVersion: '2.43.41' };
+  authenticated: true, providerAvailable: true, providerVersion: '2.43.42' };
 const sandbox = {
   localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) },
   TCGPricingRestClient: { normalizeBaseUrl: value => {
@@ -62,6 +62,26 @@ const api = sandbox.__pricingSettingsTest;
 const endpoint = 'https://pricing.example.test';
 const key = 'tcg_price_test_0123456789abcdef0123456789abcdef';
 (async () => {
+const browserFetchCalls = [];
+const browserClientSandbox = {
+  URL, AbortController, setTimeout, clearTimeout,
+  fetch: async (url, options) => {
+    browserFetchCalls.push({ url, options });
+    return { ok: true, status: 200, json: async () => ({ apiVersion: 1,
+      schema: 'tcg.pricing-rest-readiness/v1', ready: true, authenticated: true,
+      providerAvailable: true, providerVersion: '2.43.42' }) };
+  }
+};
+vm.createContext(browserClientSandbox);
+vm.runInContext(vendor, browserClientSandbox);
+const defaultFetchClient = browserClientSandbox.TCGPricingRestClient.createClient({ baseUrl: endpoint, accessToken: key });
+const defaultFetchReadiness = await defaultFetchClient.readiness();
+assert.strictEqual(defaultFetchReadiness.ready, true,
+  'the browser artifact must use the browser-global fetch when fetchImpl is omitted');
+assert.strictEqual(browserFetchCalls.length, 1);
+assert.strictEqual(browserFetchCalls[0].url, endpoint + '/v1/readiness');
+assert.strictEqual(browserFetchCalls[0].options.headers.Authorization, 'Bearer ' + key);
+
 assert.strictEqual(api.get().baseUrl, 'https://gogo.tail903ec0.ts.net', 'new devices must receive the deployed non-secret base URL');
 assert.strictEqual(api.hasDashboardPricing(), false, 'a prefilled endpoint without a key must not enable pricing');
 api.persistDashboardPricing(endpoint, key, true);
@@ -74,11 +94,11 @@ assert.deepStrictEqual({ schema: stored.schema, baseUrl: stored.baseUrl, accessT
   schema: 'tcg.dashboard-pricing-rest-settings/v1', baseUrl: endpoint, accessToken: key
 });
 const readiness = await api.testConnection(endpoint, key);
-assert.deepStrictEqual(JSON.parse(JSON.stringify(readiness)), { providerVersion: '2.43.41' });
+assert.deepStrictEqual(JSON.parse(JSON.stringify(readiness)), { providerVersion: '2.43.42' });
 assert.deepStrictEqual({ baseUrl: clientConfigs[0].baseUrl, accessToken: clientConfigs[0].accessToken, timeoutMs: clientConfigs[0].timeoutMs },
   { baseUrl: endpoint, accessToken: key, timeoutMs: 20000 }, 'readiness must use only the entered endpoint and dedicated REST key');
 readinessResult = { apiVersion: 1, schema: 'tcg.pricing-rest-readiness/v1', ready: false,
-  authenticated: true, providerAvailable: false, providerVersion: '2.43.41' };
+  authenticated: true, providerAvailable: false, providerVersion: '2.43.42' };
 await assert.rejects(() => api.testConnection(endpoint, key), /not ready/,
   'authenticated readiness must fail closed when the canonical authority is unavailable');
 
@@ -98,5 +118,5 @@ const copies = ['mtg_binder_app.html', path.join('apps', 'static', 'index.html')
   .map(file => fs.readFileSync(path.join(root, file), 'utf8'));
 assert.ok(copies.every(copy => copy === html), 'all generated HTML copies must match');
 
-console.log('standalone pricing dashboard tests: exact 2.43.41 client, readiness, row refresh, separate device-local key, remember/session/forget, HTTPS, state isolation, and generated parity passing');
+console.log('standalone pricing dashboard tests: exact 2.43.42 client, default browser fetch, readiness, row refresh, separate device-local key, remember/session/forget, HTTPS, state isolation, and generated parity passing');
 })().catch(error => { console.error(error); process.exit(1); });

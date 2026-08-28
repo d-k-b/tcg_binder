@@ -32,7 +32,7 @@ if any(art.get("imageStatus") not in _wrapper_statuses for art in _wrapper_arts)
     raise ValueError("booster wrapper-art image status is not allowed")
 WRAPPER_ART=json.dumps(WRAPPER_ART_CATALOG,separators=(",",":"),ensure_ascii=False)
 _openai_client_paths=[
-    os.path.join(ROOT,"generators","vendor","tcg-comps-2.43.41","tcg-pricing-rest-client.js"),
+    os.path.join(ROOT,"generators","vendor","tcg-comps-2.43.42","tcg-pricing-rest-client.js"),
     os.path.join(ROOT,"generators","catalog_author_client.js"),
     os.path.join(ROOT,"browser-extension","collection-author-bridge.js"),
     os.path.join(ROOT,"browser-extension","identify-bridge.js"),

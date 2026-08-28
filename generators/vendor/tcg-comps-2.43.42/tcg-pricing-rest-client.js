@@ -1,8 +1,8 @@
 (function initTCGPricingRestClient(root, factory) {
-  const api = factory();
+  const api = factory(root);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.TCGPricingRestClient = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function pricingRestClientFactory() {
+})(typeof globalThis !== "undefined" ? globalThis : this, function pricingRestClientFactory(root) {
   "use strict";
 
   const LOOPBACK = new Set(["127.0.0.1", "localhost", "::1"]);
