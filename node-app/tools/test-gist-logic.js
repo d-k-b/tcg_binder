@@ -181,6 +181,29 @@ function freshGist() {
   eq(links.length, 4, 'links() returns one URL per checklist');
   eq(links.every((l) => l.url.startsWith('https://gist.github.com/')), true, 'links are real gist URLs');
 
+  // 9. The CLI's checklist-scoped mutation preserves dashboard-owned fields
+  // (ordered, wrapper art, and future fields) instead of reconstructing a gist.
+  const collectorId = Object.entries(store).find(([, g]) => g.files['mtg-binder-collector.json'])[0];
+  const collectorPayload = JSON.parse(store[collectorId].files['mtg-binder-collector.json'].content);
+  collectorPayload.ordered = { 'collector|extra|incoming': 1 };
+  collectorPayload.wrapperArts = { 'packs|wrapper-art|alpha': 1 };
+  collectorPayload.futureDashboardField = { keep: true };
+  store[collectorId].files['mtg-binder-collector.json'].content = JSON.stringify(collectorPayload);
+  gist = freshGist();
+  const beforeMutation = await gist.readChecklist('collector');
+  const afterMutation = await gist.updateChecklist('collector', beforeMutation.revision, (payload) => ({
+    ...payload,
+    checks: { ...payload.checks, 'collector|v2|cli-test': true },
+  }));
+  eq(afterMutation.payload.ordered['collector|extra|incoming'], 1,
+     'checklist mutation preserves ordered quantities');
+  eq(afterMutation.payload.wrapperArts['packs|wrapper-art|alpha'], 1,
+     'checklist mutation preserves wrapper-art quantities');
+  eq(afterMutation.payload.futureDashboardField.keep, true,
+     'checklist mutation preserves unknown future dashboard fields');
+  eq(afterMutation.payload.checks['collector|v2|cli-test'], true,
+     'checklist mutation writes only the requested state change');
+
   try { fs.unlinkSync(IDPATH); } catch {}
   console.log('─'.repeat(46));
   console.log(`${pass} passed, ${fail} failed\n`);

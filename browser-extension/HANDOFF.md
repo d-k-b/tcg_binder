@@ -23,14 +23,16 @@ adding a pricing-message API, or changing which origin owns progress storage.
 
 ## Current state
 
-- Extension version: **1.3.2**.
+- Extension version: **1.5.0**.
 - Manifest: Chrome/Edge Manifest V3.
 - Primary surface: persistent browser side panel/sidebar.
 - Toolbar action and default shortcut: open the panel.
 - Dashboard source: `https://d-k-b.github.io/tcg_binder/`.
 - Local development source: an optional `http://127.0.0.1:<port>/` or
   `http://localhost:<port>/` URL selected from the extension gear.
-- Extension permissions: `sidePanel` and `storage` only.
+- Extension permissions: `sidePanel` and `storage`; the only host permission is
+  `https://api.openai.com/*` for direct user-requested photo identification and
+  collection authoring.
 - Regression coverage: `node-app/tools/test-browser-extension.js` and
   `node-app/tools/test-browser-extension-monitor.js`, run by `npm test` from
   `node-app/`.
@@ -82,6 +84,36 @@ revisions are skipped, manual sync remains idempotent, and diagnostics never inc
 the catalog body, provider token, GitHub/Gist credentials, monitor bearer, or email.
 The bridge verifies that the cross-origin dashboard has replaced the iframe's
 initial `about:blank` document before posting a subscription or status message.
+
+Version 1.4.0 adds opt-in photo identification for sealed products and exact booster
+wrapper fronts. The dashboard captures and re-encodes one photo, supplies a
+credential-free catalog of canonical candidate IDs, and sends it over
+`tcg-product-identify/v1`. The extension validates the exact dashboard origin/frame,
+request ID, image bounds, and all candidate records before calling the OpenAI
+Responses API. The model can return only IDs already in the supplied catalog; the
+dashboard validates those IDs again and shows ordinary quantity controls. No match
+changes collection state automatically.
+
+Version 1.5.0 adds the extension half of AI-assisted collection authoring on
+`tcg-collection-author/v1`. It accepts requests only from the exact configured
+dashboard origin and `dashboard.contentWindow`, validates the complete source
+catalog and bounded chat history, and calls the OpenAI Responses API with
+`store:false`. Structured results can either ask for clarification or reference
+only supplied source IDs in a proposal. The dashboard validates those IDs again;
+the extension never receives ownership state, GitHub credentials, Gist IDs, or
+collection progress keys.
+
+The same device-remembered OpenAI key serves photo identification and collection
+authoring. It remains exclusively in trusted `chrome.storage.local` and is never
+included in either iframe message channel.
+
+The user-supplied OpenAI key is a deliberate BYOK compromise. **Remember on this
+device** is enabled by default and stores the key only in the Tracker extension's
+`chrome.storage.local`, restricted to trusted extension contexts. The key never
+enters dashboard HTML, iframe messages, page localStorage, Gists, exports, URLs, or
+diagnostics. Removing the key deletes it from extension storage. This is still a
+client-side credential; a hosted server remains the recommended architecture for a
+general public deployment.
 
 ## How the extension uses the dashboard
 
@@ -145,8 +177,10 @@ Dashboard work should preserve these extension-facing behaviors:
 
 Pricing communication uses channel `tcg-pricing/v1`; on-demand collection snapshots
 use `tcg-collection/v1`; monitor subscriptions, hints, and status use
-`tcg-collection-monitor/v1`. Preserve exact origin, exact iframe, response type,
-request ID, and schema validation for all three. Never use `*`, scrape the dashboard
+`tcg-collection-monitor/v1`; photo identification uses
+`tcg-product-identify/v1`; AI collection authoring uses
+`tcg-collection-author/v1`. Preserve exact origin, exact iframe, response type,
+request ID, and schema validation for all five. Never use `*`, scrape the dashboard
 DOM, or put the capability token in an iframe URL or page state.
 
 ## Update workflows

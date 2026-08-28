@@ -66,6 +66,24 @@ npm test             # offline logic tests, no token/network needed
 `check:gist` never prints your token, so its output is safe to share when
 something needs debugging.
 
+### Command-line collection access
+
+The CLI reads and updates the same private-Gist collection state without needing
+the dashboard open. It previews every mutation first; add `--apply` only after
+reviewing the exact ProductRef and resulting totals.
+
+```bash
+npm run collection -- find Mirage --lane boxes
+npm run collection -- show mtg:mir:mirage:booster:display:en
+npm run collection -- set mtg:mir:mirage:booster:display:en --owned 3 --ordered 1
+npm run collection -- set mtg:mir:mirage:booster:display:en --owned 3 --ordered 1 --apply
+```
+
+The CLI requires `GITHUB_TOKEN` in the process environment and deliberately
+does not access browser localStorage. See
+[`docs/COLLECTION_STATE_CLI.md`](../docs/COLLECTION_STATE_CLI.md) for the
+shared state contract and dashboard/CLI parity rule.
+
 ### Option B — Google Drive (~5–10 minutes)
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a project
@@ -124,6 +142,12 @@ extension/         Chrome extension (TCGplayer price helper)
 | POST | `/api/prices/refresh?checklist=ID` | Kick off an eBay refresh + queue TCG jobs |
 | GET | `/api/ext/jobs` | Extension pulls TCGplayer jobs |
 | POST | `/api/ext/ingest` | Extension posts a scraped TCGplayer price |
+
+The generated static dashboard has a separate current integration under **More →
+Pricing API settings**. It accepts an HTTPS TCG Pricing REST base URL and the
+dedicated read-only access key, optionally remembered on that device. Those fields
+are not part of this historical Node pricing frontend and never enter collection
+state or Gists. See `../docs/API_CREDENTIALS.md`.
 
 ---
 

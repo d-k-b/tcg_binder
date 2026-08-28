@@ -31,6 +31,15 @@ _wrapper_statuses={"exact_individual","group_reference","review_only","pending_i
 if any(art.get("imageStatus") not in _wrapper_statuses for art in _wrapper_arts):
     raise ValueError("booster wrapper-art image status is not allowed")
 WRAPPER_ART=json.dumps(WRAPPER_ART_CATALOG,separators=(",",":"),ensure_ascii=False)
+_openai_client_paths=[
+    os.path.join(ROOT,"generators","vendor","tcg-comps-2.43.38","tcg-pricing-rest-client.js"),
+    os.path.join(ROOT,"generators","catalog_author_client.js"),
+    os.path.join(ROOT,"browser-extension","collection-author-bridge.js"),
+    os.path.join(ROOT,"browser-extension","identify-bridge.js"),
+]
+OPENAI_BROWSER_CLIENTS="\n".join(open(path,encoding="utf-8").read() for path in _openai_client_paths)
+if "</script" in OPENAI_BROWSER_CLIENTS.lower():
+    raise ValueError("embedded OpenAI browser client contains a closing script tag")
 USER_EMAIL="dustyn@blasig.us"
 
 HTML = r"""<!DOCTYPE html>
@@ -190,6 +199,7 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
   border-radius:8px;font-size:12.5px;color:var(--ink);cursor:pointer;user-select:none}
 .mrow:hover{background:var(--bg)}
 .menu button.mrow{width:100%;border:0;background:transparent;font-family:inherit;font-size:12.5px;text-align:left}
+.mobile-era-action{display:none}
 .menu button.mrow:hover,.menu button.mrow:focus-visible{background:var(--bg);outline:none}
 .menu select{font-size:12px;color:var(--lpurple);background:var(--card);
   border:1px solid var(--line);border-radius:7px;padding:4px 6px;cursor:pointer}
@@ -462,6 +472,46 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .identify-confidence{color:var(--good)!important;font-weight:750}.identify-result .variantqty{align-self:center}
 .identify-privacy{font-size:9.5px!important;margin-top:10px!important}
 @media(max-width:520px){.identify-modal{padding:17px}.identify-layout{grid-template-columns:1fr}.identify-preview{width:100%;max-height:210px;aspect-ratio:auto}.identify-result{grid-template-columns:52px minmax(0,1fr)}.identify-result img,.identify-result-fallback{width:52px;height:66px}.identify-result .variantqty{grid-column:2;justify-self:start}}
+.newcollectionbtn{width:auto;padding:0 10px;display:flex;gap:6px;font-weight:750;white-space:nowrap}
+.newcollectionbtn span{font-size:11px}
+.author-modal{max-width:680px;height:min(760px,calc(100vh - 36px));display:flex;flex-direction:column;padding:20px}
+.author-intro{margin:3px 0 12px!important}
+.author-ai-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-3px 0 10px;
+  border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:7px 9px;color:var(--muted);font-size:10.5px}
+.author-ai-state.ready{border-color:color-mix(in srgb,var(--good) 55%,var(--line));color:var(--good)}
+.author-ai-state.needs{border-color:#e2bd69;color:var(--gold)}
+.author-ai-state button{border:1px solid currentColor;background:transparent;color:inherit;border-radius:7px;padding:4px 7px;font:inherit;font-weight:750;cursor:pointer;white-space:nowrap}
+.author-chat{flex:1;min-height:180px;overflow:auto;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:12px;display:grid;align-content:start;gap:9px}
+.author-msg{max-width:88%;padding:9px 11px;border-radius:11px;font-size:12px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.author-msg.assistant{background:var(--card);border:1px solid var(--line);justify-self:start}
+.author-msg.user{background:var(--lpurple);color:#fff;justify-self:end}
+.author-msg.error{background:#fff0f0;color:#a12727;border:1px solid #efb9b9;justify-self:start}
+.author-compose{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;margin-top:10px;align-items:end}
+.author-compose textarea{min-height:66px;max-height:150px;resize:vertical;width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+.author-compose button{min-width:88px;height:42px}
+.author-proposal{border:1px solid var(--lpurple);border-radius:11px;padding:11px;background:color-mix(in srgb,var(--lpurple) 7%,var(--card));display:grid;gap:7px}
+.author-proposal h3{font-size:13px;margin:0}.author-proposal p{font-size:11px;margin:0;color:var(--muted)}
+.author-proposal ul{font-size:11px;margin:0;padding-left:18px;color:var(--muted)}
+.author-import-list{display:grid;gap:7px;max-height:280px;overflow:auto;padding:2px}
+.author-import-item{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--card);display:grid;gap:3px}
+.author-import-item b{font-size:11px}.author-import-item span{font-size:10px;color:var(--muted);line-height:1.35}
+.author-import-item a{font-size:10px;color:var(--lpurple);font-weight:700;overflow-wrap:anywhere}
+.author-import-warn{font-size:10px;color:var(--gold);margin:0;padding-left:18px}
+.draft-banner{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px;padding:9px 10px;border-radius:9px;border:1px solid #e2bd69;background:#fff8e7;color:#5b4617;font-size:11px}
+[data-theme="dark"] .draft-banner{background:#332b1d;color:#f0d693;border-color:#68572f}
+.draft-banner b{font-size:11px}.draft-banner .spacer{min-width:8px}.draft-banner button{border:1px solid currentColor;background:transparent;color:inherit;border-radius:7px;padding:5px 8px;font:inherit;font-weight:700;cursor:pointer}
+.draft-banner button.publish{background:var(--gold);border-color:var(--gold);color:#fff}
+.draft-banner.live{border-color:color-mix(in srgb,var(--good) 55%,var(--line));background:color-mix(in srgb,var(--good) 9%,var(--card));color:var(--ink)}
+.draft-banner.live .draft-badge{background:var(--good);color:#fff}
+.draft-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:2px 6px;border-radius:8px;background:#e5b94f;color:#3a2b0c}
+.ai-settings-modal,.pricing-settings-modal{max-width:520px;max-height:calc(100vh - 36px);overflow:auto}
+.ai-field{display:grid;gap:6px;margin-top:14px;font-size:11px;color:var(--muted)}
+.ai-field input{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:9px;font-size:13px;background:var(--bg);color:var(--ink)}
+.ai-remember{display:flex;align-items:flex-start;gap:9px;margin-top:13px;cursor:pointer;font-size:12px;line-height:1.35}
+.ai-remember input{width:17px;height:17px;accent-color:var(--lpurple);flex:none;margin-top:1px}
+.ai-remember span{display:grid;gap:2px}.ai-remember small{color:var(--muted);font-size:10.5px}
+.ai-warning{margin-top:13px;padding:9px 10px;border:1px solid #e2bd69;border-radius:9px;background:#fff8e7;color:#6d5317;font-size:10.5px;line-height:1.45}
+[data-theme="dark"] .ai-warning{background:#332b1d;color:#f0d693;border-color:#68572f}
 
 /* ---- responsive multi-column: 1 col phone / 2 laptop / 3 big monitor ---- */
 #content{column-width:480px;column-gap:16px}
@@ -488,10 +538,10 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 @media(max-width:620px){
   .val{display:none}.tab{min-width:150px}.brand p{display:none}
   .row{gap:8px;padding-left:5px;padding-right:5px}
-  /* On phones, keep the temporary incoming tray clear of the set name by
-     docking it against the row's right edge. It still floats, so rows never
-     grow or shift while quantities are adjusted. */
-  .ordertray{left:calc(100vw - 187px)}
+  /* Keep the phone tray contiguous with the owned + button so pointer hover
+     cannot fall through the row before reaching the ordered actions. The
+     non-clickable package icon separates owned + from ordered minus. */
+  .ordertray{left:58px}
   .checkgrid{grid-template-columns:repeat(var(--n),38px);gap:5px}
   .checkgrid .slotlab{font-size:7px;white-space:normal;overflow-wrap:anywhere;
     line-height:1.05;text-align:center;min-height:15px;display:grid;place-items:end center}
@@ -509,6 +559,10 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
   .vbtn{width:33px;justify-content:center;padding:0}
   .search{min-width:120px}
   .monitor-modal{padding:18px}
+  .newcollectionbtn{width:33px;padding:0;justify-content:center}.newcollectionbtn span{display:none}
+  #expandAll,#collapseAll{display:none}.mobile-era-action{display:flex}
+  .author-modal{padding:15px}.author-compose{grid-template-columns:1fr}.author-compose button{width:100%}
+  .ai-settings-modal,.pricing-settings-modal{padding:17px}.author-ai-state{align-items:flex-start}
   .monitor-grid{grid-template-columns:1fr}
 }
 </style>
@@ -537,7 +591,11 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
                aria-haspopup="true" aria-expanded="false">&#8943;</button>
        <div class="menu hmenu" id="moreMenu">
          <div class="mrow" id="syncItem"><span>Sync settings…</span></div>
+         <div class="mrow" id="aiSettingsItem"><span>AI settings…</span></div>
+         <div class="mrow" id="pricingSettingsItem"><span>Pricing API settings…</span></div>
          <div class="mrow" id="monitorItem"><span>Deal monitoring…</span></div>
+         <div class="msep"></div>
+         <div class="mrow" id="copyDebugBtn"><span>Copy debug report</span><span class="mkey">&#128203;</span></div>
          <div class="msep"></div>
          <div class="mrow" id="exportBtn"><span>Export progress</span><span class="mkey">&#10515;</span></div>
          <div class="mrow" id="importBtn"><span>Import progress</span><span class="mkey">&#10514;</span></div>
@@ -584,9 +642,12 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
         <div class="menu pricemenu" id="priceRefreshMenu">
           <button type="button" class="mrow" id="refreshUnfinishedPrices"><span>Refresh unfinished items</span><span class="mkey" id="refreshUnfinishedCount"></span></button>
           <button type="button" class="mrow" id="refreshAllPrices"><span>Refresh all items</span><span class="mkey" id="refreshAllCount"></span></button>
-          <div class="pricingmenustatus" id="pricingMenuStatus">Open in the tracker extension to use live pricing.</div>
+          <div class="pricingmenustatus" id="pricingMenuStatus">Add a Pricing REST key or open the paired tracker extension.</div>
         </div>
       </div>
+      <button class="iconbtn newcollectionbtn" id="newCollectionBtn" title="Create a new collection with AI" aria-label="New Collection">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New Collection</span>
+      </button>
       <button class="iconbtn" id="expandAll" title="Expand all eras" aria-label="Expand all eras">
         <svg viewBox="0 0 24 24"><polyline points="7 6 12 11 17 6"/><polyline points="7 13 12 18 17 13"/></svg>
       </button>
@@ -602,6 +663,8 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
             <select id="colSel">
               <option value="auto">Auto</option><option value="1">1</option>
               <option value="2">2</option><option value="3">3</option></select></div>
+          <button type="button" class="mrow mobile-era-action" id="expandAllMenu"><span>Expand all eras</span></button>
+          <button type="button" class="mrow mobile-era-action" id="collapseAllMenu"><span>Collapse all eras</span></button>
         </div>
       </div>
     </div>
@@ -625,8 +688,47 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
        <div class="identify-results" id="identifyResults"></div>
      </div>
    </div>
-   <p class="identify-privacy">The resized photo is sent through the installed Tracker extension to the configured vision provider. Photos and identification results are not added to collection state, Gists, or exports.</p>
+   <p class="identify-privacy">The resized photo is sent to OpenAI through either this device's standalone AI setting or the installed Tracker extension. Photos and identification results are not added to collection state, Gists, or exports.</p>
    <div class="actions"><button class="pbtn g" id="identifyAnother">Choose another photo</button><button class="pbtn ghost" id="identifyClose">Close</button></div>
+ </div>
+</div>
+
+<div class="modal-bg" id="authorModal">
+ <div class="modal author-modal" role="dialog" aria-modal="true" aria-labelledby="authorHeading">
+   <h2 id="authorHeading"><span class="gicon">+</span> New Collection</h2>
+   <p class="author-intro" id="authorIntro">Describe the collection you want. The assistant may ask questions, use official web sources when this dashboard lacks the game, and prepare a sourced local draft for review. Nothing is added until you approve the preview, and drafts never sync to GitHub until you explicitly publish them.</p>
+   <div class="author-ai-state"><span id="authorAIState">Checking AI setup…</span><button type="button" id="authorAISettings">AI settings</button></div>
+   <div class="author-chat" id="authorChat" aria-live="polite"></div>
+   <div class="author-compose">
+     <textarea id="authorPrompt" placeholder="Example: I want to collect 3 of every Lorcana booster box." aria-label="Describe your new collection"></textarea>
+     <button class="pbtn g" id="authorSend">Send</button>
+   </div>
+   <div class="actions"><button class="pbtn ghost" id="authorReset">Start over</button><button class="pbtn ghost" id="authorClose">Close</button></div>
+ </div>
+</div>
+
+<div class="modal-bg" id="aiSettingsModal">
+ <div class="modal ai-settings-modal" role="dialog" aria-modal="true" aria-labelledby="aiSettingsHeading">
+   <h2 id="aiSettingsHeading"><span class="gicon">AI</span> AI settings</h2>
+   <p>Use AI features directly in this web app on Safari, Chrome, or Edge. The Tracker extension remains preferred when it is available.</p>
+   <label class="ai-field" for="dashboardOpenAIKey"><b>OpenAI API key</b><input id="dashboardOpenAIKey" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="sk-…"></label>
+   <label class="ai-remember" for="dashboardOpenAIRemember"><input id="dashboardOpenAIRemember" type="checkbox" checked><span><b>Remember on this device</b><small>Keep this key for this dashboard origin after the browser closes.</small></span></label>
+   <div class="ai-warning"><b>Personal trusted devices only.</b> A static web app cannot protect a standard API key as strongly as a server or the Tracker extension. The key is stored separately from collection data and is never included in Gists, exports, URLs, or diagnostics. Use a dedicated OpenAI project key with a spending limit.</div>
+   <div class="info" id="aiSettingsStatus"></div>
+   <div class="actions"><button class="pbtn g" id="aiSettingsSave">Save on this device</button><button class="pbtn ghost" id="aiSettingsForget">Forget key</button><button class="pbtn ghost" id="aiSettingsClose">Close</button></div>
+ </div>
+</div>
+
+<div class="modal-bg" id="pricingSettingsModal">
+ <div class="modal pricing-settings-modal" role="dialog" aria-modal="true" aria-labelledby="pricingSettingsHeading">
+   <h2 id="pricingSettingsHeading"><span class="gicon">$</span> Pricing API settings</h2>
+   <p>Use the read-only TCG Pricing REST API from this web app on Safari, Chrome, or Edge. Enter the same access key on each trusted device.</p>
+   <label class="ai-field" for="dashboardPricingBaseUrl"><b>Pricing API base URL</b><input id="dashboardPricingBaseUrl" type="url" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="https://pricing.example.com"></label>
+   <label class="ai-field" for="dashboardPricingAccessToken"><b>Read-only pricing access key</b><input id="dashboardPricingAccessToken" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="tcg_price_…"></label>
+   <label class="ai-remember" for="dashboardPricingRemember"><input id="dashboardPricingRemember" type="checkbox" checked><span><b>Remember on this device</b><small>Keep this endpoint and key for this dashboard origin after the browser closes.</small></span></label>
+   <div class="ai-warning"><b>Treat this access key as a secret.</b> It is limited to read-only exact-product valuations, but anyone with it can consume your pricing service. It is stored separately from collection data and never included in Gists, exports, URLs, or diagnostics. Rotate it server-side if exposed.</div>
+   <div class="info" id="pricingSettingsStatus"></div>
+   <div class="actions"><button class="pbtn g" id="pricingSettingsSave">Save on this device</button><button class="pbtn ghost" id="pricingSettingsForget">Forget key</button><button class="pbtn ghost" id="pricingSettingsClose">Close</button></div>
  </div>
 </div>
 
@@ -673,6 +775,9 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 </div>
 
 <script>
+/*__OPENAI_BROWSER_CLIENTS__*/
+</script>
+<script>
 const DATA = /*__DATA__*/;
 const WRAPPER_ART_CATALOG = /*__WRAPPER_ART__*/;
 const KEY = "mtgBinder_v1";
@@ -706,6 +811,102 @@ function ensureWrapperArtRows(){
 }
 ensureWrapperArtRows();
 
+/* User-authored collections are self-describing, versioned records. Their
+   immutable item/slot ids—not names—own progress identity, so later copy edits
+   cannot strand quantities. Unknown future schemas are retained verbatim in
+   recovery instead of being silently discarded. */
+const COLLECTION_LIBRARY_SCHEMA='tcg.collection-library/v1';
+const COLLECTION_DEFINITION_SCHEMA='tcg.collection-definition/v1';
+const COLLECTION_AUTHOR_RESULT_SCHEMA='tcg.collection-author-result/v1';
+const COLLECTION_AUTHOR_RESULT_SCHEMA_V2='tcg.collection-author-result/v2';
+const EXTERNAL_CATALOG_IMPORT_SCHEMA='tcg.external-catalog-import/v1';
+const EXTERNAL_CATALOG_SOURCE_SCHEMA='tcg.external-catalog-source/v1';
+const BUILTIN_CHECKLIST_IDS=new Set(DATA.checklists.map(checklist=>checklist.id));
+function boundedText(value,max){return typeof value==='string'?value.trim().slice(0,max):'';}
+function jsonClone(value){try{return JSON.parse(JSON.stringify(value));}catch(_error){return null;}}
+function validCustomId(value){return /^custom-[a-z0-9][a-z0-9-]{7,55}$/.test(String(value||''));}
+const runtimeDiagnostics=[];
+function diagnosticText(value,max){
+  return String(value||'').replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED_OPENAI_KEY]')
+    .replace(/ghp_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+/g,'[REDACTED_GITHUB_TOKEN]').slice(0,max);
+}
+function recordRuntimeDiagnostic(area,error){
+  const item={at:new Date().toISOString(),area:diagnosticText(area,80),name:diagnosticText(error&&error.name||'Error',80),
+    message:diagnosticText(error&&error.message||error||'Unknown dashboard error',400)};
+  runtimeDiagnostics.push(item);if(runtimeDiagnostics.length>8)runtimeDiagnostics.shift();
+}
+if(typeof window!=='undefined'&&window.addEventListener){
+  window.addEventListener('error',event=>recordRuntimeDiagnostic('window-error',event.error||event.message));
+  window.addEventListener('unhandledrejection',event=>recordRuntimeDiagnostic('unhandled-rejection',event.reason));
+}
+function normalizeCollectionSourceRef(value){
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  if(value.schema!==EXTERNAL_CATALOG_SOURCE_SCHEMA)return jsonClone(value);
+  let url;try{url=new URL(boundedText(value.sourceUrl,1000));}catch(_error){}
+  if(!url||url.protocol!=='https:'||url.username||url.password)return null;
+  const sourceTitle=boundedText(value.sourceTitle,200),evidence=boundedText(value.evidence,500),productName=boundedText(value.productName,180);
+  if(!sourceTitle||!evidence||!productName)return null;
+  const releaseDate=boundedText(value.releaseDate,30);
+  return {schema:EXTERNAL_CATALOG_SOURCE_SCHEMA,sourceUrl:url.href,sourceTitle,evidence,productName,
+    variantName:boundedText(value.variantName,160)||null,
+    releaseDate:releaseDate&&!Number.isNaN(Date.parse(releaseDate))?new Date(releaseDate).toISOString().slice(0,10):null,
+    releaseStatus:['released','announced','unknown'].includes(value.releaseStatus)?value.releaseStatus:'unknown',
+    researchedAt:typeof value.researchedAt==='string'&&!Number.isNaN(Date.parse(value.researchedAt))?new Date(value.researchedAt).toISOString():null};
+}
+function normalizeCollectionDefinition(value){
+  if(!value||typeof value!=='object'||Array.isArray(value)||value.schema!==COLLECTION_DEFINITION_SCHEMA)return null;
+  const collectionId=boundedText(value.collectionId,64),title=boundedText(value.title,100),sub=boundedText(value.sub,700);
+  if(!validCustomId(collectionId)||!title||!sub||!['draft','live'].includes(value.lifecycle)||!Array.isArray(value.eras)||!value.eras.length||value.eras.length>100)return null;
+  const eras=[];let itemCount=0,slotCount=0;const itemIds=new Set(),slotIds=new Set();
+  for(const rawEra of value.eras){
+    const eraId=boundedText(rawEra&&rawEra.id,100),name=boundedText(rawEra&&rawEra.name,160);
+    if(!eraId||!name||!Array.isArray(rawEra.items)||!rawEra.items.length)return null;
+    const items=[];
+    for(const rawItem of rawEra.items){
+      const id=boundedText(rawItem&&rawItem.id,100),itemName=boundedText(rawItem&&rawItem.name,180),code=boundedText(rawItem&&rawItem.code,30).toUpperCase();
+      if(!id||itemIds.has(id)||!itemName||!Array.isArray(rawItem.slots)||!rawItem.slots.length||rawItem.slots.length>100)return null;
+      itemIds.add(id);const slots=[];
+      for(const rawSlot of rawItem.slots){
+        const slotId=boundedText(rawSlot&&rawSlot.id,120),label=boundedText(rawSlot&&rawSlot.l,160),group=boundedText(rawSlot&&rawSlot.g,80)||'Copies';
+        if(!slotId||slotIds.has(slotId)||!label)return null;
+        slotIds.add(slotId);slots.push({id:slotId,l:label,g:group,k:boundedText(rawSlot&&rawSlot.k,80)||group,r:!rawSlot||rawSlot.r!==false,legacy:null});slotCount++;
+      }
+      const item={id,name:itemName,code,slots,pricingProducts:[],sourceRef:normalizeCollectionSourceRef(rawItem.sourceRef)};
+      const note=boundedText(rawItem.note,500);if(note)item.note=note;
+      items.push(item);itemCount++;if(itemCount>1200||slotCount>100000)return null;
+    }
+    eras.push({id:eraId,name,items});
+  }
+  const revision=Math.max(1,Math.min(1000000,Math.floor(Number(value.revision)||1)));
+  const createdAt=typeof value.createdAt==='string'&&!Number.isNaN(Date.parse(value.createdAt))?new Date(value.createdAt).toISOString():new Date().toISOString();
+  const updatedAt=typeof value.updatedAt==='string'&&!Number.isNaN(Date.parse(value.updatedAt))?new Date(value.updatedAt).toISOString():createdAt;
+  return {schema:COLLECTION_DEFINITION_SCHEMA,collectionId,revision,lifecycle:value.lifecycle,title,sub,
+    progressMode:'distinct_variants',createdAt,updatedAt,authoring:jsonClone(value.authoring)||{},eras};
+}
+function normalizeCollectionLibrary(value){
+  const source=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+  const collections=[],recovery=Array.isArray(source.recovery)?source.recovery.map(jsonClone).filter(Boolean):[],seen=new Set();
+  if(source.schema&&source.schema!==COLLECTION_LIBRARY_SCHEMA){
+    const copy=jsonClone(source);if(copy)recovery.push({reason:'unsupported-library-schema',preservedAt:new Date().toISOString(),library:copy});
+    return {schema:COLLECTION_LIBRARY_SCHEMA,revision:1,collections,recovery};
+  }
+  const incoming=Array.isArray(source.collections)?source.collections:[];
+  for(const raw of incoming){
+    const normalized=normalizeCollectionDefinition(raw);
+    if(!normalized){const copy=jsonClone(raw);if(copy)recovery.push({reason:'unsupported-or-invalid-definition',preservedAt:new Date().toISOString(),definition:copy});continue;}
+    if(seen.has(normalized.collectionId)){recovery.push({reason:'duplicate-collection-id',preservedAt:new Date().toISOString(),definition:jsonClone(raw)});continue;}
+    seen.add(normalized.collectionId);collections.push(normalized);
+  }
+  return {schema:COLLECTION_LIBRARY_SCHEMA,revision:1,collections,recovery};
+}
+function customDefinitionFor(id){return (state.collectionLibrary&&state.collectionLibrary.collections||[]).find(definition=>definition.collectionId===id)||null;}
+function syncCustomChecklists(){
+  DATA.checklists=DATA.checklists.filter(checklist=>BUILTIN_CHECKLIST_IDS.has(checklist.id));
+  for(const definition of state.collectionLibrary.collections){DATA.checklists.push({id:definition.collectionId,title:definition.title,sub:definition.sub,
+    progressMode:'distinct_variants',custom:true,lifecycle:definition.lifecycle,revision:definition.revision,eras:definition.eras});}
+}
+function customKeyFor(cl,slotId){return cl+'|v2|'+contentHash(normKeyPart(cl)+'\u001f'+boundedText(slotId,120));}
+
 const LEGACY_KEY_RE=/^([^|]+)\|(\d+)\|(\d+)\|(\d+)$/;
 function normKeyPart(v){return String(v||'').normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');}
 function contentHash(v){
@@ -714,7 +915,9 @@ function contentHash(v){
   return h.toString(16).padStart(16,'0');
 }
 function keyFor(cl,it,si){
-  const sl=it.slots[si],group=normKeyPart(sl.k||sl.g||sl.l),ordinal=it.slots
+  const sl=it.slots[si];
+  if(validCustomId(cl)&&sl&&sl.id)return customKeyFor(cl,sl.id);
+  const group=normKeyPart(sl.k||sl.g||sl.l),ordinal=it.slots
     .slice(0,si).filter(s=>normKeyPart(s.k||s.g||s.l)===group).length;
   const seed=[normKeyPart(cl),normKeyPart(it.name),normKeyPart(it.code),group,ordinal].join('\u001f');
   return cl+'|v2|'+contentHash(seed);
@@ -814,13 +1017,14 @@ function monitorPreferenceEnvelope(payload){
 }
 function monitorGistFields(){return {monitorPreferences:normalizeMonitorPreferences(state.monitorPreferences),
   monitorPreferencesUpdatedAt:state.monitorPreferencesUpdatedAt||null};}
-function monitorGistSnapshot(cl,checks,extras,fields,wrapperArts,ordered,orderedWrapperArts){
+function monitorGistSnapshot(cl,checks,extras,fields,wrapperArts,ordered,orderedWrapperArts,definition){
   const snapshot={checks:checks||{},extras:extras||{},ordered:normalizeOrdered(ordered)};
   if(cl===MONITOR_GIST_CHECKLIST&&fields)Object.assign(snapshot,fields);
   if(cl===WRAPPER_ART_GIST_CHECKLIST&&wrapperArts!==undefined){
     snapshot.wrapperArts=normalizeWrapperArts(wrapperArts);
     snapshot.orderedWrapperArts=normalizeWrapperArts(orderedWrapperArts);
   }
+  if(definition)snapshot.definition=definition;
   return JSON.stringify(snapshot);
 }
 function migrateState(s){
@@ -848,11 +1052,15 @@ function migrateState(s){
   s.monitorPreferences=normalizedMonitor;
   s.monitorPreferencesUpdatedAt=typeof s.monitorPreferencesUpdatedAt==='string'&&!Number.isNaN(Date.parse(s.monitorPreferencesUpdatedAt))
     ?new Date(s.monitorPreferencesUpdatedAt).toISOString():null;
+  const normalizedLibrary=normalizeCollectionLibrary(s.collectionLibrary);
+  if(!s.collectionLibrary||JSON.stringify(s.collectionLibrary)!==JSON.stringify(normalizedLibrary))s._needsMigrationSave=true;
+  s.collectionLibrary=normalizedLibrary;
   s.keyVersion=2;return s;
 }
 let state=load();
+syncCustomChecklists();
 if(state._needsMigrationSave){delete state._needsMigrationSave;save();}
-let active=state.ui.active||DATA.checklists[0].id;
+let active=checklistFor(state.ui.active)?state.ui.active:DATA.checklists[0].id;
 let search="";
 const openDetails=new Set();
 const openWrapperDetails=new Set();
@@ -1075,7 +1283,9 @@ function eraProgress(cl,ei){
 }
 function overall(){
   let done=0,total=0;
-  DATA.checklists.forEach(cl=>{const p=clProgress(cl);done+=p.done;total+=p.total;});
+  DATA.checklists.forEach(cl=>{const definition=customDefinitionFor(cl.id);
+    if(definition&&definition.lifecycle==='draft'&&definition.authoring&&definition.authoring.revisesCollectionId)return;
+    const p=clProgress(cl);done+=p.done;total+=p.total;});
   return {done,total};
 }
 const pct=(d,t)=>t?Math.round(d/t*100):0;
@@ -1094,13 +1304,174 @@ function renderTabs(){
       if(q) q.textContent=pc+'%';
     }
     const d=document.createElement('div'); d.className='clitem'+(cl.id===active?' on':'');
-    d.innerHTML=`<div class="clitop"><span>${cl.title}</span><span class="tpct">${pc}%</span></div>
+    d.innerHTML=`<div class="clitop"><span>${cl.title}${cl.custom&&cl.lifecycle==='draft'?' · Local draft':''}</span><span class="tpct">${pc}%</span></div>
       <div class="tbar"><i style="width:${pc}%"></i></div>
       <div class="clisub">${p.done} / ${p.total} collected</div>`;
     d.onclick=()=>{ ghSyncIfDirty(); active=cl.id; state.ui.active=active; save();
       window.scrollTo(0,0); renderTabs(); renderContent(); };
     menu.appendChild(d);
   });
+}
+
+function collectionProgressKeys(collectionId){
+  const matches=key=>String(key).split('|')[0]===collectionId;
+  return {checks:Object.keys(state.checks||{}).filter(key=>matches(key)&&state.checks[key]),
+    extras:Object.keys(state.extras||{}).filter(key=>matches(key)&&Number(state.extras[key])>0),
+    ordered:Object.keys(state.ordered||{}).filter(key=>matches(key)&&Number(state.ordered[key])>0)};
+}
+function revisionDraftFor(collectionId){return (state.collectionLibrary.collections||[]).find(definition=>
+  definition.lifecycle==='draft'&&definition.authoring&&definition.authoring.revisesCollectionId===collectionId)||null;}
+function definitionItemIdentity(item){
+  const source=item&&item.sourceRef||{};
+  if(source.sourceId)return 'source|'+normKeyPart(source.sourceId);
+  if(source.schema===EXTERNAL_CATALOG_SOURCE_SCHEMA)return 'external|'+[
+    normKeyPart(item.code),normKeyPart(source.productName||item.name),normKeyPart(source.variantName||'')].join('|');
+  return 'item|'+[normKeyPart(item&&item.name),normKeyPart(item&&item.code)].join('|');
+}
+function definitionSlotIdentity(item,slot){return definitionItemIdentity(item)+'|slot|'+[
+  normKeyPart(slot&&slot.l),normKeyPart(slot&&slot.g),normKeyPart(slot&&slot.k),slot&&slot.r===false?'optional':'required'].join('|');}
+function reuseDefinitionStableIds(previous,next){
+  const eras=new Map((previous.eras||[]).map(era=>[normKeyPart(era.name),era])),items=new Map();
+  for(const era of previous.eras||[])for(const item of era.items||[])items.set(definitionItemIdentity(item),item);
+  const usedItems=new Set(),usedSlots=new Set();
+  for(const era of next.eras||[]){const oldEra=eras.get(normKeyPart(era.name));if(oldEra)era.id=oldEra.id;
+    for(const item of era.items||[]){const identity=definitionItemIdentity(item),old=items.get(identity);
+      if(!old||usedItems.has(old.id))continue;usedItems.add(old.id);item.id=old.id;
+      const slots=new Map((old.slots||[]).map(slot=>[definitionSlotIdentity(old,slot),slot]));
+      for(const slot of item.slots||[]){const prior=slots.get(definitionSlotIdentity(item,slot));
+        if(prior&&!usedSlots.has(prior.id)){usedSlots.add(prior.id);slot.id=prior.id;}}
+    }
+  }
+  return next;
+}
+function definitionQuantitySnapshot(collectionId,definition){
+  const snapshot=new Map();
+  for(const era of definition.eras||[])for(const item of era.items||[])for(let si=0;si<(item.slots||[]).length;si++){
+    const identity=definitionSlotIdentity(item,item.slots[si]);snapshot.set(identity,{name:item.name,slot:item.slots[si].l,
+      owned:slotQuantity(collectionId,item,si),ordered:orderedForSlot(collectionId,item,si)});
+  }
+  return snapshot;
+}
+function clearCollectionProgress(collectionId){
+  const progress=collectionProgressKeys(collectionId);
+  for(const key of progress.checks)delete state.checks[key];
+  for(const key of progress.extras)delete state.extras[key];
+  for(const key of progress.ordered)delete state.ordered[key];
+}
+function restoreDefinitionQuantitySnapshot(collectionId,definition,snapshot){
+  for(const era of definition.eras||[])for(const item of era.items||[])for(let si=0;si<(item.slots||[]).length;si++){
+    const quantity=snapshot.get(definitionSlotIdentity(item,item.slots[si]));if(!quantity)continue;
+    const checkKey=keyFor(collectionId,item,si),extraKey=slotExtraKeyFor(collectionId,item,si);
+    if(quantity.owned>0)state.checks[checkKey]=true;
+    if(quantity.owned>1)state.extras[extraKey]=quantity.owned-1;
+    if(quantity.ordered>0)state.ordered[extraKey]=quantity.ordered;
+  }
+}
+function revisionProgressLosses(previousId,previous,next){
+  const before=definitionQuantitySnapshot(previousId,previous),after=new Set();
+  for(const era of next.eras||[])for(const item of era.items||[])for(const slot of item.slots||[])after.add(definitionSlotIdentity(item,slot));
+  return [...before.entries()].filter(([identity,quantity])=>!after.has(identity)&&(quantity.owned>0||quantity.ordered>0))
+    .map(([,quantity])=>quantity);
+}
+function revisionLossText(losses){
+  const owned=losses.reduce((n,item)=>n+item.owned,0),ordered=losses.reduce((n,item)=>n+item.ordered,0);
+  const rows=losses.slice(0,12).map(item=>'• '+item.name+' — '+item.slot+': '+item.owned+' owned, '+item.ordered+' ordered');
+  if(losses.length>12)rows.push('• …and '+(losses.length-12)+' more affected entries');
+  return owned+' owned and '+ordered+' ordered copies would be removed:\n'+rows.join('\n');
+}
+function prepareRevisionDefinition(candidate,previous,collectionId,lifecycle,revision,createdAt,linkage){
+  reuseDefinitionStableIds(previous,candidate);candidate.collectionId=collectionId;candidate.lifecycle=lifecycle;
+  candidate.revision=revision;candidate.createdAt=createdAt;candidate.updatedAt=new Date().toISOString();
+  candidate.authoring=Object.assign({},candidate.authoring||{},linkage||{},
+    {revisionMethod:'ai-assisted-complete-replacement',sourceBuild:BUILD});
+  const normalized=normalizeCollectionDefinition(candidate);
+  if(!normalized)throw pricingError('INVALID_AUTHOR_RESPONSE','The revised collection could not be normalized safely.');
+  return normalized;
+}
+function installCollectionRevision(collectionId,candidate){
+  const previous=customDefinitionFor(collectionId);if(!previous)throw pricingError('INVALID_AUTHOR_RESPONSE','The collection being revised is no longer available.');
+  const snapshot=definitionQuantitySnapshot(collectionId,previous),now=new Date().toISOString();
+  if(previous.lifecycle==='draft'){
+    const linkage=previous.authoring&&previous.authoring.revisesCollectionId?{
+      revisesCollectionId:previous.authoring.revisesCollectionId,baseRevision:previous.authoring.baseRevision}:{};
+    const revised=prepareRevisionDefinition(candidate,previous,previous.collectionId,'draft',previous.revision+1,previous.createdAt,linkage);
+    const losses=revisionProgressLosses(collectionId,previous,revised);
+    if(losses.length&&!confirm('Apply this local revision?\n\n'+revisionLossText(losses)+'\n\nThis affects only the local draft; GitHub will not be changed.'))return null;
+    const index=state.collectionLibrary.collections.findIndex(definition=>definition.collectionId===collectionId);
+    state.collectionLibrary.collections[index]=revised;clearCollectionProgress(collectionId);
+    restoreDefinitionQuantitySnapshot(collectionId,revised,snapshot);syncCustomChecklists();active=collectionId;state.ui.active=active;save();updateAll();
+    return revised;
+  }
+  const existing=revisionDraftFor(previous.collectionId);if(existing)throw pricingError('REVISION_ALREADY_EXISTS','A local revision already exists. Open that draft from the collection picker to continue editing it.');
+  const draftId=newStableId('custom').slice(0,63);
+  const revised=prepareRevisionDefinition(candidate,previous,draftId,'draft',1,now,
+    {revisesCollectionId:previous.collectionId,baseRevision:previous.revision,baseTitle:previous.title});
+  state.collectionLibrary.collections.push(revised);restoreDefinitionQuantitySnapshot(draftId,revised,snapshot);
+  syncCustomChecklists();active=draftId;state.ui.active=active;save();updateAll();return revised;
+}
+async function publishCustomRevision(draft,base){
+  if(!base||base.lifecycle!=='live'){toast('The published collection is unavailable; keep this local revision and refresh from GitHub');return;}
+  if(Number(draft.authoring&&draft.authoring.baseRevision)!==base.revision){toast('The published collection changed after this revision began; start a fresh revision to avoid losing data');return;}
+  const losses=revisionProgressLosses(base.collectionId,base,draft);
+  let message='Publish this revision of “'+base.title+'” to its existing private GitHub Gist?\n\nThe current published version remains unchanged until you confirm.';
+  if(losses.length)message+='\n\n'+revisionLossText(losses);
+  if(!confirm(message))return;
+  const staged=definitionQuantitySnapshot(draft.collectionId,draft);
+  const promoted=prepareRevisionDefinition(jsonClone(draft),base,base.collectionId,'live',base.revision+1,base.createdAt,
+    {revisedFromRevision:base.revision,publishedAt:new Date().toISOString()});
+  delete promoted.authoring.revisesCollectionId;delete promoted.authoring.baseRevision;delete promoted.authoring.baseTitle;
+  clearCollectionProgress(base.collectionId);clearCollectionProgress(draft.collectionId);
+  restoreDefinitionQuantitySnapshot(base.collectionId,promoted,staged);
+  state.collectionLibrary.collections=state.collectionLibrary.collections
+    .filter(definition=>definition.collectionId!==draft.collectionId&&definition.collectionId!==base.collectionId);
+  state.collectionLibrary.collections.push(promoted);delete state.ui.closed[draft.collectionId];
+  active=base.collectionId;state.ui.active=active;syncCustomChecklists();save();ghDirty=true;paintSync();noteMonitorCollectionChange();
+  await ghPush(false);updateAll();toast('Revision published to the existing private GitHub Gist');
+}
+async function publishCustomDraft(collectionId){
+  const definition=customDefinitionFor(collectionId);if(!definition||definition.lifecycle!=='draft')return;
+  if(!gh.token){toast('Connect GitHub Gist before publishing this draft');openSync();return;}
+  const revisionBase=definition.authoring&&definition.authoring.revisesCollectionId;
+  if(revisionBase)return publishCustomRevision(definition,customDefinitionFor(revisionBase));
+  if(!confirm('Publish “'+definition.title+'” to a new private GitHub Gist? After this, its definition and progress will participate in normal Gist sync.'))return;
+  definition.lifecycle='live';definition.revision++;definition.updatedAt=new Date().toISOString();syncCustomChecklists();save();ghDirty=true;paintSync();
+  await ghPush(false);
+  if(!gh.ids[collectionId]){definition.lifecycle='draft';definition.revision++;definition.updatedAt=new Date().toISOString();syncCustomChecklists();save();toast('GitHub publish failed; the collection remains a local draft');return;}
+  toast('Collection published to a private GitHub Gist');updateAll();
+}
+function deleteCustomDraft(collectionId){
+  const definition=customDefinitionFor(collectionId);if(!definition||definition.lifecycle!=='draft')return;
+  const progress=collectionProgressKeys(collectionId),owned=progress.checks.length+progress.extras.length,ordered=progress.ordered.length;
+  const baseId=definition.authoring&&definition.authoring.revisesCollectionId;
+  if(!confirm((baseId?'Discard local revision':'Delete local draft')+' “'+definition.title+'”?\n\nThis removes '+owned+' owned progress record'+(owned===1?'':'s')+' and '+ordered+' ordered record'+(ordered===1?'':'s')+' from this device. '+(baseId?'The published GitHub version will remain unchanged.':'No GitHub Gist will be touched.')))return;
+  const remove=new Set([...progress.checks,...progress.extras,...progress.ordered]);
+  for(const key of remove){delete state.checks[key];delete state.extras[key];delete state.ordered[key];}
+  state.collectionLibrary.collections=state.collectionLibrary.collections.filter(candidate=>candidate.collectionId!==collectionId);
+  delete state.ui.closed[collectionId];syncCustomChecklists();
+  active=baseId&&checklistFor(baseId)?baseId:DATA.checklists[0].id;state.ui.active=active;save();updateAll();
+  toast(baseId?'Local revision discarded; the published collection was not changed':'Local draft deleted; GitHub was not changed');
+}
+
+function appendDraftBanner(host,definition){
+  const banner=document.createElement('div');banner.className='draft-banner';
+  const badge=document.createElement('span');badge.className='draft-badge';badge.textContent='Local draft';
+  const revisionBase=definition.authoring&&definition.authoring.revisesCollectionId;
+  const text=document.createElement('b');text.textContent=revisionBase?'Local revision — published collection unchanged.':'Stored only on this device — not synced to GitHub.';
+  const spacer=document.createElement('span');spacer.className='spacer';
+  const edit=document.createElement('button');edit.type='button';edit.textContent='Edit collection';edit.onclick=()=>openAuthorForEdit(definition.collectionId);
+  const publish=document.createElement('button');publish.className='publish';publish.type='button';publish.textContent=revisionBase?'Publish revision':'Publish to GitHub Gist';publish.onclick=()=>publishCustomDraft(definition.collectionId);
+  const remove=document.createElement('button');remove.type='button';remove.textContent=revisionBase?'Discard revision':'Delete draft';remove.onclick=()=>deleteCustomDraft(definition.collectionId);
+  banner.append(badge,text,spacer,edit,publish,remove);host.appendChild(banner);
+}
+function appendLiveCollectionBanner(host,definition){
+  const banner=document.createElement('div');banner.className='draft-banner live';
+  const badge=document.createElement('span');badge.className='draft-badge';badge.textContent='Live';
+  const staged=revisionDraftFor(definition.collectionId),text=document.createElement('b');
+  text.textContent=staged?'A local revision is in progress; this published version is unchanged.':'Published through GitHub Gist.';
+  const spacer=document.createElement('span');spacer.className='spacer';
+  const edit=document.createElement('button');edit.type='button';edit.textContent=staged?'Open local revision':'Edit collection';
+  edit.onclick=()=>{if(staged){active=staged.collectionId;state.ui.active=active;save();updateAll();openAuthorForEdit(staged.collectionId);}else openAuthorForEdit(definition.collectionId);};
+  banner.append(badge,text,spacer,edit);host.appendChild(banner);
 }
 
 /* "$144 / $1,200" → faint MSRP, bold market (market is what matters) */
@@ -1127,6 +1498,12 @@ const PRICING_STALE_MS=24*60*60*1000;
 const IDENTIFY_CHANNEL='tcg-product-identify/v1';
 const IDENTIFY_RESULT_SCHEMA='tcg.product-identification/v1';
 const IDENTIFY_TIMEOUT_MS=90000;
+const COLLECTION_AUTHOR_CHANNEL='tcg-collection-author/v1';
+const COLLECTION_AUTHOR_TIMEOUT_MS=90000;
+const DASHBOARD_OPENAI_SETTINGS_KEY='tcgDashboardOpenAI_v1';
+const DASHBOARD_OPENAI_SETTINGS_SCHEMA='tcg.dashboard-openai-settings/v1';
+const DASHBOARD_PRICING_SETTINGS_KEY='tcgDashboardPricingRest_v1';
+const DASHBOARD_PRICING_SETTINGS_SCHEMA='tcg.dashboard-pricing-rest-settings/v1';
 const COLLECTION_CHANNEL='tcg-collection/v1';
 const COLLECTION_SNAPSHOT_SCHEMA='tcg.collection-snapshot/v2';
 const COLLECTION_NAMESPACE='collection-tracker';
@@ -1141,24 +1518,131 @@ const pricingConsumerOrigin=(()=>{
     return /^chrome-extension:\/\/[a-p]{32}$/.test(candidate)&&window.parent!==window?candidate:'';
   }catch(e){return '';}
 })();
+function newDashboardSafetyId(){
+  try{return 'dashboard-'+crypto.randomUUID().toLowerCase();}
+  catch(_error){return 'dashboard-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);}
+}
+function loadDashboardOpenAI(){
+  try{
+    const value=JSON.parse(localStorage.getItem(DASHBOARD_OPENAI_SETTINGS_KEY)||'null');
+    if(value&&value.schema===DASHBOARD_OPENAI_SETTINGS_SCHEMA&&typeof value.apiKey==='string'&&value.apiKey.trim())
+      return {apiKey:value.apiKey.trim(),remembered:true,safetyIdentifier:boundedText(value.safetyIdentifier,64)||newDashboardSafetyId()};
+  }catch(_error){}
+  return {apiKey:'',remembered:false,safetyIdentifier:newDashboardSafetyId()};
+}
+let dashboardOpenAI=loadDashboardOpenAI();
+function hasDashboardOpenAI(){return !!dashboardOpenAI.apiKey;}
+function persistDashboardOpenAI(apiKey,remember){
+  const clean=String(apiKey||'').trim();
+  if(!clean)throw pricingError('OPENAI_KEY_MISSING','Paste an OpenAI API key first.');
+  dashboardOpenAI={apiKey:clean,remembered:!!remember,safetyIdentifier:dashboardOpenAI.safetyIdentifier||newDashboardSafetyId()};
+  try{
+    if(remember)localStorage.setItem(DASHBOARD_OPENAI_SETTINGS_KEY,JSON.stringify({schema:DASHBOARD_OPENAI_SETTINGS_SCHEMA,
+      apiKey:clean,safetyIdentifier:dashboardOpenAI.safetyIdentifier,savedAt:new Date().toISOString()}));
+    else localStorage.removeItem(DASHBOARD_OPENAI_SETTINGS_KEY);
+  }catch(error){
+    dashboardOpenAI.remembered=false;
+    throw pricingError('OPENAI_STORAGE_FAILED','The key is available for this session, but this browser could not remember it: '+String(error&&error.message||error));
+  }
+}
+function forgetDashboardOpenAI(){
+  dashboardOpenAI={apiKey:'',remembered:false,safetyIdentifier:newDashboardSafetyId()};
+  try{localStorage.removeItem(DASHBOARD_OPENAI_SETTINGS_KEY);}catch(_error){}
+}
+function loadDashboardPricing(){
+  try{
+    const value=JSON.parse(localStorage.getItem(DASHBOARD_PRICING_SETTINGS_KEY)||'null');
+    if(value&&value.schema===DASHBOARD_PRICING_SETTINGS_SCHEMA&&typeof value.baseUrl==='string'&&
+        typeof value.accessToken==='string'&&value.accessToken.trim()){
+      return {baseUrl:TCGPricingRestClient.normalizeBaseUrl(value.baseUrl),accessToken:value.accessToken.trim(),remembered:true};
+    }
+  }catch(_error){}
+  return {baseUrl:'',accessToken:'',remembered:false};
+}
+let dashboardPricing=loadDashboardPricing();
+function hasDashboardPricing(){return !!(dashboardPricing.baseUrl&&dashboardPricing.accessToken);}
+function pricingAvailable(){return hasDashboardPricing()||!!pricingConsumerOrigin;}
+function pricingTransport(){return hasDashboardPricing()?'rest':(pricingConsumerOrigin?'extension':'none');}
+function persistDashboardPricing(baseUrl,accessToken,remember){
+  const normalized=TCGPricingRestClient.normalizeBaseUrl(baseUrl),clean=String(accessToken||'').trim();
+  if(clean.length<32)throw pricingError('PRICING_KEY_INVALID','Paste the complete read-only pricing access key.');
+  dashboardPricing={baseUrl:normalized,accessToken:clean,remembered:!!remember};
+  try{
+    if(remember)localStorage.setItem(DASHBOARD_PRICING_SETTINGS_KEY,JSON.stringify({schema:DASHBOARD_PRICING_SETTINGS_SCHEMA,
+      baseUrl:normalized,accessToken:clean,savedAt:new Date().toISOString()}));
+    else localStorage.removeItem(DASHBOARD_PRICING_SETTINGS_KEY);
+  }catch(error){dashboardPricing.remembered=false;throw pricingError('PRICING_STORAGE_FAILED','Pricing is ready for this session, but this browser could not remember it: '+String(error&&error.message||error));}
+}
+function forgetDashboardPricing(){
+  dashboardPricing={baseUrl:'',accessToken:'',remembered:false};
+  try{localStorage.removeItem(DASHBOARD_PRICING_SETTINGS_KEY);}catch(_error){}
+}
+function paintPricingSettings(){
+  const url=document.getElementById('dashboardPricingBaseUrl'),token=document.getElementById('dashboardPricingAccessToken'),
+    remember=document.getElementById('dashboardPricingRemember'),status=document.getElementById('pricingSettingsStatus');
+  if(url)url.value=dashboardPricing.baseUrl;if(token)token.value=dashboardPricing.accessToken;
+  if(remember)remember.checked=dashboardPricing.remembered||!dashboardPricing.accessToken;
+  if(status)status.textContent=hasDashboardPricing()
+    ?'Read-only Pricing REST is ready. '+(dashboardPricing.remembered?'The connection will remain on this device.':'The connection will be forgotten when this page reloads.')
+    :(pricingConsumerOrigin?'No REST key is configured. Pricing can still use the paired extension on this browser.':'No live-pricing connection is configured yet.');
+}
+function openPricingSettings(){paintPricingSettings();const modal=document.getElementById('pricingSettingsModal');if(!modal)return;modal.classList.add('show');setTimeout(()=>{const input=document.getElementById('dashboardPricingBaseUrl');if(input)input.focus();},0);}
+function closePricingSettings(){const modal=document.getElementById('pricingSettingsModal');if(modal)modal.classList.remove('show');}
+function dashboardAIError(error,action){
+  const code=String(error&&error.code||'OPENAI_REQUEST_FAILED');
+  if(code==='OPENAI_UNAUTHORIZED')return pricingError(code,'OpenAI rejected this device key. Replace it in AI settings.');
+  if(code==='OPENAI_KEY_MISSING')return pricingError(code,'Add an OpenAI key in AI settings first.');
+  if(code==='OPENAI_UNAVAILABLE')return pricingError(code,'This browser cannot reach OpenAI directly. Check its network/privacy settings or use the Tracker extension.');
+  return pricingError(code,String(error&&error.message||action+' failed.').replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED]').slice(0,600));
+}
+function authorAIStatus(){
+  if(hasDashboardOpenAI())return {ready:true,text:'Standalone AI ready · sourced catalog research enabled · key '+(dashboardOpenAI.remembered?'remembered on this device':'kept for this session')+'.'};
+  if(pricingConsumerOrigin)return {ready:true,text:'Tracker extension bridge ready · its private AI key will be used.'};
+  return {ready:false,text:'AI setup required · add an OpenAI key for this device.'};
+}
+function paintAuthorAIStatus(){
+  const box=document.querySelector('.author-ai-state'),label=document.getElementById('authorAIState'),status=authorAIStatus();
+  if(label)label.textContent=status.text;if(box){box.classList.toggle('ready',status.ready);box.classList.toggle('needs',!status.ready);}
+}
+function paintAISettings(){
+  const input=document.getElementById('dashboardOpenAIKey'),remember=document.getElementById('dashboardOpenAIRemember'),status=document.getElementById('aiSettingsStatus');
+  if(input)input.value=dashboardOpenAI.apiKey;if(remember)remember.checked=dashboardOpenAI.remembered||!dashboardOpenAI.apiKey;
+  if(status)status.textContent=hasDashboardOpenAI()
+    ?'Standalone AI is ready. '+(dashboardOpenAI.remembered?'The key will remain on this device.':'The key will be forgotten when this page reloads.')
+    :(pricingConsumerOrigin?'The Tracker extension is connected. Add a key here only if you also want this page to work outside the extension.':'No standalone AI key is configured yet.');
+}
+function openAISettings(){paintAISettings();document.getElementById('aiSettingsModal').classList.add('show');setTimeout(()=>document.getElementById('dashboardOpenAIKey').focus(),0);}
+function closeAISettings(){document.getElementById('aiSettingsModal').classList.remove('show');}
 const pricingPending=new Map();
 const identifyPending=new Map();
+const authorPending=new Map();
 const pricingStates=new Map();
 let pricingRequestSerial=0;
 let identifyRequestSerial=0;
+let authorRequestSerial=0;
 const PRICING_BATCH_CONCURRENCY=4;
 let pricingBatch={running:false,done:0,total:0,rows:0,label:'',checklistId:null};
 
 function pricingDefaultState(){
-  return pricingConsumerOrigin
+  return pricingAvailable()
     ? {status:'idle',message:'Ready for a live price check.'}
-    : {status:'unavailable',code:'MISSING_EXTENSION',message:'Open this dashboard in the installed tracker extension for live pricing.'};
+    : {status:'unavailable',code:'PRICING_NOT_CONFIGURED',message:'Add the Pricing REST URL and access key in Pricing API settings, or use the paired tracker extension.'};
 }
 function pricingState(productId){return pricingStates.get(productId)||pricingDefaultState();}
 function pricingError(code,message){const error=new Error(message||code||'Pricing request failed');error.code=code||'BRIDGE_FAILURE';return error;}
 function pricingRequest(type,payload){
-  if(!pricingConsumerOrigin)return Promise.reject(pricingError('MISSING_EXTENSION','Open this dashboard in the installed tracker extension for live pricing.'));
   const requestId='tracker-'+Date.now().toString(36)+'-'+(++pricingRequestSerial).toString(36);
+  if(type==='priceProduct'&&hasDashboardPricing()){
+    try{
+      const client=TCGPricingRestClient.createClient({baseUrl:dashboardPricing.baseUrl,accessToken:dashboardPricing.accessToken,timeoutMs:PRICING_TIMEOUT_MS});
+      return client.priceProduct(payload&&payload.target,Object.assign({},payload&&payload.options,{requestId})).catch(error=>{
+        throw pricingError(String(error&&error.code||'REST_FAILURE'),String(error&&error.message||'Pricing REST request failed.').slice(0,600));
+      });
+    }catch(error){return Promise.reject(pricingError(String(error&&error.code||'REST_CONFIGURATION'),String(error&&error.message||error).slice(0,600)));}
+  }
+  if(!pricingConsumerOrigin)return Promise.reject(pricingError('MISSING_EXTENSION',type==='priceProduct'
+    ?'Add a Pricing REST key in Pricing API settings or open this dashboard in the paired tracker extension.'
+    :'This feature requires the paired tracker extension.'));
   return new Promise((resolve,reject)=>{
     const timer=setTimeout(()=>{pricingPending.delete(requestId);reject(pricingError('BRIDGE_TIMEOUT','TCG Comps did not respond. Reload both extensions and try again.'));},PRICING_TIMEOUT_MS);
     pricingPending.set(requestId,{type:type+'Result',resolve,reject,timer});
@@ -1176,8 +1660,16 @@ window.addEventListener('message',(event)=>{
   else pending.resolve(message.result);
 });
 function identifyRequest(image){
-  if(!pricingConsumerOrigin)return Promise.reject(pricingError('MISSING_EXTENSION','Open this dashboard in the installed Tracker extension to identify a photo.'));
   const requestId='identify-'+Date.now().toString(36)+'-'+(++identifyRequestSerial).toString(36);
+  if(hasDashboardOpenAI()){
+    try{
+      const request=TCGProductIdentify.validateIdentifyRequest({channel:IDENTIFY_CHANNEL,type:'identifyProduct',requestId,image,
+        activeChecklist:active,candidates:RECOGNITION_PUBLIC_CATALOG});
+      return TCGProductIdentify.identifyProduct(dashboardOpenAI.apiKey,request,{safetyIdentifier:dashboardOpenAI.safetyIdentifier})
+        .catch(error=>{throw dashboardAIError(error,'Photo identification');});
+    }catch(error){return Promise.reject(error);}
+  }
+  if(!pricingConsumerOrigin)return Promise.reject(pricingError('OPENAI_KEY_MISSING','Add an OpenAI key in AI settings to identify photos on this device.'));
   return new Promise((resolve,reject)=>{
     const timer=setTimeout(()=>{identifyPending.delete(requestId);reject(pricingError('IDENTIFY_TIMEOUT','Photo identification timed out. Try a smaller or clearer image.'));},IDENTIFY_TIMEOUT_MS);
     identifyPending.set(requestId,{resolve,reject,timer});
@@ -1199,6 +1691,163 @@ window.addEventListener('message',(event)=>{
       !Number.isInteger(match.confidence)||match.confidence<0||match.confidence>100){pending.reject(pricingError('INVALID_IDENTIFY_RESPONSE','The Tracker extension returned an unknown or invalid product match.'));return;}seen.add(match.candidateId);}
   pending.resolve(result);
 });
+
+const AUTHOR_SOURCE_ITEMS=new Map();
+function buildAuthorCatalog(){
+  const rows=[];
+  DATA.checklists.filter(checklist=>typeof BUILTIN_CHECKLIST_IDS==='undefined'||BUILTIN_CHECKLIST_IDS.has(checklist.id)).forEach(checklist=>checklist.eras.forEach((era,eraIndex)=>
+    era.items.forEach((item,itemIndex)=>{
+      if(!(item.slots||[]).length)return;
+      const sourceId=checklist.id+'|source|'+contentHash([checklist.id,item.name,item.code||'',eraIndex,itemIndex].join('\u001f'));
+      const row={sourceId,checklistId:checklist.id,checklistTitle:checklist.title,
+        section:era.name,name:item.name,code:item.code||'',productGroups:groupedSlots(item).map(group=>group.n)};
+      rows.push(row);AUTHOR_SOURCE_ITEMS.set(sourceId,{row,item});
+    })));
+  return rows;
+}
+const AUTHOR_CATALOG=buildAuthorCatalog();
+const AUTHOR_CATALOG_BY_ID=new Map(AUTHOR_CATALOG.map(row=>[row.sourceId,row]));
+function validateAuthorResult(value){
+  if(!value||typeof value!=='object'||![COLLECTION_AUTHOR_RESULT_SCHEMA,COLLECTION_AUTHOR_RESULT_SCHEMA_V2].includes(value.schema)||
+      !['clarification','proposal','catalog_import'].includes(value.kind)||(value.kind==='catalog_import'&&value.schema!==COLLECTION_AUTHOR_RESULT_SCHEMA_V2))
+    throw pricingError('INVALID_AUTHOR_RESPONSE','The assistant returned an invalid collection draft.');
+  const message=boundedText(value.message,1200),questions=Array.isArray(value.questions)?value.questions.slice(0,6).map(question=>boundedText(question,300)).filter(Boolean):[];
+  if(!message)throw pricingError('INVALID_AUTHOR_RESPONSE','The assistant response did not include an explanation.');
+  if(value.kind==='clarification')return {schema:value.schema,kind:'clarification',message,questions,proposal:null,catalogImport:null};
+  if(value.kind==='catalog_import'){
+    const raw=value.catalogImport;
+    if(!raw||raw.schema!==EXTERNAL_CATALOG_IMPORT_SCHEMA||!Array.isArray(raw.items)||!raw.items.length||raw.items.length>400)
+      throw pricingError('INVALID_AUTHOR_RESPONSE','The assistant returned an invalid researched catalog.');
+    const targetQuantity=Math.floor(Number(raw.targetQuantity)),scope=['released','released_and_announced'].includes(raw.scope)?raw.scope:'';
+    const catalogImport={schema:EXTERNAL_CATALOG_IMPORT_SCHEMA,title:boundedText(raw.title,100),rule:boundedText(raw.rule,700),
+      gameTitle:boundedText(raw.gameTitle,120),productFamily:boundedText(raw.productFamily,160),selectionSummary:boundedText(raw.selectionSummary,500),
+      targetQuantity,scope,items:[],warnings:Array.isArray(raw.warnings)?raw.warnings.slice(0,10).map(warning=>boundedText(warning,400)).filter(Boolean):[]};
+    if(!catalogImport.title||!catalogImport.rule||!catalogImport.gameTitle||!catalogImport.productFamily||!catalogImport.selectionSummary||
+        !Number.isInteger(targetQuantity)||targetQuantity<1||targetQuantity>100||!scope)
+      throw pricingError('INVALID_AUTHOR_RESPONSE','The researched catalog is incomplete or has an invalid target.');
+    const seen=new Set();
+    for(const item of raw.items){
+      const sourceUrl=boundedText(item&&item.sourceUrl,1000),name=boundedText(item&&item.name,180),productName=boundedText(item&&item.productName,180);
+      let parsed;try{parsed=new URL(sourceUrl);}catch(_error){}
+      const clean={name,code:boundedText(item&&item.code,30).toUpperCase(),productName,variantName:boundedText(item&&item.variantName,160)||null,
+        releaseDate:boundedText(item&&item.releaseDate,30)||null,status:['released','announced','unknown'].includes(item&&item.status)?item.status:'',
+        sourceUrl,sourceTitle:boundedText(item&&item.sourceTitle,200),evidence:boundedText(item&&item.evidence,500)};
+      if(!name||!productName||!clean.status||!parsed||parsed.protocol!=='https:'||parsed.username||parsed.password||!clean.sourceTitle||!clean.evidence)
+        throw pricingError('INVALID_AUTHOR_RESPONSE','Every researched product needs a valid HTTPS evidence source.');
+      if(clean.releaseDate&&Number.isNaN(Date.parse(clean.releaseDate)))throw pricingError('INVALID_AUTHOR_RESPONSE','A researched product has an invalid release date.');
+      if(clean.releaseDate)clean.releaseDate=new Date(clean.releaseDate).toISOString().slice(0,10);
+      const identity=[clean.name,clean.code,clean.productName,clean.variantName||''].join('\u001f').toLowerCase();
+      if(seen.has(identity))throw pricingError('INVALID_AUTHOR_RESPONSE','The researched catalog contains a duplicate product.');seen.add(identity);
+      catalogImport.items.push(clean);
+    }
+    return {schema:value.schema,kind:'catalog_import',message,questions:[],proposal:null,catalogImport};
+  }
+  const proposal=value.proposal;
+  if(!proposal||typeof proposal!=='object'||Array.isArray(proposal))throw pricingError('INVALID_AUTHOR_RESPONSE','The assistant response did not include a collection proposal.');
+  const title=boundedText(proposal.title,100),rule=boundedText(proposal.rule,700),selectionSummary=boundedText(proposal.selectionSummary,500);
+  const targetQuantity=Math.floor(Number(proposal.targetQuantity));
+  const selectedSourceIds=Array.isArray(proposal.selectedSourceIds)?proposal.selectedSourceIds.map(id=>boundedText(id,100)):[];
+  if(!title||!rule||!selectionSummary||!Number.isInteger(targetQuantity)||targetQuantity<1||targetQuantity>100||!selectedSourceIds.length||selectedSourceIds.length>1200)
+    throw pricingError('INVALID_AUTHOR_RESPONSE','The assistant proposed an incomplete or out-of-range collection.');
+  const seen=new Set();for(const id of selectedSourceIds){if(!AUTHOR_CATALOG_BY_ID.has(id)||seen.has(id))throw pricingError('INVALID_AUTHOR_RESPONSE','The assistant referenced an unknown or duplicate dashboard item.');seen.add(id);}
+  return {schema:value.schema,kind:'proposal',message,questions,
+    proposal:{title,rule,selectionSummary,targetQuantity,selectedSourceIds},catalogImport:null};
+}
+function authorCatalogForMessages(messages){
+  const text=messages.filter(turn=>turn.role==='user').map(turn=>turn.text).join(' ').normalize('NFKC').toLowerCase();
+  let ids=new Set(DATA.checklists.filter(checklist=>BUILTIN_CHECKLIST_IDS.has(checklist.id)).map(checklist=>checklist.id));
+  const lorcana=/\blorcana\b/.test(text),magic=/\b(?:mtg|magic(?: the gathering)?)\b/.test(text);
+  if(lorcana&&!magic)ids=new Set([...ids].filter(id=>id.startsWith('lorcana')));
+  else if(magic&&!lorcana)ids=new Set([...ids].filter(id=>!id.startsWith('lorcana')));
+  let productIds=null;
+  if(/pre[ -]?release|prerelease|starter deck/.test(text))productIds=new Set(['prerelease','lorcana_pre']);
+  else if(/collector(?: booster)? (?:box|display)|collector box/.test(text))productIds=new Set(['collector','lorcana_coll']);
+  else if(/booster (?:pack|wrapper)|wrapper art|loose pack/.test(text))productIds=new Set(['packs']);
+  else if(/booster (?:box|display)|sealed box/.test(text))productIds=new Set(['boxes','lorcana']);
+  if(productIds){const narrowed=new Set([...ids].filter(id=>productIds.has(id)));if(narrowed.size)ids=narrowed;}
+  const selected=AUTHOR_CATALOG.filter(row=>ids.has(row.checklistId));return selected.length?selected:AUTHOR_CATALOG;
+}
+function authorRequest(messages){
+  const requestId='author-'+Date.now().toString(36)+'-'+(++authorRequestSerial).toString(36);
+  const safeMessages=messages.filter(turn=>turn.role==='assistant'||turn.role==='user').slice(-16)
+    .map(turn=>({role:turn.role,text:boundedText(turn.text,2000)})).filter(turn=>turn.text);
+  const catalog=authorCatalogForMessages(safeMessages);
+  const currentDefinition=typeof authorEditingId==='string'?customDefinitionFor(authorEditingId):null;
+  if(hasDashboardOpenAI()){
+    try{
+      return TCGCatalogAuthor.authorCollection(dashboardOpenAI.apiKey,safeMessages,catalog,{safetyIdentifier:dashboardOpenAI.safetyIdentifier,
+        currentDefinition})
+        .then(validateAuthorResult).catch(error=>{throw dashboardAIError(error,'Collection authoring');});
+    }catch(error){return Promise.reject(error);}
+  }
+  if(currentDefinition)return Promise.reject(pricingError('OPENAI_KEY_MISSING','Collection revisions require the standalone OpenAI key in AI settings so the current definition can remain in this page.'));
+  if(!pricingConsumerOrigin)return Promise.reject(pricingError('OPENAI_KEY_MISSING','Add an OpenAI key in AI settings to use the collection assistant on this device.'));
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{authorPending.delete(requestId);reject(pricingError('AUTHOR_TIMEOUT','The collection assistant timed out. Try a shorter request.'));},COLLECTION_AUTHOR_TIMEOUT_MS);
+    authorPending.set(requestId,{resolve,reject,timer});
+    window.parent.postMessage({channel:COLLECTION_AUTHOR_CHANNEL,type:'collectionAuthorTurn',requestId,messages:safeMessages,catalog},pricingConsumerOrigin);
+  });
+}
+window.addEventListener('message',(event)=>{
+  if(!pricingConsumerOrigin||event.origin!==pricingConsumerOrigin||event.source!==window.parent)return;
+  const message=event.data;
+  if(!message||message.channel!==COLLECTION_AUTHOR_CHANNEL||message.type!=='collectionAuthorTurnResult'||typeof message.requestId!=='string')return;
+  const pending=authorPending.get(message.requestId);if(!pending)return;
+  clearTimeout(pending.timer);authorPending.delete(message.requestId);
+  if(message.error){pending.reject(pricingError(String(message.error.code||'AUTHOR_FAILED'),String(message.error.message||'Collection authoring failed.').slice(0,500)));return;}
+  try{pending.resolve(validateAuthorResult(message.result));}catch(error){pending.reject(error);}
+});
+
+function newStableId(prefix){
+  if(globalThis.crypto&&crypto.randomUUID)return prefix+'-'+crypto.randomUUID().toLowerCase();
+  const bytes=new Uint8Array(16);globalThis.crypto&&crypto.getRandomValues&&crypto.getRandomValues(bytes);
+  return prefix+'-'+Array.from(bytes,value=>value.toString(16).padStart(2,'0')).join('')+'-'+Date.now().toString(36);
+}
+function buildCustomDefinition(proposal){
+  const now=new Date().toISOString(),collectionId=newStableId('custom').slice(0,63),eras=[],bySection=new Map();
+  for(const sourceId of proposal.selectedSourceIds){
+    const source=AUTHOR_SOURCE_ITEMS.get(sourceId);if(!source)throw pricingError('INVALID_AUTHOR_RESPONSE','A proposed source item is no longer available.');
+    const sectionKey=source.row.checklistId+'\u001f'+source.row.section;let era=bySection.get(sectionKey);
+    if(!era){era={id:newStableId('section'),name:source.row.section,items:[]};bySection.set(sectionKey,era);eras.push(era);}
+    const itemId=newStableId('item'),slots=[];
+    for(let copy=1;copy<=proposal.targetQuantity;copy++)slots.push({id:newStableId('slot'),l:'Copy '+copy,g:'Copies',k:'Copies',r:true,legacy:null});
+    era.items.push({id:itemId,name:source.row.name,code:source.row.code,slots,pricingProducts:[],
+      note:'Based on '+source.row.checklistTitle+'.',sourceRef:{sourceId,checklistId:source.row.checklistId,name:source.row.name,code:source.row.code}});
+  }
+  const definition={schema:COLLECTION_DEFINITION_SCHEMA,collectionId,revision:1,lifecycle:'draft',title:proposal.title,sub:proposal.rule,
+    progressMode:'distinct_variants',createdAt:now,updatedAt:now,authoring:{schema:'tcg.collection-authoring-record/v1',
+      method:'openai-assisted',selectionSummary:proposal.selectionSummary,targetQuantity:proposal.targetQuantity,sourceBuild:BUILD},eras};
+  const normalized=normalizeCollectionDefinition(definition);if(!normalized)throw pricingError('INVALID_AUTHOR_RESPONSE','The proposed collection could not be normalized safely.');
+  return normalized;
+}
+function buildExternalCustomDefinition(catalogImport){
+  const now=new Date().toISOString(),collectionId=newStableId('custom').slice(0,63),eras=[],byStatus=new Map();
+  const statusNames={released:'Released products',announced:'Announced products',unknown:'Release status to verify'};
+  for(const source of catalogImport.items){
+    let era=byStatus.get(source.status);
+    if(!era){era={id:newStableId('section'),name:statusNames[source.status],items:[]};byStatus.set(source.status,era);eras.push(era);}
+    const slots=[];for(let copy=1;copy<=catalogImport.targetQuantity;copy++)slots.push({id:newStableId('slot'),l:'Copy '+copy,g:'Copies',k:'Copies',r:true,legacy:null});
+    const sourceRef={schema:EXTERNAL_CATALOG_SOURCE_SCHEMA,sourceUrl:source.sourceUrl,sourceTitle:source.sourceTitle,
+      evidence:source.evidence,productName:source.productName,variantName:source.variantName,releaseDate:source.releaseDate,
+      releaseStatus:source.status,researchedAt:now};
+    era.items.push({id:newStableId('item'),name:source.name,code:source.code,slots,pricingProducts:[],
+      note:'Source: '+source.sourceTitle+'. '+source.evidence,sourceRef});
+  }
+  const definition={schema:COLLECTION_DEFINITION_SCHEMA,collectionId,revision:1,lifecycle:'draft',title:catalogImport.title,sub:catalogImport.rule,
+    progressMode:'distinct_variants',createdAt:now,updatedAt:now,authoring:{schema:'tcg.collection-authoring-record/v1',
+      method:'openai-web-catalog-import',selectionSummary:catalogImport.selectionSummary,targetQuantity:catalogImport.targetQuantity,
+      gameTitle:catalogImport.gameTitle,productFamily:catalogImport.productFamily,scope:catalogImport.scope,sourceCount:catalogImport.items.length,sourceBuild:BUILD},eras};
+  const normalized=normalizeCollectionDefinition(definition);if(!normalized)throw pricingError('INVALID_AUTHOR_RESPONSE','The researched collection could not be normalized safely.');
+  return normalized;
+}
+function installCustomDraft(proposal){
+  const definition=buildCustomDefinition(proposal);state.collectionLibrary.collections.push(definition);syncCustomChecklists();
+  active=definition.collectionId;state.ui.active=active;save();updateAll();return definition;
+}
+function installExternalCustomDraft(catalogImport){
+  const definition=buildExternalCustomDefinition(catalogImport);state.collectionLibrary.collections.push(definition);syncCustomChecklists();
+  active=definition.collectionId;state.ui.active=active;save();updateAll();return definition;
+}
 
 /* The extension may request a current collection catalog when the user asks it
    to decorate a marketplace page. This is deliberately a separate, read-only
@@ -1397,7 +2046,7 @@ function interpretPriceResponse(product,response){
   return {status:'success',valuation:response,engineVersion:response.engineVersion||null};
 }
 function pricingCanWatch(priceState,product){
-  return !!(priceState&&priceState.status==='success'&&priceState.valuation&&
+  return !!(pricingConsumerOrigin&&priceState&&priceState.status==='success'&&priceState.valuation&&
     priceState.valuation.product&&priceState.valuation.product.productId===product.productId);
 }
 function pricingWatchId(product){return 'tracker:'+contentHash(product.productId);}
@@ -1413,7 +2062,9 @@ function refreshPrice(product,options){
   options=options||{};
   const prior=options.prior||pricingState(product.productId),repaint=options.repaint!==false;
   pricingStates.set(product.productId,Object.assign({},prior,{status:'loading',message:'Refreshing live pricing…'}));if(repaint)renderContent();
-  return pricingRequest('priceProduct',{target:product,options:{includeActive:true,includeRecentSales:true}})
+  const direct=options.userInitiated===true;
+  return pricingRequest('priceProduct',{target:product,options:{includeActive:true,includeRecentSales:true,
+      userInitiated:direct,include130point:direct}})
     .then(response=>{pricingStates.set(product.productId,Object.assign({},prior,interpretPriceResponse(product,response)));if(repaint)renderContent();})
     .catch(error=>{pricingStates.set(product.productId,Object.assign({},prior,{status:'error',code:error.code||'BRIDGE_FAILURE',message:String(error.message||error)}));if(repaint)renderContent();});
 }
@@ -1443,18 +2094,18 @@ function paintPricingBatch(){
   const all=cl?pricingItems(cl,'all'):[],unfinished=cl?pricingItems(cl,'unfinished'):[];
   const allCount=document.getElementById('refreshAllCount'),unfinishedCount=document.getElementById('refreshUnfinishedCount');
   if(allCount)allCount.textContent=String(all.length);if(unfinishedCount)unfinishedCount.textContent=String(unfinished.length);
-  const disabled=!pricingConsumerOrigin||pricingBatch.running;
+  const disabled=!pricingAvailable()||pricingBatch.running;
   ['refreshAllPrices','refreshUnfinishedPrices'].forEach(id=>{const row=document.getElementById(id);if(row){row.disabled=disabled;row.classList.toggle('disabled',disabled);}});
   btn.classList.toggle('pricing-active',pricingBatch.running);
   const label=pricingBatch.running?('Refreshing '+pricingBatch.done+' of '+pricingBatch.total+' prices'):'Refresh prices';
   btn.title=label;btn.setAttribute('aria-label',label);
   const status=document.getElementById('pricingMenuStatus');if(!status)return;
   if(pricingBatch.running)status.textContent=pricingBatch.label+' · '+pricingBatch.done+'/'+pricingBatch.total+' prices';
-  else if(!pricingConsumerOrigin)status.textContent='Open in the paired tracker extension to use live pricing.';
-  else status.textContent='Refreshes every pricing product for the selected rows on this checklist.';
+  else if(!pricingAvailable())status.textContent='Add a Pricing REST key in Settings or use the paired tracker extension.';
+  else status.textContent=(pricingTransport()==='rest'?'Pricing REST':'Paired extension')+' · refreshes every pricing product for the selected rows.';
 }
 function startPricingRefresh(mode,item){
-  if(!pricingConsumerOrigin){toast('Open this dashboard in the paired tracker extension');return Promise.resolve(false);}
+  if(!pricingAvailable()){toast('Add a Pricing REST key in Pricing API settings');openPricingSettings();return Promise.resolve(false);}
   if(pricingBatch.running){toast('A price refresh is already running');return Promise.resolve(false);}
   const cl=DATA.checklists.find(candidate=>candidate.id===active),items=pricingItems(cl,mode,item),products=pricingQueueFor(items)
     .filter(product=>pricingState(product.productId).status!=='loading');
@@ -1523,7 +2174,7 @@ function renderPricingList(products){
       const observed=Date.parse(ps.valuation.observedAt||''),stale=Number.isFinite(observed)&&Date.now()-observed>PRICING_STALE_MS;
       badge.classList.add(stale?'stale':'live');badge.textContent=stale?'Stale':'Live';
     }else if(ps.status==='error'){badge.classList.add('error');badge.textContent='Error';}
-    else if(ps.status==='unavailable'){badge.textContent=ps.code==='MISSING_EXTENSION'?'Extension needed':'Unavailable';}
+    else if(ps.status==='unavailable'){badge.textContent=ps.code==='PRICING_NOT_CONFIGURED'?'Setup needed':'Unavailable';}
     else badge.textContent='Not checked';
     head.appendChild(label);head.appendChild(badge);card.appendChild(head);
     if(ps.status==='success'){
@@ -1541,7 +2192,7 @@ function renderPricingList(products){
       const b=document.createElement('b');b.textContent='Static fallback: ';fallback.appendChild(b);fallback.appendChild(document.createTextNode(record.staticValue));card.appendChild(fallback);}
     const actions=document.createElement('div');actions.className='priceactions';
     const refresh=document.createElement('button');refresh.type='button';refresh.className='pricebtn';refresh.textContent=ps.status==='success'?'Refresh price':'Check live price';
-    refresh.disabled=ps.status==='loading'||pricingBatch.running||!pricingConsumerOrigin;refresh.onclick=()=>refreshPrice(product);actions.appendChild(refresh);card.appendChild(actions);
+    refresh.disabled=ps.status==='loading'||pricingBatch.running||!pricingAvailable();refresh.onclick=()=>refreshPrice(product,{userInitiated:true});actions.appendChild(refresh);card.appendChild(actions);
     if(pricingCanWatch(ps,product)){
       const box=document.createElement('div');box.className='watchbox';
       const watchLabel=document.createElement('label');watchLabel.textContent='Alert at landed price ≤ $';
@@ -1684,6 +2335,9 @@ function renderContent(){
   sub.innerHTML='<b>The rule</b> '+cl.sub+(cl.id==='boxes'?
     '<div class="boxlegend"><span class="legendgoal"><i>★</i> Goal — counts toward completion</span>'+
     '<span class="legendbonus"><i>0</i> Bonus — inventory only</span></div>':'');
+  const custom=customDefinitionFor(cl.id);
+  if(custom&&custom.lifecycle==='draft')appendDraftBanner(sub,custom);
+  else if(custom&&custom.lifecycle==='live')appendLiveCollectionBanner(sub,custom);
   host.appendChild(sub);
   const q=search.trim().toLowerCase();
   cl.eras.forEach((era,ei)=>{
@@ -1821,7 +2475,7 @@ function renderContent(){
          Draft/Set/Collector pills said exactly what the columns already say.
          Tags that carry real information (box type, set type, release date)
          don't match a column name and survive. */
-      let tags=it.tags.filter(t=>eraCols.indexOf(t.t)<0)
+      let tags=(it.tags||[]).filter(t=>eraCols.indexOf(t.t)<0)
         .map(t=>`<span class="tag" style="background:${t.c}">${t.t}</span>`).join('');
       if(usesDistinctVariants(cl.id)&&(it.variants||[]).length>1){
         const completed=it.slots.filter((sl,si)=>slotRequired(sl)&&slotQuantity(cl.id,it,si)>=1).length;
@@ -1854,6 +2508,7 @@ function renderContent(){
       if(it.note) extra.push(it.note);
       if(it.est)  extra.push('Value is a best-effort estimate — verify before buying.');
       const productImages=it.images||[];
+      const externalSource=it.sourceRef&&it.sourceRef.schema===EXTERNAL_CATALOG_SOURCE_SCHEMA?it.sourceRef:null;
       const wrapperArtSet=wrapperArtSetFor(cl.id,it);
       const namedVariants=usesDistinctVariants(cl.id)&&(it.variants||[]).length>1?
         (it.variants||[]).map((name,si)=>({name,si,target:1})):
@@ -1861,7 +2516,7 @@ function renderContent(){
           const group=groupedSlots(it).find(g=>g.n===variant.group);
           return {name:variant.name,group,target:variant.target||groupTarget(group)};
         }):[]);
-      if(extra.length||productImages.length||namedVariants.length||pricingProducts.length||wrapperArtSet){
+      if(extra.length||productImages.length||namedVariants.length||pricingProducts.length||wrapperArtSet||externalSource){
         const tog=document.createElement('button');
         tog.className='rowtog'; tog.setAttribute('aria-expanded',detailIsOpen?'true':'false');
         tog.setAttribute('aria-label',(detailIsOpen?'Hide':'Show')+' details for '+it.name);
@@ -1894,7 +2549,10 @@ function renderContent(){
         if(extra.length){
           const copy=document.createElement('div');copy.className='rowcopy';
           if(!productImages.length)copy.classList.add('wide');
-          copy.textContent=extra.join(' · ');det.appendChild(copy);
+          copy.textContent=extra.join(' · ');
+          if(externalSource){const source=document.createElement('a');source.href=externalSource.sourceUrl;source.target='_blank';source.rel='noopener noreferrer';
+            source.textContent='Open catalog evidence: '+externalSource.sourceTitle;source.style.cssText='display:block;margin-top:6px;color:var(--lpurple);font-weight:700';copy.appendChild(source);}
+          det.appendChild(copy);
         }
         if(wrapperArtSet)det.appendChild(renderWrapperArtChecklist(cl,it,wrapperArtSet));
         if(namedVariants.length){
@@ -2012,7 +2670,7 @@ async function ghDiscover(){const r=await fetch(GH_API+"/gists?per_page=100",{he
 
 async function ghPull(firstConnect){if(!gh.token)return;
   gh.ids=await ghDiscover();const merged={},mergedExtras={},legacy={},remoteWrapperArts={},remoteOrdered={},remoteOrderedWrapperArts={};
-  let remoteMonitor=null,sawWrapperArts=false,sawOrderedWrapperArts=false;const sawOrdered=new Set();
+  let remoteMonitor=null,sawWrapperArts=false,sawOrderedWrapperArts=false;const sawOrdered=new Set(),remoteDefinitions=[];
   await Promise.all(Object.entries(gh.ids).map(async([cl,id])=>{
     try{const r=await fetch(GH_API+"/gists/"+id,{headers:ghH()});if(!r.ok)return;
       const j=await r.json(),f=(j.files||{})[fileFor(cl)];if(!f)return;
@@ -2032,11 +2690,21 @@ async function ghPull(firstConnect){if(!gh.token)return;
       if(candidate&&(!remoteMonitor||String(candidate.updatedAt||'')>String(remoteMonitor.updatedAt||'')||
           String(candidate.updatedAt||'')===String(remoteMonitor.updatedAt||'')&&
           JSON.stringify(candidate.preferences)>JSON.stringify(remoteMonitor.preferences)))remoteMonitor=candidate;
+      if(b.definition){const definition=normalizeCollectionDefinition(b.definition);
+        if(definition&&definition.collectionId===cl&&definition.lifecycle==='live')remoteDefinitions.push(definition);
+        else state.collectionLibrary.recovery.push({reason:'invalid-gist-definition',preservedAt:new Date().toISOString(),definition:jsonClone(b.definition)});}
       gh.snap[cl]=monitorGistSnapshot(cl,b.checks||{},b.extras||{},candidate?{
         monitorPreferences:candidate.preferences,monitorPreferencesUpdatedAt:candidate.updatedAt}:null,pulledWrapperArts,
-        pulledOrdered,pulledOrderedWrapperArts);
+        pulledOrdered,pulledOrderedWrapperArts,b.definition||null);
       if(m.migrated||Object.keys(m.unknown).length)ghDirty=true;}catch(e){}}));
   let changed=false;
+  for(const remote of remoteDefinitions){
+    const index=state.collectionLibrary.collections.findIndex(local=>local.collectionId===remote.collectionId);
+    if(index<0){state.collectionLibrary.collections.push(remote);changed=true;continue;}
+    const local=state.collectionLibrary.collections[index];
+    if(local.lifecycle==='draft')continue;
+    if(remote.revision>local.revision||remote.revision===local.revision&&remote.updatedAt>local.updatedAt){state.collectionLibrary.collections[index]=remote;changed=true;}
+  }
   if(Object.keys(merged).length||Object.keys(mergedExtras).length){
     // First connect on a device: keep BOTH sides (local wins ties) so an existing
     // local checklist can never be wiped by whatever is already in the gists.
@@ -2080,25 +2748,30 @@ async function ghPull(firstConnect){if(!gh.token)return;
       if(before!==JSON.stringify(state.monitorPreferences)||beforeStamp!==state.monitorPreferencesUpdatedAt)changed=true;
     }else ghDirty=true;
   }
-  if(changed){save();noteMonitorCollectionChange();}
+  if(changed){if(typeof syncCustomChecklists==='function')syncCustomChecklists();
+    if(typeof checklistFor==='function'&&!checklistFor(active))active=DATA.checklists[0].id;
+    save();noteMonitorCollectionChange();}
   gh.last=Date.now(); ghRemember();}
 
 async function ghPush(unloading){if(!gh.token||gh.busy)return;gh.busy=true;
   if(!unloading){const t=document.getElementById('driveTxt'); if(t)t.textContent='Syncing…';}
-  try{const groups={};
+  try{const liveDefinitions=new Map(((state.collectionLibrary&&state.collectionLibrary.collections)||[]).filter(definition=>definition.lifecycle==='live').map(definition=>[definition.collectionId,definition]));
+    const syncableChecklist=cl=>(typeof BUILTIN_CHECKLIST_IDS==='undefined'
+      ?DATA.checklists.some(checklist=>checklist.id===cl):BUILTIN_CHECKLIST_IDS.has(cl))||liveDefinitions.has(cl);
+    const groups={};
     for(const[k,v] of Object.entries(state.checks)){if(!v)continue;
-      const cl=k.split("|")[0];(groups[cl]=groups[cl]||{})[k]=v;}
+      const cl=k.split("|")[0];if(syncableChecklist(cl))(groups[cl]=groups[cl]||{})[k]=v;}
     const extraGroups={};
     for(const[k,v]of Object.entries(state.extras||{})){if(Number(v)<=0)continue;
-      const cl=k.split("|")[0];(extraGroups[cl]=extraGroups[cl]||{})[k]=Number(v);}
+      const cl=k.split("|")[0];if(syncableChecklist(cl))(extraGroups[cl]=extraGroups[cl]||{})[k]=Number(v);}
     const orderedGroups={};
     for(const[k,v]of Object.entries(state.ordered||{})){if(Number(v)<=0)continue;
-      const cl=k.split("|")[0];(orderedGroups[cl]=orderedGroups[cl]||{})[k]=Number(v);}
+      const cl=k.split("|")[0];if(syncableChecklist(cl))(orderedGroups[cl]=orderedGroups[cl]||{})[k]=Number(v);}
     const legacyGroups={};
     for(const[k,v]of Object.entries(state.legacyChecksV1||{})){if(!v)continue;
-      const cl=k.split("|")[0];(legacyGroups[cl]=legacyGroups[cl]||{})[k]=v;}
+      const cl=k.split("|")[0];if(syncableChecklist(cl))(legacyGroups[cl]=legacyGroups[cl]||{})[k]=v;}
     const localWrapperArts=normalizeWrapperArts(state.wrapperArts),localOrderedWrapperArts=normalizeWrapperArts(state.orderedWrapperArts);
-    const clIds=new Set([...Object.keys(gh.ids),...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(orderedGroups),...Object.keys(legacyGroups)]);
+    const clIds=new Set([...Object.keys(gh.ids).filter(syncableChecklist),...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(orderedGroups),...Object.keys(legacyGroups),...liveDefinitions.keys()]);
     if(Object.keys(localWrapperArts).length)clIds.add(WRAPPER_ART_GIST_CHECKLIST);
     if(Object.keys(localOrderedWrapperArts).length)clIds.add(WRAPPER_ART_GIST_CHECKLIST);
     if(state.monitorPreferencesUpdatedAt)clIds.add(MONITOR_GIST_CHECKLIST);
@@ -2106,7 +2779,8 @@ async function ghPush(unloading){if(!gh.token||gh.busy)return;gh.busy=true;
       const monitorFields=cl===MONITOR_GIST_CHECKLIST?monitorGistFields():null;
       const wrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST?localWrapperArts:undefined;
       const orderedWrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST?localOrderedWrapperArts:undefined;
-      const snap=monitorGistSnapshot(cl,checks,extras,monitorFields,wrapperArts,ordered,orderedWrapperArts);
+      const definition=liveDefinitions.get(cl)||null;
+      const snap=monitorGistSnapshot(cl,checks,extras,monitorFields,wrapperArts,ordered,orderedWrapperArts,definition);
       if(gh.snap[cl]===snap&&gh.ids[cl])continue;            // unchanged → skip
       const title=titleFor(cl);
       const payload={checklist:cl,title,keyVersion:2,checks,extras,ordered,legacyChecksV1:legacy,
@@ -2114,6 +2788,7 @@ async function ghPush(unloading){if(!gh.token||gh.busy)return;gh.busy=true;
       if(monitorFields)Object.assign(payload,monitorFields);
       if(wrapperArts!==undefined)payload.wrapperArts=wrapperArts;
       if(orderedWrapperArts!==undefined)payload.orderedWrapperArts=orderedWrapperArts;
+      if(definition)payload.definition=definition;
       const body={description:"MTG Binder · "+title,
         files:{[fileFor(cl)]:{content:JSON.stringify(payload,null,2)}}};
       if(gh.ids[cl]){await fetch(GH_API+"/gists/"+gh.ids[cl],
@@ -2184,36 +2859,61 @@ function warnIfNoStorage(){
   return false;
 }
 
-/* Diagnostics. Deliberately reports the SHAPE of the stored connection and never
-   the token itself, so its output is safe to paste anywhere. */
-window.__binderDebug=function(){
+/* Paste-safe diagnostics. This intentionally reports counts and capability
+   booleans only: never credentials, identities, Gist ids, storage/checklist
+   keys, chat text, source catalogs, pricing values, watches, or saved payloads. */
+function buildDebugReport(){
   const raw=(()=>{try{return localStorage.getItem(GH_KEY);}catch(e){return "THREW: "+e.message;}})();
   let lsWorks=false, lsErr=null;
   try{ localStorage.setItem("__t","1"); lsWorks=localStorage.getItem("__t")==="1";
        localStorage.removeItem("__t"); }catch(e){ lsErr=e.name+": "+e.message; }
+  const definitions=(state.collectionLibrary&&state.collectionLibrary.collections)||[];
+  const checkedBoxes=Object.keys(state.checks||{}).filter(key=>state.checks[key]).length;
+  const extraOwned=Object.values(state.extras||{}).reduce((n,value)=>n+Math.max(0,Number(value)||0),0);
+  const ordered=Object.values(state.ordered||{}).reduce((n,value)=>n+Math.max(0,Number(value)||0),0);
+  const wrapperOwned=Object.values(state.wrapperArts||{}).reduce((n,value)=>n+Math.max(0,Number(value)||0),0);
+  const wrapperOrdered=Object.values(state.orderedWrapperArts||{}).reduce((n,value)=>n+Math.max(0,Number(value)||0),0);
   return {
+    schema:'tcg.dashboard-debug/v1',
+    collectedAt:new Date().toISOString(),
     build: BUILD,
-    href: location.href,
-    protocol: location.protocol,
-    localStorageWorks: lsWorks,
-    localStorageError: lsErr,
-    storedFormat: raw==null?"NOTHING STORED":(raw.charAt(0)==="{"?"json (current)":"bare token (legacy)"),
-    hasToken: !!gh.token,
-    tokenLength: gh.token?gh.token.length:0,
-    user: gh.user,
-    gistIds: Object.keys(gh.ids||{}),
-    lastSync: gh.last?new Date(gh.last).toISOString():null,
-    bootState: ghBootState,
-    bootError: ghBootMsg||null,
-    checkedBoxes: Object.keys(state.checks||{}).filter(k=>state.checks[k]).length,
-    extraOwned: Object.values(state.extras||{}).reduce((n,v)=>n+Math.max(0,Number(v)||0),0),
-    keyVersion: state.keyVersion||1,
-    legacyRecoveryKeys: Object.keys(state.legacyChecksV1||{}).filter(k=>state.legacyChecksV1[k]).length,
-    keyMigration: state.keyMigration||null,
-    activeKeyShapes: Object.keys(state.checks||{}).filter(k=>state.checks[k]).slice(0,5)
-      .map(k=>/^([^|]+)\|v2\|[0-9a-f]{16}$/.test(k)?'v2':'other')
+    page:{protocol:location.protocol,origin:location.origin||null,path:location.pathname,
+      standalone:!pricingConsumerOrigin,extensionBridge:!!pricingConsumerOrigin},
+    viewport:{width:window.innerWidth,height:window.innerHeight,devicePixelRatio:window.devicePixelRatio||1},
+    browser:{online:typeof navigator.onLine==='boolean'?navigator.onLine:null,userAgent:boundedText(navigator.userAgent,300)},
+    storage:{works:lsWorks,error:lsErr,githubRecordFormat:raw==null?'none':(raw.charAt(0)==='{'?'current-json':'legacy-token'),
+      githubConfigured:!!gh.token,keyVersion:state.keyVersion||1,
+      legacyRecoveryKeyCount:Object.keys(state.legacyChecksV1||{}).filter(key=>state.legacyChecksV1[key]).length,
+      recoveryRecordCount:(state.collectionLibrary&&state.collectionLibrary.recovery||[]).length},
+    collection:{activeTitle:titleFor(active),builtInChecklistCount:BUILTIN_CHECKLIST_IDS.size,
+      customDraftCount:definitions.filter(definition=>definition.lifecycle==='draft').length,
+      customLiveCount:definitions.filter(definition=>definition.lifecycle==='live').length,
+      checkedBoxes,extraOwned,ordered,wrapperOwned,wrapperOrdered,hideCompleted:!!state.ui.hideDone},
+    ai:{standaloneConfigured:hasDashboardOpenAI(),remembered:!!dashboardOpenAI.remembered,
+      extensionBridge:!!pricingConsumerOrigin,authorConversationTurns:authorMessages.length,
+      lastAuthorResultKind:authorLastResult&&authorLastResult.kind||null,authorBusy:!!authorBusy},
+    sync:{state:ghBootState,error:boundedText(ghBootMsg,300)||null,configured:!!gh.token,
+      gistCount:Object.keys(gh.ids||{}).length,dirty:!!ghDirty,busy:!!gh.busy,lastSync:gh.last?new Date(gh.last).toISOString():null},
+    monitor:{state:monitorSyncStatus.state,configured:monitorSyncStatus.monitorConfigured,
+      productCount:monitorSyncStatus.productCount,activeTargetCount:monitorSyncStatus.activeTargetCount},
+    pricing:{transport:pricingTransport(),restConfigured:hasDashboardPricing(),restRemembered:!!dashboardPricing.remembered,
+      extensionBridge:!!pricingConsumerOrigin,inMemoryResultCount:pricingStates.size,batchRunning:!!pricingBatch.running},
+    diagnostics:{recentErrors:runtimeDiagnostics.slice(-5)}
   };
-};
+}
+window.__binderDebug=buildDebugReport;
+async function copyDebugReport(){
+  const text=JSON.stringify(buildDebugReport(),null,2);
+  try{
+    if(navigator.clipboard&&typeof navigator.clipboard.writeText==='function')await navigator.clipboard.writeText(text);
+    else{
+      const area=document.createElement('textarea');area.value=text;area.setAttribute('readonly','');area.style.cssText='position:fixed;left:-9999px;top:0';
+      document.body.appendChild(area);area.select();const copied=document.execCommand&&document.execCommand('copy');area.remove();
+      if(!copied)throw new Error('Clipboard copy is unavailable.');
+    }
+    toast('Debug report copied — paste it into your Codex task');
+  }catch(error){console.warn('[binder] debug copy failed',error);toast('Could not copy debug report in this browser');}
+}
 
 /* Reconnect automatically on page load using the stored token — no need to open
    Settings and click Connect. Failures are surfaced on the pill (and the reason
@@ -2364,6 +3064,81 @@ async function identifyFile(file){
 }
 function closeIdentify(){document.getElementById('identifyModal').classList.remove('show');}
 
+let authorMessages=[],authorLastResult=null,authorBusy=false,authorEditingId=null;
+function authorEditingDefinition(){return authorEditingId?customDefinitionFor(authorEditingId):null;}
+function authoredItemCount(definition){return (definition.eras||[]).reduce((n,era)=>n+(era.items||[]).length,0);}
+function authorBubble(role,text){const bubble=document.createElement('div');bubble.className='author-msg '+role;bubble.textContent=text;return bubble;}
+function renderAuthorChat(){
+  const host=document.getElementById('authorChat');host.innerHTML='';
+  const editing=authorEditingDefinition();
+  if(!authorMessages.length)host.appendChild(authorBubble('assistant',editing
+    ?'You are revising “'+editing.title+'” ('+authoredItemCount(editing)+' products, revision '+editing.revision+'). Describe the change you want. I will return the complete revised collection for review; nothing changes until you apply it locally.'
+    :'Tell me what you want to collect. I’ll ask for clarification when needed. If the game is not already in this dashboard, standalone AI can research official product pages and show you a sourced catalog before anything is imported.'));
+  for(const turn of authorMessages)host.appendChild(authorBubble(turn.role,turn.text));
+  if(authorLastResult&&authorLastResult.kind==='proposal'){
+    const proposal=authorLastResult.proposal,card=document.createElement('div');card.className='author-proposal';
+    const heading=document.createElement('h3');heading.textContent='Draft proposal: '+proposal.title;
+    const rule=document.createElement('p');rule.textContent=proposal.rule;
+    const list=document.createElement('ul');
+    [proposal.selectedSourceIds.length+' dashboard items',proposal.targetQuantity+' required '+(proposal.targetQuantity===1?'copy':'copies')+' of each',proposal.selectionSummary].forEach(value=>{const li=document.createElement('li');li.textContent=value;list.appendChild(li);});
+    const apply=document.createElement('button');apply.type='button';apply.className='pbtn g';apply.textContent=editing?'Apply as local revision':'Create local draft';
+    apply.onclick=()=>{try{const definition=editing?installCollectionRevision(editing.collectionId,buildCustomDefinition(proposal)):installCustomDraft(proposal);if(!definition)return;
+        authorEditingId=definition.collectionId;authorLastResult=null;authorMessages.push({role:'assistant',text:(editing?'Applied the revision to':'Created')+' “'+definition.title+'” as a local-only draft. Test quantities in the dashboard; GitHub remains unchanged until you explicitly publish.'});renderAuthorChat();}
+      catch(error){recordRuntimeDiagnostic('built-in-draft-apply',error);host.appendChild(authorBubble('error',String(error&&error.message||error)));}};
+    card.append(heading,rule,list,apply);host.appendChild(card);
+  }
+  if(authorLastResult&&authorLastResult.kind==='catalog_import'){
+    const imported=authorLastResult.catalogImport,card=document.createElement('div');card.className='author-proposal';
+    const heading=document.createElement('h3');heading.textContent='Sourced catalog preview: '+imported.title;
+    const rule=document.createElement('p');rule.textContent=imported.rule;
+    const summary=document.createElement('ul');
+    [imported.items.length+' sourced products',imported.targetQuantity+' required '+(imported.targetQuantity===1?'copy':'copies')+' of each',
+      imported.scope==='released'?'Released products only':'Released and announced products',imported.selectionSummary].forEach(value=>{const li=document.createElement('li');li.textContent=value;summary.appendChild(li);});
+    const list=document.createElement('div');list.className='author-import-list';
+    for(const item of imported.items){
+      const row=document.createElement('div');row.className='author-import-item';
+      const title=document.createElement('b');title.textContent=item.name+(item.code?' ('+item.code+')':'');
+      const detail=document.createElement('span');detail.textContent=[item.productName,item.variantName,item.status,item.releaseDate].filter(Boolean).join(' · ');
+      const evidence=document.createElement('span');evidence.textContent=item.evidence;
+      const link=document.createElement('a');link.href=item.sourceUrl;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Evidence: '+item.sourceTitle;
+      row.append(title,detail,evidence,link);list.appendChild(row);
+    }
+    card.append(heading,rule,summary,list);
+    if(imported.warnings.length){const warnings=document.createElement('ul');warnings.className='author-import-warn';
+      imported.warnings.forEach(value=>{const li=document.createElement('li');li.textContent=value;warnings.appendChild(li);});card.appendChild(warnings);}
+    const notice=document.createElement('p');notice.textContent=editing
+      ?'Review the complete replacement and every source. Applying it creates or updates a local revision; the published collection and GitHub remain unchanged.'
+      :'Review every product and source. Importing creates a local-only draft; it does not change ownership or touch GitHub.';
+    const apply=document.createElement('button');apply.type='button';apply.className='pbtn g';apply.textContent=editing?'Apply as local revision':'Import catalog & create local draft';
+    apply.onclick=()=>{try{const definition=editing?installCollectionRevision(editing.collectionId,buildExternalCustomDefinition(imported)):installExternalCustomDraft(imported);if(!definition)return;
+        authorEditingId=definition.collectionId;authorLastResult=null;authorMessages.push({role:'assistant',text:(editing?'Applied':'Imported '+imported.items.length+' sourced products into')+' “'+definition.title+'” as a local-only draft. Review the rows and quantities; GitHub remains unchanged until you explicitly publish.'});renderAuthorChat();}
+      catch(error){recordRuntimeDiagnostic('external-catalog-apply',error);host.appendChild(authorBubble('error',String(error&&error.message||error)));}};
+    card.append(notice,apply);host.appendChild(card);
+  }
+  host.scrollTop=host.scrollHeight;
+}
+function showAuthor(){document.getElementById('authorModal').classList.add('show');paintAuthorAIStatus();renderAuthorChat();setTimeout(()=>document.getElementById('authorPrompt').focus(),0);}
+function openNewAuthor(){if(authorBusy)return;authorEditingId=null;authorMessages=[];authorLastResult=null;document.getElementById('authorPrompt').value='';
+  document.getElementById('authorHeading').innerHTML='<span class="gicon">+</span> New Collection';
+  document.getElementById('authorIntro').textContent='Describe the collection you want. The assistant may ask questions, use official web sources when this dashboard lacks the game, and prepare a sourced local draft for review. Nothing is added until you approve the preview, and drafts never sync to GitHub until you explicitly publish them.';
+  document.getElementById('authorPrompt').placeholder='Example: I want to collect 3 of every Lorcana booster box.';showAuthor();}
+function openAuthorForEdit(collectionId){if(authorBusy)return;let definition=customDefinitionFor(collectionId);if(!definition)return;
+  if(definition.lifecycle==='live'){const staged=revisionDraftFor(definition.collectionId);if(staged){definition=staged;active=staged.collectionId;state.ui.active=active;save();updateAll();}}
+  authorEditingId=definition.collectionId;authorMessages=[];authorLastResult=null;document.getElementById('authorPrompt').value='';
+  document.getElementById('authorHeading').innerHTML='<span class="gicon">✎</span> Revise Collection';
+  document.getElementById('authorIntro').textContent='Describe a change to the currently selected collection. The assistant receives its current rule and product list, then shows a complete replacement for review. Applying it stays local; a live GitHub Gist is unchanged until you explicitly publish the revision.';
+  document.getElementById('authorPrompt').placeholder='Example: Include announced products, but keep two copies of every existing product.';showAuthor();}
+function closeAuthor(){if(!authorBusy)document.getElementById('authorModal').classList.remove('show');}
+function resetAuthor(){if(authorBusy)return;authorMessages=[];authorLastResult=null;document.getElementById('authorPrompt').value='';renderAuthorChat();}
+async function sendAuthorTurn(){
+  if(authorBusy)return;const input=document.getElementById('authorPrompt'),text=boundedText(input.value,2000);if(!text)return;
+  input.value='';authorMessages.push({role:'user',text});authorLastResult=null;authorBusy=true;document.getElementById('authorSend').disabled=true;renderAuthorChat();
+  const host=document.getElementById('authorChat'),waiting=authorBubble('assistant','Thinking…');host.appendChild(waiting);host.scrollTop=host.scrollHeight;
+  try{const result=await authorRequest(authorMessages);authorLastResult=result;authorMessages.push({role:'assistant',text:result.message+(result.questions.length?'\n\n'+result.questions.join('\n'):'' )});}
+  catch(error){authorMessages.push({role:'error',text:String(error&&error.message||error||'Collection authoring failed.')});if(error&&error.code==='OPENAI_KEY_MISSING')setTimeout(openAISettings,0);}
+  finally{authorBusy=false;document.getElementById('authorSend').disabled=false;renderAuthorChat();input.focus();}
+}
+
 /* ---- wire up ---- */
 function openSync(){
   const info=document.getElementById('driveInfo'),act=document.getElementById('modalActions'),
@@ -2450,7 +3225,10 @@ document.addEventListener('click',closeMenus);
 document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeMenus(); });
 
 on('syncItem','click',openSync);
+on('aiSettingsItem','click',openAISettings);
+on('pricingSettingsItem','click',openPricingSettings);
 on('monitorItem','click',openMonitoring);
+on('copyDebugBtn','click',copyDebugReport);
 on('refreshUnfinishedPrices','click',()=>startPricingRefresh('unfinished'));
 on('refreshAllPrices','click',()=>startPricingRefresh('all'));
 /* #closeModal is created by openSync(), which binds it there. Nothing to do here. */
@@ -2458,11 +3236,35 @@ on('driveModal','click',(e)=>{ if(e.target.id==='driveModal')e.target.classList.
 on('monitorModal','click',(e)=>{ if(e.target.id==='monitorModal')e.target.classList.remove('show'); });
 on('monitorClose','click',()=>document.getElementById('monitorModal').classList.remove('show'));
 on('monitorSave','click',saveMonitoringPreferences);
-on('identifyBtn','click',()=>{if(!pricingConsumerOrigin){toast('Open the dashboard inside the Tracker extension to identify photos');return;}document.getElementById('identifyFile').click();});
-on('identifyAnother','click',()=>{if(!identifyBusy)document.getElementById('identifyFile').click();});
+on('identifyBtn','click',()=>{if(!hasDashboardOpenAI()&&!pricingConsumerOrigin){toast('Add an OpenAI key in AI settings first');openAISettings();return;}document.getElementById('identifyFile').click();});
+on('identifyAnother','click',()=>{if(!identifyBusy){if(!hasDashboardOpenAI()&&!pricingConsumerOrigin){openAISettings();return;}document.getElementById('identifyFile').click();}});
 on('identifyClose','click',closeIdentify);
 on('identifyModal','click',(e)=>{if(e.target.id==='identifyModal'&&!identifyBusy)closeIdentify();});
 on('identifyFile','change',(e)=>{const file=e.target.files&&e.target.files[0];e.target.value='';if(file)identifyFile(file);});
+on('newCollectionBtn','click',openNewAuthor);
+on('authorAISettings','click',openAISettings);
+on('authorSend','click',sendAuthorTurn);
+on('authorReset','click',resetAuthor);
+on('authorClose','click',closeAuthor);
+on('authorModal','click',(e)=>{if(e.target.id==='authorModal')closeAuthor();});
+on('authorPrompt','keydown',(e)=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();sendAuthorTurn();}});
+on('aiSettingsSave','click',()=>{
+  try{persistDashboardOpenAI(document.getElementById('dashboardOpenAIKey').value,document.getElementById('dashboardOpenAIRemember').checked);
+    paintAISettings();paintAuthorAIStatus();closeAISettings();toast(dashboardOpenAI.remembered?'AI key remembered on this device':'AI key ready for this session');}
+  catch(error){document.getElementById('aiSettingsStatus').textContent=String(error&&error.message||error);paintAuthorAIStatus();}
+});
+on('aiSettingsForget','click',()=>{forgetDashboardOpenAI();paintAISettings();paintAuthorAIStatus();toast('AI key removed from this device');});
+on('aiSettingsClose','click',closeAISettings);
+on('aiSettingsModal','click',(e)=>{if(e.target.id==='aiSettingsModal')closeAISettings();});
+on('pricingSettingsSave','click',()=>{
+  try{persistDashboardPricing(document.getElementById('dashboardPricingBaseUrl').value,
+      document.getElementById('dashboardPricingAccessToken').value,document.getElementById('dashboardPricingRemember').checked);
+    paintPricingSettings();paintPricingBatch();closePricingSettings();updateAll();toast(dashboardPricing.remembered?'Pricing API remembered on this device':'Pricing API ready for this session');}
+  catch(error){document.getElementById('pricingSettingsStatus').textContent=String(error&&error.message||error);}
+});
+on('pricingSettingsForget','click',()=>{forgetDashboardPricing();pricingStates.clear();paintPricingSettings();paintPricingBatch();updateAll();toast('Pricing API key removed from this device');});
+on('pricingSettingsClose','click',closePricingSettings);
+on('pricingSettingsModal','click',(e)=>{if(e.target.id==='pricingSettingsModal')closePricingSettings();});
 on('drivePill','click',openSync);
 document.getElementById('exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -2472,7 +3274,7 @@ document.getElementById('exportBtn').onclick=()=>{
 document.getElementById('importBtn').onclick=()=>document.getElementById('fileIn').click();
 document.getElementById('fileIn').onchange=(e)=>{
   const f=e.target.files[0]; if(!f)return; const r=new FileReader();
-  r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.checks){state=migrateState(s);delete state._needsMigrationSave;save();noteMonitorCollectionChange(); active=state.ui.active||active; /* Startup is deliberately fault-isolated: a failure in rendering must not stop
+  r.onload=()=>{ try{ const s=JSON.parse(r.result); if(s.checks){state=migrateState(s);delete state._needsMigrationSave;syncCustomChecklists();save();noteMonitorCollectionChange(); active=checklistFor(state.ui.active)?state.ui.active:DATA.checklists[0].id; /* Startup is deliberately fault-isolated: a failure in rendering must not stop
    the sync from reconnecting, and vice versa. */
 try{ paintSync(); applyCols(); updateAll(); }
 catch(e){ console.error('[binder] initial render failed:', e); }
@@ -2500,10 +3302,14 @@ document.addEventListener('keydown',(e)=>{
 });
 document.getElementById('hideDoneT').onclick=()=>{ state.ui.hideDone=!state.ui.hideDone;clearCompletionLinger();
   document.getElementById('hideDoneSw').classList.toggle('on',state.ui.hideDone); save(); renderContent(); };
-document.getElementById('expandAll').onclick=()=>{ const cl=DATA.checklists.find(c=>c.id===active);
+function expandAllEras(){ const cl=DATA.checklists.find(c=>c.id===active);
   cl.eras.forEach((e,ei)=>delete state.ui.closed[cl.id+'|'+ei]); save(); renderContent(); };
-document.getElementById('collapseAll').onclick=()=>{ const cl=DATA.checklists.find(c=>c.id===active);
+function collapseAllEras(){ const cl=DATA.checklists.find(c=>c.id===active);
   cl.eras.forEach((e,ei)=>state.ui.closed[cl.id+'|'+ei]=true); save(); renderContent(); };
+document.getElementById('expandAll').onclick=expandAllEras;
+document.getElementById('collapseAll').onclick=collapseAllEras;
+on('expandAllMenu','click',()=>{expandAllEras();closeMenus();});
+on('collapseAllMenu','click',()=>{collapseAllEras();closeMenus();});
 document.getElementById('colSel').onchange=(e)=>{state.ui.cols=e.target.value;save();applyCols();};
 document.getElementById('themeBtn').onclick=()=>{ state.theme=state.theme==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme',state.theme); save(); };
@@ -2512,6 +3318,7 @@ document.getElementById('themeBtn').onclick=()=>{ state.theme=state.theme==='dar
 if(state.theme==='dark')document.documentElement.setAttribute('data-theme','dark');
 document.getElementById('hideDoneSw').classList.toggle('on',state.ui.hideDone);
 paintSync(); updateAll();
+paintAuthorAIStatus();
 paintMonitorSyncStatus();
 ghBoot();
 </script>
@@ -2522,6 +3329,7 @@ import datetime
 BUILD = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 out = (HTML.replace("/*__DATA__*/", DATA)
        .replace("/*__WRAPPER_ART__*/", WRAPPER_ART)
+       .replace("/*__OPENAI_BROWSER_CLIENTS__*/", OPENAI_BROWSER_CLIENTS)
        .replace("__BUILD__", BUILD))
 targets=[
     os.path.join(ROOT,"mtg_binder_app.html"),

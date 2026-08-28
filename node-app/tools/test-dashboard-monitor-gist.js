@@ -213,7 +213,22 @@ function createContext() {
   assert.strictEqual(oldRemote.state.orderedWrapperArts[wrapperKey1], 6,
     'an older packs Gist without orderedWrapperArts must not delete local incoming wrapper quantities');
 
-  console.log('dashboard Gist tests: monitor preferences plus owned/ordered product and wrapper pull/push/legacy preservation passing');
+  const draftOnly = createContext();
+  const draftId = 'custom-local-draft';
+  draftOnly.state.checks = { [`${draftId}|v2|1111111111111111`]: true };
+  draftOnly.state.extras = { [`${draftId}|slot-extra|1111111111111111`]: 2 };
+  draftOnly.state.ordered = { [`${draftId}|slot-extra|1111111111111111`]: 1 };
+  draftOnly.state.legacyChecksV1 = {};
+  draftOnly.state.wrapperArts = {};
+  draftOnly.state.orderedWrapperArts = {};
+  draftOnly.state.monitorPreferencesUpdatedAt = null;
+  draftOnly.state.collectionLibrary = { collections: [{ collectionId: draftId, lifecycle: 'draft' }] };
+  calls = [];
+  await vm.runInContext('ghPush(false)', draftOnly.context);
+  assert.deepStrictEqual(calls, [],
+    'a local draft definition and all of its owned/extras/ordered quantities must make zero GitHub requests');
+
+  console.log('dashboard Gist tests: monitor preferences, owned/ordered product and wrapper round-trips, legacy preservation, and zero-request local-draft isolation passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);

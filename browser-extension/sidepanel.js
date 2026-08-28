@@ -3,6 +3,8 @@ const ALLOWED_LIVE_ORIGIN = 'https://d-k-b.github.io';
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
 const PRICING_EXTENSION_KEY = 'tcgCompsExtensionId';
 const PRICING_TOKEN_KEY = 'tcgCompsApiToken';
+const VISION_KEY = 'openaiVisionApiKey';
+const VISION_SAFETY_KEY = 'openaiVisionSafetyId';
 const EXPECTED_PRICING_API_VERSION = 1;
 const VENDORED_PROVIDER_VERSION = '2.42.0';
 const COLLECTION_CHANNEL = 'tcg-collection/v1';
@@ -11,6 +13,8 @@ const COLLECTION_RESULT_SCHEMA = 'tcg.collection-decoration-result/v2';
 const COLLECTION_REQUEST_TIMEOUT_MS = 10000;
 const MONITOR_REQUEST_TIMEOUT_MS = 10000;
 const MONITOR_DEBOUNCE_MS = 900;
+const IDENTIFY_CHANNEL = 'tcg-product-identify/v1';
+const COLLECTION_AUTHOR_CHANNEL = 'tcg-collection-author/v1';
 
 const dashboard = document.getElementById('dashboard');
 const status = document.getElementById('status');
@@ -24,6 +28,10 @@ const pricingForm = document.getElementById('pricingForm');
 const pricingExtensionId = document.getElementById('tcgCompsExtensionId');
 const pricingToken = document.getElementById('tcgCompsApiToken');
 const pricingStatus = document.getElementById('pricingStatus');
+const visionForm = document.getElementById('visionForm');
+const visionKeyInput = document.getElementById('openaiVisionApiKey');
+const rememberVisionKey = document.getElementById('rememberOpenaiKey');
+const visionStatus = document.getElementById('visionStatus');
 const consumerExtensionId = document.getElementById('consumerExtensionId');
 const scanPageButton = document.getElementById('scanPage');
 const pageScanStatus = document.getElementById('pageScanStatus');
@@ -49,6 +57,9 @@ let loadTimer = null;
 let pricingBridge = null;
 let pricingClient = null;
 let pricingSettings = { extensionId: '', apiToken: '' };
+let visionSettings = { apiKey: '', remembered: false, safetyIdentifier: '' };
+let identifyRunning = false;
+let authorRunning = false;
 let collectionRequest = null;
 let collectionRequestSerial = 0;
 let pageScanRunning = false;
@@ -114,6 +125,41 @@ async function writePricingSettings(settings) {
 async function clearPricingSettings() {
   if (!globalThis.chrome?.storage?.local) return;
   await chrome.storage.local.remove([PRICING_EXTENSION_KEY, PRICING_TOKEN_KEY]);
+}
+
+function newSafetyIdentifier() {
+  if (globalThis.crypto?.randomUUID) return 'tracker-' + crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  return 'tracker-' + Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+}
+
+async function readVisionSettings() {
+  if (!globalThis.chrome?.storage?.local) return { apiKey: '', remembered: false, safetyIdentifier: '' };
+  const saved = await chrome.storage.local.get([VISION_KEY, VISION_SAFETY_KEY]);
+  let safetyIdentifier = String(saved[VISION_SAFETY_KEY] || '').trim();
+  if (!safetyIdentifier) {
+    safetyIdentifier = newSafetyIdentifier();
+    await chrome.storage.local.set({ [VISION_SAFETY_KEY]: safetyIdentifier });
+  }
+  return { apiKey: String(saved[VISION_KEY] || '').trim(), remembered: !!saved[VISION_KEY], safetyIdentifier };
+}
+
+async function writeVisionSettings(apiKey, remember) {
+  if (!globalThis.chrome?.storage?.local) throw new Error('Photo identification settings require the installed extension.');
+  if (remember) await chrome.storage.local.set({ [VISION_KEY]: apiKey });
+  else await chrome.storage.local.remove(VISION_KEY);
+}
+
+async function clearVisionSettings() {
+  if (globalThis.chrome?.storage?.local) await chrome.storage.local.remove(VISION_KEY);
+}
+
+function setVisionStatus(message, kind = '') {
+  visionStatus.textContent = message;
+  visionStatus.classList.toggle('ok', kind === 'ok');
+  visionStatus.classList.toggle('error', kind === 'error');
+  visionStatus.classList.toggle('warning', kind === 'warning');
 }
 
 function normalizeDashboardUrl(value) {
@@ -521,6 +567,10 @@ function diagnosticText(value, maxLength = 4000) {
   let text = String(value == null ? '' : value);
   const capabilityToken = String(pricingSettings.apiToken || '');
   if (capabilityToken) text = text.split(capabilityToken).join('[REDACTED]');
+  const visionKey = String(visionSettings.apiKey || '');
+  if (visionKey) text = text.split(visionKey).join('[REDACTED]');
+  text = text.replace(/sk-[A-Za-z0-9_-]{8,}/g, '[REDACTED]');
+  text = text.replace(/(authorization\s*:\s*bearer\s+)[^\s,;]+/gi, '$1[REDACTED]');
   text = text.replace(/((?:api|capability)[ _-]?token\s*[:=]\s*)[^\s,;]+/gi, '$1[REDACTED]');
   return text.slice(0, maxLength);
 }
@@ -642,6 +692,80 @@ window.addEventListener('message', (event) => {
   collectionRequest = null;
   if (message.error) pending.reject(collectionError(String(message.error.code || 'SNAPSHOT_BUILD_FAILED'), String(message.error.message || message.error.code || 'Collection snapshot failed.')));
   else pending.resolve(message.result);
+});
+
+async function handleIdentifyMessage(event) {
+  const targetOrigin = new URL(currentUrl).origin;
+  if (event.origin !== targetOrigin || event.source !== dashboard.contentWindow) return;
+  const message = event.data;
+  if (!message || message.channel !== IDENTIFY_CHANNEL || message.type !== 'identifyProduct' ||
+      !globalThis.TCGProductIdentify?.validRequestId?.(message.requestId)) return;
+  const source = event.source;
+  const requestId = message.requestId;
+  const respond = payload => {
+    if (source !== dashboard.contentWindow || targetOrigin !== new URL(currentUrl).origin) return;
+    source.postMessage(Object.assign({ channel: IDENTIFY_CHANNEL, type: 'identifyProductResult', requestId }, payload), targetOrigin);
+  };
+  if (identifyRunning) {
+    respond({ error: { code: 'IDENTIFY_BUSY', message: 'Finish or dismiss the current photo identification before starting another.' } });
+    return;
+  }
+  identifyRunning = true;
+  try {
+    const request = globalThis.TCGProductIdentify.validateIdentifyRequest(message);
+    const result = await globalThis.TCGProductIdentify.identifyProduct(visionSettings.apiKey, request, {
+      safetyIdentifier: visionSettings.safetyIdentifier
+    });
+    respond({ result });
+  } catch (error) {
+    respond({ error: {
+      code: String(error?.code || 'IDENTIFY_FAILED').slice(0, 80),
+      message: diagnosticText(error?.message || error || 'Product identification failed.', 400)
+    } });
+  } finally {
+    identifyRunning = false;
+  }
+}
+
+window.addEventListener('message', event => {
+  handleIdentifyMessage(event).catch(() => {});
+});
+
+async function handleCollectionAuthorMessage(event) {
+  const targetOrigin = new URL(currentUrl).origin;
+  if (event.origin !== targetOrigin || event.source !== dashboard.contentWindow) return;
+  const message = event.data;
+  if (!message || message.channel !== COLLECTION_AUTHOR_CHANNEL || message.type !== 'collectionAuthorTurn' ||
+      !globalThis.TCGCollectionAuthor?.validRequestId?.(message.requestId)) return;
+  const source = event.source;
+  const requestId = message.requestId;
+  const respond = payload => {
+    if (source !== dashboard.contentWindow || targetOrigin !== new URL(currentUrl).origin) return;
+    source.postMessage(Object.assign({ channel: COLLECTION_AUTHOR_CHANNEL, type: 'collectionAuthorTurnResult', requestId }, payload), targetOrigin);
+  };
+  if (authorRunning) {
+    respond({ error: { code: 'AUTHOR_BUSY', message: 'Finish the current collection-assistant request before sending another.' } });
+    return;
+  }
+  authorRunning = true;
+  try {
+    const request = globalThis.TCGCollectionAuthor.validateAuthorRequest(message);
+    const result = await globalThis.TCGCollectionAuthor.authorCollection(visionSettings.apiKey, request, {
+      safetyIdentifier: visionSettings.safetyIdentifier
+    });
+    respond({ result });
+  } catch (error) {
+    respond({ error: {
+      code: String(error?.code || 'AUTHOR_FAILED').slice(0, 80),
+      message: diagnosticText(error?.message || error || 'Collection authoring failed.', 400)
+    } });
+  } finally {
+    authorRunning = false;
+  }
+}
+
+window.addEventListener('message', event => {
+  handleCollectionAuthorMessage(event).catch(() => {});
 });
 
 function validateCollectionSnapshot(snapshot) {
@@ -833,11 +957,44 @@ settingsButton.addEventListener('click', () => {
   settingsButton.setAttribute('aria-expanded', String(willOpen));
   if (willOpen) {
     dashboardUrl.value = currentUrl;
+    visionKeyInput.value = '';
+    visionKeyInput.placeholder = visionSettings.apiKey ? 'Remembered on this device; paste to replace' : 'Paste your API key';
+    rememberVisionKey.checked = visionSettings.remembered || !visionSettings.apiKey;
     pricingExtensionId.value = pricingSettings.extensionId;
     pricingToken.value = '';
     pricingToken.placeholder = pricingSettings.apiToken ? 'Stored securely; paste to replace' : 'Paste capability token';
     dashboardUrl.focus();
   }
+});
+
+visionForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const apiKey = visionKeyInput.value.trim() || visionSettings.apiKey;
+  if (!apiKey) {
+    setVisionStatus('Paste an OpenAI API key first.', 'error');
+    return;
+  }
+  if (apiKey.length < 20 || /\s/.test(apiKey)) {
+    setVisionStatus('The API key format does not look valid.', 'error');
+    return;
+  }
+  const remembered = rememberVisionKey.checked;
+  await writeVisionSettings(apiKey, remembered);
+  visionSettings = { apiKey, remembered, safetyIdentifier: visionSettings.safetyIdentifier || newSafetyIdentifier() };
+  visionKeyInput.value = '';
+  visionKeyInput.placeholder = remembered ? 'Remembered on this device; paste to replace' : 'Available until this panel closes';
+  setVisionStatus(remembered
+    ? 'API key remembered on this device. It will be tested on the next photo.'
+    : 'API key is available for this panel session only.', 'ok');
+});
+
+document.getElementById('clearVisionKey').addEventListener('click', async () => {
+  await clearVisionSettings();
+  visionSettings = { apiKey: '', remembered: false, safetyIdentifier: visionSettings.safetyIdentifier };
+  visionKeyInput.value = '';
+  visionKeyInput.placeholder = 'Paste your API key';
+  rememberVisionKey.checked = true;
+  setVisionStatus('Remembered API key removed.');
 });
 
 sourceForm.addEventListener('submit', async (event) => {
@@ -898,8 +1055,9 @@ document.getElementById('clearPricing').addEventListener('click', async () => {
 });
 
 async function boot() {
-  const [savedDashboard, savedPricing] = await Promise.all([readDashboardUrl(), readPricingSettings()]);
+  const [savedDashboard, savedPricing, savedVision] = await Promise.all([readDashboardUrl(), readPricingSettings(), readVisionSettings()]);
   pricingSettings = savedPricing;
+  visionSettings = savedVision;
   try {
     currentUrl = normalizeDashboardUrl(savedDashboard.dashboardUrl);
   } catch (_error) {
@@ -908,6 +1066,11 @@ async function boot() {
   }
   dashboardUrl.value = currentUrl;
   pricingExtensionId.value = pricingSettings.extensionId;
+  visionKeyInput.placeholder = visionSettings.apiKey ? 'Remembered on this device; paste to replace' : 'Paste your API key';
+  rememberVisionKey.checked = true;
+  setVisionStatus(visionSettings.apiKey
+    ? 'API key is remembered on this device and ready for photo identification.'
+    : 'Photo identification is not configured.', visionSettings.apiKey ? 'ok' : '');
   pricingToken.placeholder = pricingSettings.apiToken ? 'Stored securely; paste to replace' : 'Paste capability token';
   consumerExtensionId.textContent = globalThis.chrome?.runtime?.id || 'Unavailable outside the extension';
   setPricingStatus(pricingSettings.extensionId && pricingSettings.apiToken

@@ -14,7 +14,7 @@ const end = html.indexOf(endMarker, begin);
 assert.ok(begin >= 0 && end > begin, 'generated pricing bridge section must exist');
 const source = html.slice(begin, end + endMarker.length);
 
-function createContext(search, initialData = { checklists: [] }) {
+function createContext(search, initialData = { checklists: [] }, options = {}) {
   const posted = [];
   const listeners = {};
   const notices = [];
@@ -46,6 +46,19 @@ function createContext(search, initialData = { checklists: [] }) {
     instantFixedPriceEmail: true,
     dailyDigest: { enabled: true, time: '07:00', timezone: 'America/Chicago' } };
   const normalizeMonitorPreferences = input => JSON.parse(JSON.stringify(input || monitorDefaults));
+  const storage = new Map();
+  if (options.restSettings) storage.set('tcgDashboardPricingRest_v1', JSON.stringify(options.restSettings));
+  const localStorage = { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) };
+  const restCalls = [];
+  const TCGPricingRestClient = {
+    normalizeBaseUrl: value => String(value || '').replace(/\/$/, ''),
+    createClient: config => ({ priceProduct: async (target, priceOptions) => {
+      restCalls.push({ config, target, options: priceOptions });
+      if (options.restError) throw Object.assign(new Error(options.restError.message), { code: options.restError.code });
+      return options.restResult || { apiVersion: 1, schema: 'tcg.valuation/v1', requestId: priceOptions.requestId,
+        product: target, observedAt: new Date().toISOString(), market: { value: 123, confidence: 'high' }, lowestAsk: null };
+    } })
+  };
   const hash = value => {
     let h = 0xcbf29ce484222325n;
     for (let index = 0; index < value.length; index++) {
@@ -55,7 +68,7 @@ function createContext(search, initialData = { checklists: [] }) {
     return h.toString(16).padStart(16, '0');
   };
   const context = vm.createContext({
-    console, window, location: { search }, URL, URLSearchParams, Map, Date,
+    console, window, location: { search }, URL, URLSearchParams, Map, Date, localStorage, TCGPricingRestClient,
     setTimeout, clearTimeout,
     contentHash: hash, normalizeMonitorPreferences,
     state: { monitorPreferences: JSON.parse(JSON.stringify(monitorDefaults)) },
@@ -76,7 +89,7 @@ function createContext(search, initialData = { checklists: [] }) {
   });
   vm.runInContext(source, context);
   return {
-    context, parent, posted, notices, ownership, slotId, groupId,
+    context, parent, posted, notices, ownership, slotId, groupId, storage, restCalls,
     listener: () => event => (listeners.message || []).forEach(listener => listener(event)),
   };
 }
@@ -385,12 +398,30 @@ const product = {
   assert.strictEqual(unavailableBatch.posted.length, 0, 'missing-extension batch must send no requests');
 
   const standalone = createContext('');
-  assert.strictEqual(vm.runInContext('pricingDefaultState().code', standalone.context), 'MISSING_EXTENSION');
+  assert.strictEqual(vm.runInContext('pricingDefaultState().code', standalone.context), 'PRICING_NOT_CONFIGURED');
   assert.strictEqual(vm.runInContext('pricingConsumerOrigin', standalone.context), '', 'full-page dashboard must not invent a consumer origin');
   vm.runInContext('emitMonitorStateChanged()', standalone.context);
   assert.strictEqual(standalone.posted.length, 0, 'standalone dashboards must never emit monitor bridge messages');
 
-  assert.doesNotMatch(html, /tcgCompsApiToken|apiToken\s*:/, 'generated dashboard must contain no pricing capability token field');
+  const restSettings = { schema: 'tcg.dashboard-pricing-rest-settings/v1', baseUrl: 'https://pricing.example.test',
+    accessToken: 'tcg_price_test_0123456789abcdef0123456789abcdef', savedAt: '2026-08-28T12:00:00.000Z' };
+  const rest = createContext('', { checklists: [] }, { restSettings });
+  assert.strictEqual(vm.runInContext('pricingTransport()', rest.context), 'rest');
+  const restValuation = await vm.runInContext(`pricingRequest('priceProduct',{target:${JSON.stringify(product)},options:{includeActive:true,includeRecentSales:true,userInitiated:true,include130point:true}})`, rest.context);
+  assert.strictEqual(restValuation.product.productId, product.productId);
+  assert.strictEqual(rest.posted.length, 0, 'REST pricing must not leak its key through postMessage');
+  assert.strictEqual(rest.restCalls.length, 1);
+  assert.strictEqual(rest.restCalls[0].config.accessToken, restSettings.accessToken);
+  assert.strictEqual(rest.restCalls[0].options.requestId.startsWith('tracker-'), true);
+  assert.strictEqual(vm.runInContext(`pricingCanWatch(interpretPriceResponse(${JSON.stringify(product)},${JSON.stringify(restValuation)}),${JSON.stringify(product)})`, rest.context), false,
+    'REST-only pricing must not expose extension-owned watch controls');
+  const exportedState = JSON.stringify(vm.runInContext('state', rest.context));
+  assert.ok(!exportedState.includes(restSettings.accessToken), 'REST access keys must remain outside collection state');
+
+  assert.doesNotMatch(html, /tcgCompsApiToken|apiToken\s*:/, 'generated dashboard must contain no extension pricing capability token field');
+  assert.match(html, /id="pricingSettingsModal"/);
+  assert.match(html, /id="dashboardPricingAccessToken" type="password"/);
+  assert.match(html, /tcgDashboardPricingRest_v1/);
   assert.match(html, /Live value/);
   assert.match(html, /Lowest verified ask/);
   assert.match(html, /Confidence/);

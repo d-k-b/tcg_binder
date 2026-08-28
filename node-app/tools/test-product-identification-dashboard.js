@@ -28,8 +28,10 @@ assert.match(html, /result\.matches\.length>3/, 'the dashboard must bound return
 assert.match(html, /canvas\.toBlob[\s\S]*'image\/jpeg',\.86/,
   'the browser must resize and re-encode photos before sending them, stripping original metadata');
 assert.match(html, /store|Gists, or exports/, 'the scanner must explain its non-persistence boundary');
-assert.doesNotMatch(html, /OPENAI_API_KEY|api\.openai\.com|sk-[A-Za-z0-9_-]{8,}/,
-  'generated dashboard HTML must contain neither an OpenAI endpoint nor a key');
+assert.match(html, /https:\/\/api\.openai\.com\/v1\/responses/,
+  'standalone photo identification must embed the validated OpenAI client');
+assert.doesNotMatch(html, /OPENAI_API_KEY|sk-(?:proj-)?[A-Za-z0-9_-]{24,}/,
+  'generated dashboard HTML must contain no environment key or real-looking credential');
 assert.match(html, /minus\.onclick=\(\)=>adjustIdentifiedCandidate\(candidate,-1,'minus'\)/);
 assert.match(html, /plus\.onclick=\(\)=>adjustIdentifiedCandidate\(candidate,1,'plus'\)/);
 

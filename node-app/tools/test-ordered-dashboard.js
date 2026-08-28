@@ -125,6 +125,10 @@ assert.match(html, /function receiveIconSVG\(\)/, 'receive must use the compact 
 assert.match(html, /Receive one ordered/, 'receive controls must keep a full accessible label');
 assert.match(html, /\.item\.done \.qtyctrl\.goal:hover,\.item\.done \.qtyctrl\.goal:focus-within\{opacity:1\}/,
   'completed-row quantity and receive controls must return to full contrast while active');
+assert.match(html, /@media\(max-width:620px\)[\s\S]*?\.ordertray\{left:58px\}/,
+  'narrow layouts must keep the ordered tray contiguous instead of docking it across the row');
+assert.doesNotMatch(html, /\.ordertray \.ordericon\{display:none\}/,
+  'the package icon must remain visible as a non-clickable separator before ordered decrement');
 assert.match(html, /function receiveQuantity\(cl,it,g,focusSide\)/,
   'group receipt must be an atomic ordered-to-owned transfer');
 assert.match(html, /function receiveSlotQuantity\(cl,it,si,focusSide\)/,

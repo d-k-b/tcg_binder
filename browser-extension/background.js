@@ -1,6 +1,9 @@
 const DEFAULT_DASHBOARD_URL = 'https://d-k-b.github.io/tcg_binder/';
 
 async function initializeExtension() {
+  if (chrome.storage?.local?.setAccessLevel) {
+    await chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
+  }
   const saved = await chrome.storage.local.get('dashboardUrl');
   if (!saved.dashboardUrl) {
     await chrome.storage.local.set({ dashboardUrl: DEFAULT_DASHBOARD_URL });

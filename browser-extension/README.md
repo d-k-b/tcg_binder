@@ -66,7 +66,9 @@ For local work, open the extension's gear and use
 
 When the extension's own files change, increment `version` in `manifest.json`, then
 select **Reload** for the unpacked extension on the browser's extensions page.
-Version `1.3.2` adds the privileged collection deal/auction monitor bridge, explicit
+Version `1.5.0` adds AI-assisted local collection drafts, reuses the remembered BYOK
+OpenAI key, and retains photo identification plus the privileged
+collection deal/auction monitor bridge, explicit
 monitor sync/status/manual-run controls, active-panel debounced resync, and
 credential-safe monitor diagnostics. It also blocks monitor messages until the
 cross-origin dashboard has replaced the iframe's initial `about:blank` document.
@@ -79,6 +81,35 @@ Dashboard features and responsive UI changes belong in the dashboard workstream.
 Extension controls, browser integration, packaging, and the pricing-app bridge belong
 in the extension workstream. Coordinate changes only when they alter the documented
 interface between the iframe and its extension shell.
+
+## Identify a sealed product from a photo
+
+Open Settings, paste a dedicated OpenAI API key, leave **Remember on this device**
+checked, and save. The key remains in the Tracker extension's private local storage;
+it is never sent into the dashboard iframe or collection/Gist state. Use a project
+key with a conservative spending limit, and use **Forget key** to remove it.
+
+## Create a collection with AI
+
+Use **New Collection** in the dashboard toolbar, then describe a rule such as
+“collect three of every Lorcana booster box.” The extension sends the conversation
+and the dashboard's non-secret built-in catalog to OpenAI with API storage disabled.
+The assistant may ask clarifying questions, but it can propose only catalog IDs the
+dashboard supplied and validates again.
+
+Clicking **Create local draft** stores a self-describing, versioned collection only
+in the dashboard origin's local state. Draft definitions, owned quantities, extras,
+and ordered quantities are excluded from every automatic or manual Gist write.
+After testing the checklist, use its explicit **Publish to GitHub Gist** button to
+promote it. Deleting a draft is local-only and clearly reports how many progress
+records will be removed.
+
+In the dashboard, select the camera button and take or choose a clear photo of one
+sealed product. The dashboard resizes and re-encodes the image, the extension asks
+OpenAI for structured observations, and exact wrapper fronts are compared only with
+the reviewed catalog references for the identified set. Results are suggestions.
+Collection state changes only if the user presses a displayed − or + quantity
+control. A low-confidence or out-of-catalog result leaves collection state unchanged.
 
 ## Pair with TCG Comps
 

@@ -10,15 +10,16 @@ const EXT = path.join(ROOT, 'browser-extension');
 const manifest = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
 
 assert.strictEqual(manifest.manifest_version, 3, 'extension must use Manifest V3');
-assert.strictEqual(manifest.version, '1.3.2', 'collection monitor integration, frame-readiness, and run-status retention fixes must bump the tracker extension version');
+assert.strictEqual(manifest.version, '1.5.0', 'AI-assisted local collection drafts must bump the tracker extension version');
 assert.strictEqual(manifest.side_panel.default_path, 'sidepanel.html');
 assert.deepStrictEqual(manifest.permissions.slice().sort(), ['sidePanel', 'storage']);
-assert.ok(!manifest.host_permissions, 'launcher should not request host permissions');
+assert.deepStrictEqual(manifest.host_permissions, ['https://api.openai.com/*'], 'photo identification may contact only the OpenAI API');
 
 const csp = manifest.content_security_policy.extension_pages;
 assert.match(csp, /script-src 'self'/);
 assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval|https:\/\/.*script-src/);
 assert.match(csp, /frame-src https:\/\/d-k-b\.github\.io/);
+assert.match(csp, /connect-src https:\/\/api\.openai\.com/, 'extension pages may connect only to the configured vision API host');
 
 const referenced = [
   manifest.background.service_worker,
@@ -48,6 +49,10 @@ assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, 'inline scripts are f
 assert.doesNotMatch(html, /\son(?:click|load|error)=/i, 'inline event handlers are forbidden');
 assert.ok(html.indexOf('<script src="monitor-bridge.js"></script>') > html.indexOf('pricing-bridge.js'),
   'the exact dashboard monitor bridge must load before sidepanel.js');
+assert.ok(html.indexOf('<script src="identify-bridge.js"></script>') > html.indexOf('monitor-bridge.js'),
+  'the product-identification bridge must load before sidepanel.js');
+assert.ok(html.indexOf('<script src="collection-author-bridge.js"></script>') > html.indexOf('identify-bridge.js'),
+  'the collection-authoring bridge must load before sidepanel.js');
 
 const panelJs = fs.readFileSync(path.join(EXT, 'sidepanel.js'), 'utf8');
 const workerJs = fs.readFileSync(path.join(EXT, 'background.js'), 'utf8');
@@ -64,6 +69,24 @@ assert.match(panelJs, /chrome\.storage\.local\.set\(\{[\s\S]*\[PRICING_TOKEN_KEY
   'pairing credentials must save to extension-local storage');
 assert.doesNotMatch(panelJs, /localStorage\.(?:getItem|setItem)\([^\n]*PRICING_TOKEN_KEY/,
   'the pricing capability token must never use page localStorage');
+assert.match(html, /id="rememberOpenaiKey"[^>]*checked/, 'remember-on-this-device must default on');
+assert.match(panelJs, /chrome\.storage\.local\.set\(\{ \[VISION_KEY\]: apiKey \}\)/,
+  'remembered OpenAI keys must use extension-local storage');
+assert.match(panelJs, /chrome\.storage\.local\.remove\(VISION_KEY\)/,
+  'the settings page must be able to forget the remembered key');
+assert.doesNotMatch(panelJs, /localStorage\.(?:getItem|setItem)\([^\n]*VISION_KEY/,
+  'the OpenAI key must never use dashboard or side-panel localStorage');
+assert.match(workerJs, /setAccessLevel\(\{ accessLevel: 'TRUSTED_CONTEXTS' \}\)/,
+  'extension storage must be restricted to trusted extension contexts');
+assert.match(panelJs, /event\.origin !== targetOrigin \|\| event\.source !== dashboard\.contentWindow/,
+  'photo requests must require the exact dashboard origin and frame');
+assert.match(panelJs, /TCGProductIdentify\.validateIdentifyRequest/,
+  'the extension must validate every photo request before calling OpenAI');
+assert.match(panelJs, /source\.postMessage\([\s\S]*targetOrigin\)/,
+  'photo results must return only to the exact dashboard origin');
+assert.doesNotMatch(panelJs, /postMessage\([^\n]*['"]\*['"]/, 'no privileged bridge may post to a wildcard origin');
+assert.match(panelJs, /text = text\.split\(visionKey\)\.join\('\[REDACTED\]'\)/,
+  'diagnostics must redact the remembered OpenAI key');
 assert.match(panelJs, /allowedOrigins:\s*\[origin\]/, 'bridge must allow only the configured dashboard origin');
 assert.match(panelJs, /frame:\s*dashboard/, 'bridge must bind requests to the exact dashboard frame');
 assert.match(panelJs, /pricingConsumerOrigin/, 'dashboard receives only the non-secret consumer origin');

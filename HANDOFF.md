@@ -42,25 +42,100 @@ side panel as a supported viewport, but extension work must not fork or patch th
 generated dashboard. See `browser-extension/HANDOFF.md` for the full interface and
 ownership contract.
 
+**Collection-state parity boundary:** `node-app/lib/collection-state.js` owns the
+deterministic ProductRef, stable-key, owned, ordered, and receive semantics used by
+the CLI. Any dashboard feature that reads or mutates durable collection state is
+incomplete until the core has the same operation, the CLI exposes matching inputs and
+JSON output (or a documented browser-only exception), and regression coverage proves
+parity. New HTTP APIs should reuse those operation names and fields where security
+allows; do not invent a second key or quantity model. The current GitHub Pages build
+is generated browser JavaScript and cannot import Node CommonJS directly. A future
+dashboard refactor must bundle this pure core through `generators/build_app.py` or
+call a versioned API, never copy its semantics into another browser-only path. See
+`docs/COLLECTION_STATE_CLI.md`.
+
 **Current pricing boundary:** `gen_data.py` adds 686 unique, contract-valid pricing
 products outside ownership slots. `build_app.py` renders per-product refresh/value,
 lowest verified ask, confidence, observation time, explicit unavailable/error, and
-static fallback states. Watches appear only after an exact returned `productId`
-matches the requested ProductRef. The extension alone stores the TCG Comps extension
-ID/token in `chrome.storage.local`; generated HTML, page `localStorage`, Gist state,
-and debug state contain no pricing token. TCG Comps owns all marketplace fetches,
-matching, prompts, valuation math, and watch persistence.
+static fallback states. Pricing prefers the configured read-only TCG Pricing REST
+transport and falls back to the extension bridge for backward compatibility.
+Standalone Safari/Chrome/Edge users enter an HTTPS base URL and the separate
+least-privilege REST access key under **More → Pricing API settings**; an explicit
+**Remember on this device** choice stores it only in
+`localStorage["tcgDashboardPricingRest_v1"]`. The record is separate from collection
+state and never enters generated source, URLs, Gists, exports, or debug reports.
+
+Watches remain extension-only and appear only after an exact returned `productId`
+matches the requested ProductRef and an extension bridge exists. The extension
+capability token/ID remain exclusively in `chrome.storage.local` and are never
+substituted for the REST key. TCG Comps owns all marketplace fetches, matching,
+prompts, valuation math, and watch persistence. See `docs/API_CREDENTIALS.md`.
 
 **Photo-identification boundary:** extension 1.4 adds a generator-owned
 camera/upload modal and an extension-owned BYOK OpenAI bridge on
-`tcg-product-identify/v1`. The dashboard re-encodes photos before sending them,
+`tcg-product-identify/v1`. The generated dashboard also embeds the same validated
+OpenAI client so camera/upload identification works as a standalone web app in
+Safari, Chrome, and Edge. The dashboard re-encodes photos before sending them,
 supplies 686 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
-accepts only returned IDs that exist in that in-memory catalog. The extension
-remembers the user's key in private `chrome.storage.local` when **Remember on this
-device** is selected; the key never enters generated HTML, iframe messages,
-dashboard localStorage, Gists, exports, URLs, or diagnostics. Identification is
+accepts only returned IDs that exist in that in-memory catalog. Identification is
 suggestion-only. Collection quantities change only through the explicit −/+ controls
 shown beside a result.
+
+**AI collection-authoring boundary:** extension 1.5 adds a generator-owned **New
+Collection** chat and an extension-owned BYOK OpenAI bridge on
+`tcg-collection-author/v1`. The extension bridge retains the v1 built-in-catalog
+contract. A standalone dashboard key enables the generator-owned v2 client in
+`generators/catalog_author_client.js`: it uses the Responses API with
+`store:false`, strict structured output, and the `web_search` tool when the
+requested game/products are absent from the built-in catalog. External results use
+`tcg.collection-author-result/v2` plus `tcg.external-catalog-import/v1`; every row
+must have a validated HTTPS evidence URL and is shown with its source before the
+user can click **Import catalog & create local draft**. The model cannot install a
+catalog or change ownership by itself. Official publisher/product pages are the
+required first choice, secondary sources must be disclosed, and the human remains
+responsible for verifying completeness and equivalence rules.
+
+**Standalone AI credential boundary:** **More → AI settings…** stores an explicitly
+entered OpenAI key only under the separate browser-origin namespace
+`localStorage["tcgDashboardOpenAI_v1"]` when **Remember on this device** is selected;
+unchecked keys remain memory-only for the current page session. The setting is
+available on the New Collection dialog as well. A configured dashboard key takes
+the direct path; otherwise the existing exact-origin extension bridge remains the
+fallback. Forget removes the device-local key immediately. The key is deliberately
+outside `state`, so it never enters collection saves, Gists, exports, URLs,
+diagnostics, bridge messages, or generated source. The UI warns that browser storage
+is weaker than a server or the extension and recommends a dedicated limited-spend
+OpenAI project key on trusted personal devices. This is an explicit standalone-web
+tradeoff; standard OpenAI API keys should normally remain server-side.
+
+AI-created collections use `tcg.collection-definition/v1` records inside a
+`tcg.collection-library/v1` state envelope. Immutable item and slot IDs preserve
+progress across title/rule edits, while unknown future definitions are retained in
+recovery rather than silently dropped. Creation is two-step: the user first clicks
+**Create local draft**, then tests the checklist locally. Draft definitions and all
+of their owned/extras/ordered quantities are excluded from every Gist path,
+including background and unload sync. Only the explicit **Publish to GitHub Gist**
+button promotes a draft to `live` and creates its private Gist. Researched rows retain their evidence in a sanitized
+`tcg.external-catalog-source/v1` `sourceRef`, including source URL/title, product and
+variant names, release status/date, evidence summary, and research time. Immutable
+dashboard-generated item and slot IDs—not model-provided IDs—own progress.
+Deleting a draft is therefore local-only and states exactly how many local progress
+records will be removed.
+
+User-created collections expose **Edit collection** in their rule banner. Revision
+authoring sends the current title, rule, product list, target counts, and sanitized
+source provenance to the standalone v2 author, but never sends ownership, ordered
+quantities, collection/slot IDs, Gist metadata, or credentials. The model must return
+a complete replacement proposal rather than a patch. Applying a revision to a local
+draft updates that draft only. Editing a live collection creates a second local draft
+with `authoring.revisesCollectionId` and `baseRevision`; the live definition, progress,
+and existing Gist remain untouched. Matching semantic products/copy slots reuse their
+immutable IDs and receive separate working copies of owned/extras/ordered quantities;
+new products start empty. Publishing a revision checks the base revision, names every
+removed slot that still has owned or ordered data, replaces the live definition, and
+patches the existing private Gist. Discarding the staged revision returns to the live
+collection without touching GitHub. Staged revisions are excluded from global progress
+and every Gist-sync partition so they cannot double-count or leak before publication.
 
 **Read first:** §1 (the collecting rules — they are the product), §2's data-model note
 on `slots[].g` and checkbox keys, then §4. §4 is not boilerplate; almost every entry
@@ -106,13 +181,55 @@ regular Packs row details, including three zero-slot wrapper-only rows; the same
 the 2XM missing-image fallback remains visible, toggles persist across reload, and
 the collection stays at 910 required targets / 950 inventory slots.
 Incoming-order tracking was regenerated and HTTP-browser-verified on build
-`2026-08-20 21:19`: ordered-only copies remain outside owned completion, acquiring
+`2026-08-20 22:32`: ordered-only copies remain outside owned completion, acquiring
 an additional owned copy leaves the order intact, and Receive transfers exactly one
 copy from ordered to owned. The compact package badge and package-into-hand Receive
 control were exercised at desktop, 390px, and 360px with persisted reload state and
 no horizontal overflow. Completed rows remain subdued at rest, but their quantity,
 ordered, and Receive controls return to full opacity on hover or keyboard focus. The
-full offline suite, including Gist and key migration coverage, passed.
+360px and 390px layouts keep the ordered tray directly adjacent to the owned plus
+button, avoiding a hover dead zone; its non-clickable package icon separates the
+owned plus from the ordered decrement to prevent accidental clicks. The full offline
+suite, including Gist and key migration coverage, passed.
+AI-assisted collection creation was regenerated and HTTP-browser-verified on build
+`2026-08-22 19:51`: the New Collection chat opens at desktop, 390px, and 360px with
+no horizontal overflow; a missing extension/key fails clearly; structured proposals
+remain inert until **Create local draft**; and an offline Gist regression proves a
+draft definition plus its owned, extra, and ordered quantities makes zero GitHub
+requests. Extension 1.5.0 reuses the device-remembered OpenAI key and validates the
+exact origin, frame, request ID, catalog, and returned source IDs.
+Standalone AI settings were added on build `2026-08-22 20:11`: New Collection and
+camera/upload identification can use a device-local OpenAI key without the Tracker
+extension; **Remember on this device** defaults on, session-only and Forget behavior
+are covered by generated-code tests, and the key remains outside collection/Gist
+state and all generated files. The HTTP-served page was verified at 1280px, 390px,
+and 360px with no horizontal overflow or console errors; the camera button opens AI
+setup when a standalone key is missing, and both dialogs remain fully contained.
+Standalone external-catalog discovery and paste-safe diagnostics were added on build
+`2026-08-22 20:29`. The v2 standalone author can web-research missing games, requires
+one validated HTTPS evidence source per product, previews every sourced row, and
+creates only a local draft after explicit approval. A Star Wars: Unlimited regression
+covers five released Carbonite Edition pack rows at two copies each. **More → Copy
+debug report** emits `tcg.dashboard-debug/v1` without credentials, identities, Gist
+IDs, progress keys, chat text, catalog bodies, or pricing data. Full `npm test` passed;
+the HTTP-served page retained `259 / 910` at desktop, 390px, and 360px with no
+horizontal overflow or console warnings/errors.
+Build `2026-08-22 20:48` fixes the first real external-catalog draft: normalized
+custom rows intentionally have no built-in `tags` array, so row rendering must use
+`(it.tags||[])` rather than assuming generated catalog metadata. The saved five-row
+Star Wars: Unlimited draft survived unchanged and was HTTP-verified at 545px with
+all source links and two-copy controls visible. Paste-safe diagnostics now retain up
+to five sanitized recent runtime errors under `diagnostics.recentErrors`; OpenAI and
+GitHub credential patterns are redacted before entering that memory-only buffer.
+AI-assisted current-collection revision was added on build `2026-08-22 21:03`.
+The saved five-product Star Wars draft exposes **Edit collection**, opens a revision
+prompt with the current definition as non-ownership context, and remains local until
+its existing publish control is used. Live custom collections stage a separate local
+revision and patch their existing Gist only after explicit publication. Regression
+coverage proves immutable-ID reuse, owned/duplicate/ordered migration, empty new
+products, named loss disclosure, base-revision gating, staged-Gist exclusion, and
+generated parity. Full `npm test` passed; the HTTP-served dialog and saved rows were
+verified at 545px, 390px, and 360px without overflow or console warnings/errors.
 
 ---
 
@@ -501,8 +618,15 @@ at least one required ownership slot and is not complete, so bonus-only inventor
 not perpetually swept into that mode. “All” includes completed and bonus-only rows.
 Batch work is memory-only, deduplicates `productId`, and runs at four concurrent
 requests. It calls the same `refreshPrice()`/`pricingRequest()` path, preserving exact
-origin/frame/channel/request/product validation and all unavailable/error/watch
-gates. Never persist batch or valuation state in collection state, Gists, or exports.
+request/product validation and all unavailable/error/watch gates. REST responses must
+match API v1, `tcg.valuation/v1`, request ID, and the requested ProductRef ID. Extension
+responses retain the exact origin/frame/channel/request gates. Never persist batch or
+valuation state in collection state, Gists, or exports.
+
+The read-only REST endpoint cannot prove a direct browser-tab gesture, so it never
+enables 130point. A direct per-product extension refresh may retain the existing
+user-initiated 130point path; row or toolbar batches never do. REST-only dashboards
+hide extension-owned watch controls. Missing pricing is unavailable, never `$0`.
 
 **Collection page-decoration snapshot.** The extension parent may send
 `{channel:"tcg-collection/v1", type:"collectionSnapshot", requestId}` to the
@@ -550,8 +674,13 @@ credentials, checklist/extras keys, valuations, watches, listing history, or ema
 
 **Diagnostics.** The header subtitle carries a build stamp (`const BUILD`, stamped by
 `build_app.py` at build time) — the fastest way to tell whether a browser is running
-the copy you just deployed. `window.__binderDebug()` returns build, storage health,
-connection shape, boot state and check counts, and never returns the token itself.
+the copy you just deployed. **More → Copy debug report** writes a formatted
+`tcg.dashboard-debug/v1` report to the clipboard; `window.__binderDebug()` returns
+the same object. It includes build, viewport, browser/storage health, collection
+counts, AI/extension capability state, sync/monitor state, and in-memory pricing
+status. It deliberately excludes GitHub/OpenAI/provider credentials, user identity,
+Gist IDs, checklist/fingerprint/storage keys, chat text, catalog bodies, pricing
+values, watches, and saved payloads, so it is safe to paste into a Codex task.
 
 ### B. Node app — `node-app/`
 Adds server-side features the browser can't do safely.
@@ -648,9 +777,9 @@ tools/test-pricing-dashboard.js generated pricing/collection/monitor bridge, rev
   cost **1ms with sticky vs 0ms without** on the 482-checkbox Packs tab. It is not
   a bottleneck. (Chrome's devtools/extension script injection does time out while
   driving that tab hard — that is tooling, not the app.)
-- `window.__binderDebug()` in the console reports build, storage health, connection
-  shape, boot state and check counts. It never returns the token or even a token
-  prefix, so its output is safe to paste anywhere.
+- **More → Copy debug report** is the normal support path; `window.__binderDebug()`
+  returns the same sanitized report in the console. Neither path returns tokens,
+  identities, Gist IDs, progress keys, chat contents, or catalog payloads.
 
 ---
 

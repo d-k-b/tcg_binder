@@ -83,6 +83,20 @@
       </div>
     </section>
     <div class="settings-divider" role="presentation"></div>
+    <form id="visionForm">
+      <div class="settings-heading">OpenAI assistant</div>
+      <p>Use your own OpenAI API key for photo identification and AI-assisted collection drafts. The key stays in this extension and is never sent to the dashboard, Gist, exports, URLs, or diagnostics.</p>
+      <label for="openaiVisionApiKey">OpenAI API key</label>
+      <input id="openaiVisionApiKey" name="openaiVisionApiKey" type="password" spellcheck="false" autocomplete="new-password" placeholder="Paste your API key">
+      <label class="remember-setting" for="rememberOpenaiKey"><input id="rememberOpenaiKey" type="checkbox" checked> Remember on this device</label>
+      <p>Remembered keys use this extension's private <code>chrome.storage.local</code>. Use a dedicated project key with a conservative spending limit.</p>
+      <div class="settings-actions pricing-actions">
+        <button class="save" type="submit">Save key</button>
+        <button id="clearVisionKey" class="text-button" type="button">Forget key</button>
+      </div>
+      <p id="visionStatus" class="pairing-status" role="status">Photo identification is not configured.</p>
+    </form>
+    <div class="settings-divider" role="presentation"></div>
     <form id="pricingForm">
       <div class="settings-heading">TCG Comps live pricing</div>
       <p>Pair with TCG Comps API v1. Provider release differences are informational when API v1 remains compatible. The capability token stays only in this extension's private storage.</p>
@@ -112,6 +126,8 @@
   <script src="vendor/tcg-comps-2.42.0/pricing-client.js"></script>
   <script src="vendor/tcg-comps-2.42.0/pricing-bridge.js"></script>
   <script src="monitor-bridge.js"></script>
+  <script src="identify-bridge.js"></script>
+  <script src="collection-author-bridge.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

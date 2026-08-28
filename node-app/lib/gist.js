@@ -95,6 +95,9 @@ async function read() {
   const ids = await ensureIds();
   const merged = {};
   const mergedExtras = {};
+  const mergedOrdered = {};
+  const mergedWrapperArts = {};
+  const mergedOrderedWrapperArts = {};
   const mergedLegacy = {};
   let newest = null;
   await Promise.all(Object.entries(ids).map(async ([clId, gistId]) => {
@@ -109,6 +112,9 @@ async function read() {
       const body = JSON.parse(content);
       Object.assign(merged, body.checks || {});
       Object.assign(mergedExtras, body.extras || {});
+      Object.assign(mergedOrdered, body.ordered || {});
+      Object.assign(mergedWrapperArts, body.wrapperArts || {});
+      Object.assign(mergedOrderedWrapperArts, body.orderedWrapperArts || {});
       Object.assign(mergedLegacy, body.legacyChecksV1 || {});
       if (body.updatedAt && (!newest || body.updatedAt > newest)) newest = body.updatedAt;
       lastHash[clId] = sha(JSON.stringify({
@@ -116,8 +122,87 @@ async function read() {
       }));
     } catch (e) { /* skip a bad gist rather than lose everything */ }
   }));
-  return { checks: merged, extras: mergedExtras, keyVersion: 2,
-    legacyChecksV1: mergedLegacy, updatedAt: newest, source: 'gist' };
+  return { checks: merged, extras: mergedExtras, ordered: mergedOrdered,
+    wrapperArts: mergedWrapperArts, orderedWrapperArts: mergedOrderedWrapperArts,
+    keyVersion: 2, legacyChecksV1: mergedLegacy, updatedAt: newest, source: 'gist' };
+}
+
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+
+async function readChecklist(checklistId) {
+  const ids = await ensureIds();
+  const gistId = ids[checklistId] || null;
+  if (!gistId) {
+    return { checklistId, gistId: null, revision: null, etag: null,
+      payload: { checklist: checklistId, title: titleFor(checklistId), keyVersion: 2,
+        checks: {}, extras: {}, ordered: {}, wrapperArts: {}, orderedWrapperArts: {}, legacyChecksV1: {} } };
+  }
+  const response = await fetch(API + '/gists/' + gistId, { headers: headers() });
+  if (!response.ok) throw new Error('gist read failed (' + checklistId + '): ' + response.status);
+  const gist = await response.json();
+  const file = (gist.files || {})[fileFor(checklistId)];
+  if (!file) throw new Error('gist file missing for ' + checklistId);
+  let content = file.content;
+  if (file.truncated && file.raw_url) content = await (await fetch(file.raw_url)).text();
+  let payload;
+  try { payload = JSON.parse(content); } catch { throw new Error('gist payload is not valid JSON for ' + checklistId); }
+  const etag = response.headers && typeof response.headers.get === 'function' ? response.headers.get('etag') : null;
+  return { checklistId, gistId, etag,
+    revision: (gist.history && gist.history[0] && gist.history[0].version) || gist.updated_at || sha(content),
+    payload };
+}
+
+/**
+ * Optimistic, checklist-scoped mutation used by the command-line adapter.
+ * The callback receives the complete payload and must return the replacement.
+ * Fields unknown to the CLI remain intact unless the callback explicitly edits them.
+ */
+async function updateChecklist(checklistId, expectedRevision, mutate) {
+  if (!checklists().some((checklist) => checklist.id === checklistId)) {
+    throw new Error('Unknown checklist: ' + checklistId);
+  }
+  const current = await readChecklist(checklistId);
+  if (expectedRevision && current.revision && expectedRevision !== current.revision) {
+    throw new Error('gist conflict for ' + checklistId + '; reload before applying a change');
+  }
+  const title = titleFor(checklistId);
+  const next = mutate(clone(current.payload));
+  if (!next || typeof next !== 'object') throw new Error('gist mutation must return an object');
+  next.checklist = checklistId;
+  next.title = next.title || title;
+  next.keyVersion = next.keyVersion || 2;
+  next.updatedAt = new Date().toISOString();
+  const requestHeaders = headers();
+  if (current.etag) requestHeaders['If-Match'] = current.etag;
+  const content = JSON.stringify(next, null, 2);
+  const body = { description: descFor(checklistId, title), files: { [fileFor(checklistId)]: { content } } };
+  let response;
+  if (current.gistId) {
+    response = await fetch(API + '/gists/' + current.gistId, {
+      method: 'PATCH', headers: requestHeaders, body: JSON.stringify(body),
+    });
+  } else {
+    response = await fetch(API + '/gists', {
+      method: 'POST', headers: requestHeaders, body: JSON.stringify(Object.assign({ public: false }, body)),
+    });
+  }
+  if (!response.ok) {
+    if (response.status === 412 || response.status === 409) {
+      throw new Error('gist conflict for ' + checklistId + '; reload before applying a change');
+    }
+    throw new Error('gist update failed (' + checklistId + '): ' + response.status);
+  }
+  const saved = await response.json();
+  if (!current.gistId && saved.id) {
+    idCache = readCache(); idCache[checklistId] = saved.id; saveCache();
+  }
+  const verified = await readChecklist(checklistId);
+  if (JSON.stringify(verified.payload.checks || {}) !== JSON.stringify(next.checks || {}) ||
+      JSON.stringify(verified.payload.extras || {}) !== JSON.stringify(next.extras || {}) ||
+      JSON.stringify(verified.payload.ordered || {}) !== JSON.stringify(next.ordered || {})) {
+    throw new Error('gist verification failed for ' + checklistId);
+  }
+  return verified;
 }
 
 /** Split progress by checklist and write only the gists that actually changed. */
@@ -184,4 +269,4 @@ function links() {
     .map((c) => ({ id: c.id, title: c.title, url: 'https://gist.github.com/' + cache[c.id] }));
 }
 
-module.exports = { configured, read, write, whoami, links, ensureIds };
+module.exports = { configured, read, write, whoami, links, ensureIds, readChecklist, updateChecklist };

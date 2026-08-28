@@ -8,8 +8,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node tools/test-gist-logic.js && node tools/test-key-migration.js && node tools/test-dashboard-monitor-gist.js && node tools/test-wrapper-art-dashboard.js && node tools/test-ordered-dashboard.js && node tools/test-product-identification-dashboard.js && node tools/test-browser-extension.js && node tools/test-browser-extension-monitor.js && node tools/test-pricing-dashboard.js",
-    "check:gist": "node tools/check-gist.js"
+    "test": "node tools/test-gist-logic.js && node tools/test-key-migration.js && node tools/test-dashboard-monitor-gist.js && node tools/test-wrapper-art-dashboard.js && node tools/test-ordered-dashboard.js && node tools/test-product-identification-dashboard.js && node tools/test-custom-collection-dashboard.js && node tools/test-custom-collection-revision-dashboard.js && node tools/test-standalone-ai-dashboard.js && node tools/test-standalone-pricing-dashboard.js && node tools/test-catalog-discovery-dashboard.js && node tools/test-debug-dashboard.js && node tools/test-browser-extension.js && node tools/test-browser-extension-identify.js && node tools/test-browser-extension-collection-author.js && node tools/test-browser-extension-monitor.js && node tools/test-pricing-dashboard.js && node tools/test-collection-state.js && node ../scripts/update_heritage_feed.mjs --self-test && node ../scripts/sync_local_monitor_from_gist.mjs --self-test",
+    "check:gist": "node tools/check-gist.js",
+    "collection": "node bin/tcg-collection.js"
   },
   "engines": {
     "node": ">=18"
