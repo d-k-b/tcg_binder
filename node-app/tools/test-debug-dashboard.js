@@ -40,7 +40,7 @@ const sandbox = {
   hasDashboardPricing: () => true, dashboardPricing: { baseUrl: 'https://private-pricing.example', accessToken: 'pricing-secret', remembered: true },
   pricingTransport: () => 'rest',
   authorMessages: [{ role: 'user', text: 'private chat prompt' }], authorLastResult: { kind: 'catalog_import' }, authorBusy: false,
-  monitorSyncStatus: { state: 'synced', monitorConfigured: true, productCount: 686, activeTargetCount: 12 },
+  monitorSyncStatus: { state: 'synced', monitorConfigured: true, productCount: 688, activeTargetCount: 12 },
   pricingStates: new Map(), pricingBatch: { running: false }, toast: message => { toastMessage = message; }
 };
 sandbox.runtimeDiagnostics = [{ at: '2026-08-23T00:00:00.000Z', area: 'test', name: 'TypeError', message: 'Safe render failure' }];

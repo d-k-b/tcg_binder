@@ -65,7 +65,7 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 async function main() {
   const subscription = buildSubscription();
-  assert.strictEqual(Object.keys(subscription.collection.products).length, 686, 'monitor sync must forward all 686 ProductRefs atomically');
+  assert.strictEqual(Object.keys(subscription.collection.products).length, 688, 'monitor sync must forward all 688 ProductRefs atomically');
   assert.ok(monitor.validateSubscription(subscription, contracts.validateCollectionSnapshot).ok, 'canonical monitor subscription must validate');
 
   const sidepanelSource = fs.readFileSync(path.join(EXT, 'sidepanel.js'), 'utf8');
@@ -142,7 +142,7 @@ async function main() {
   assert.strictEqual(await request, subscription, 'exact response must resolve the pending request');
 
   const statusPromise = bridge.postSyncStatus({
-    schema: 'tcg.collection-monitor-sync-status/v1', state: 'synced', revision: 'revision-a', productCount: 686,
+    schema: 'tcg.collection-monitor-sync-status/v1', state: 'synced', revision: 'revision-a', productCount: 688,
     activeTargetCount: 123, monitorConfigured: true, syncedAt: '2026-08-09T12:00:01.000Z', message: null, errorCode: null
   });
   const statusEnvelope = posted.at(-1).message;
@@ -182,7 +182,7 @@ async function main() {
 
   bridge.dispose();
   assert.strictEqual(windowObject.listeners.has('message'), false, 'disposing the bridge must remove its message listener');
-  console.log('browser extension monitor tests: 686-product validation, exact bridge, status ack, revision gate, and debounce passing');
+  console.log('browser extension monitor tests: 688-product validation, exact bridge, status ack, revision gate, and debounce passing');
 }
 
 main().catch((error) => {

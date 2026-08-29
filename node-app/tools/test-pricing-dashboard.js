@@ -175,8 +175,8 @@ const product = {
   const snapshotEntries = Object.entries(snapshot.products);
   assert.strictEqual(snapshot.schema, 'tcg.collection-snapshot/v2');
   assert.strictEqual(snapshot.namespace, 'collection-tracker');
-  assert.strictEqual(snapshotEntries.length, 686, 'snapshot must atomically include all 686 Tracker products');
-  assert.strictEqual(new Set(snapshotEntries.map(([productId]) => productId)).size, 686, 'snapshot ProductRefs must be unique');
+  assert.strictEqual(snapshotEntries.length, 688, 'snapshot must atomically include all 688 Tracker products');
+  assert.strictEqual(new Set(snapshotEntries.map(([productId]) => productId)).size, 688, 'snapshot ProductRefs must be unique');
   snapshotEntries.forEach(([productId, entry]) => {
     assert.deepStrictEqual(Object.keys(entry).sort(), ['missing', 'owned', 'product', 'requirement', 'status', 'target']);
     assert.deepStrictEqual(Object.keys(entry.product).sort(),
@@ -208,8 +208,8 @@ const product = {
     'generatedAt alone must not change the deterministic monitor revision');
   assert.ok(/^[0-9a-f]{16}$/.test(firstSubscription.revision), 'monitor revision must be a stable content hash');
   assert.ok(!Number.isNaN(Date.parse(firstSubscription.generatedAt)), 'monitor bundle must carry a valid generatedAt timestamp');
-  assert.strictEqual(Object.keys(firstSubscription.collection.products).length, 686,
-    'monitor subscription must atomically carry all 686 collection ProductRefs');
+  assert.strictEqual(Object.keys(firstSubscription.collection.products).length, 688,
+    'monitor subscription must atomically carry all 688 collection ProductRefs');
   assert.deepStrictEqual(firstSubscription.collection, snapshot,
     'monitor subscription must reuse the authoritative collection snapshot schema and ownership mapping');
   const monitorJson = JSON.stringify(firstSubscription);
@@ -320,7 +320,7 @@ const product = {
 
   const statusRequest = { channel: 'tcg-collection-monitor/v1', type: 'monitorSyncStatus', requestId: 'status-1', status: {
     schema: 'tcg.collection-monitor-sync-status/v1', state: 'synced', revision: preferenceChangedSubscription.revision,
-    productCount: 686, activeTargetCount: 321, monitorConfigured: true,
+    productCount: 688, activeTargetCount: 321, monitorConfigured: true,
     syncedAt: '2026-08-09T12:00:01.000Z', message: 'Monitor accepted the current collection.', errorCode: null,
   } };
   const postedBeforeStatus = snapshotBridge.posted.length;
@@ -836,7 +836,7 @@ const product = {
   assert.match(html, /data-monitor-source="ebay"/, 'monitoring UI must expose the contract source choices');
   assert.match(html, /@media\(max-width:480px\)[\s\S]*\.monitor-grid\{grid-template-columns:1fr\}/,
     'monitoring preferences must collapse to one column at narrow side-panel widths');
-  console.log('pricing dashboard tests: exact bridges, deterministic 686-product subscription, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
+  console.log('pricing dashboard tests: exact bridges, deterministic 688-product subscription, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);
