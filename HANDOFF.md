@@ -65,17 +65,19 @@ least-privilege REST access key under **More → Pricing API settings**; an expl
 `localStorage["tcgDashboardPricingRest_v1"]`. The record is separate from collection
 state and never enters generated source, URLs, Gists, exports, or debug reports.
 
-TCG Comps 2.43.42 deploys the standalone facade at the non-secret base URL
+TCG Comps 2.43.45 deploys the standalone facade at the non-secret base URL
 `https://gogo.tail903ec0.ts.net`. New devices receive that URL as a prefilled value;
 the dedicated bearer token is still user-supplied and device-local. **Save & test**
 must pass authenticated `tcg.pricing-rest-readiness/v1` with `ready`,
 `authenticated`, and `providerAvailable` all true before the UI claims the canonical
 authority is connected. The compact row, detail, and toolbar refresh controls all
 gate on `pricingAvailable()`, so either REST or the exact extension bridge enables
-them. The public facade supports readiness and exact-product valuation only—never
-extension watches, monitor mutation, page decoration, or 130point.
+them. The public facade supports readiness, exact-product valuation, explicit
+user-requested source diagnostics, and a separate manual browser-Analyzer route.
+It never grants extension watches, monitor mutation, page decoration, buying, or
+bidding.
 
-TCG Comps 2.43.42 may also return an additive `lowestAuction`. The dashboard renders
+TCG Comps 2.43.45 may also return an additive `lowestAuction`. The dashboard renders
 that provider-qualified listing in a visually separate **Current auction bid** block
 only when it is non-null, with its landed amount, current bid, known shipping, end
 time, available bidder counts, safe HTTPS link, and an explicit provisional-bid
@@ -83,6 +85,58 @@ warning. The dashboard does not classify auctions or calculate a final price,
 savings, value, or recommendation. `cache.mode === "stale-fallback"` suppresses the
 auction block and labels the valuation stale. Auction candidates never enter Market,
 verified Buy Now asks, fixed-price watches/alerts, or collection/Gist state.
+
+When the provider returns `market:null` with `marketPending:true`, the dashboard
+renders a distinct **Market pending** state instead of treating the exact product as
+a failed lookup. A verified Buy Now landed price remains separately visible when
+present. The review-only `sources.tcgplayer.catalogReferenceMarket` amount is never
+displayed or used as a value, ceiling, deal, alert, or watch input. Pending and
+unavailable REST results offer an explicit **Check source health** action backed by
+`POST /v1/diagnostics`; the dashboard allowlists its bounded source/Analyzer/retry
+fields before rendering or copying a credential-safe summary. Diagnostics are
+memory-only, never automatic, and are not invented for the extension bridge.
+
+In TCG Comps 2.43.45, every authenticated `priceProduct` request actively refreshes
+the exact TCGplayer identity, current public recent sales, and requested live asks
+before recomputing `tcg.valuation/v1`. Retained verified history is merge-only and
+never suppresses those current-source fetches. Dashboard refresh copy states this
+explicitly; Market still renders only from verified evidence returned by the
+provider. A fresh, exact top-level `market.value` also replaces the matching row's
+static headline estimate immediately after refresh. Market-pending results leave the
+static headline intact. Exact cached Markets remain visible only with an explicit red
+**Stale** state; rows with several live products use the primary catalog-priced product
+or a compact range rather than choosing an arbitrary variant. Header pricing remains
+memory-only and is never written to collection or Gist state.
+
+Market freshness is display-only and adaptive. It takes the largest bounded percentage
+signal among the provider's accepted monthly trend, venue spread, leave-one-out spread,
+and trend-versus-consensus difference as a conservative monthly drift rate. Where no
+percentage evidence exists it uses a documented method fallback (2% stable trend, 3%
+venue consensus, 5% median, 8% unknown; at least 10% for sparse/low-confidence evidence).
+Projected drift is `monthly rate × elapsed days / 30`: below 5% is green **Market fresh**,
+5% through under 8% amber **Market aging**, and 8% or more red **Market stale**. The card
+also shows the estimated drift, the time from refresh to the 4% target, the drift signal,
+and the 5%/8% color thresholds. This is a conservative freshness heuristic, not a price
+forecast or guarantee. Stable prices can remain green for weeks or months; volatile
+prices age sooner. Cached fallback is always stale. Raw suppression reasons, hashes,
+venue arrays, and `stability.trendProjection` dollars are never displayed, persisted,
+or used in Market, deals, alerts, watches, or monitoring.
+The exact vendored 2.43.45 browser client additionally exposes
+`priceViaBrowser()` for the explicit manual action described below.
+
+Expanded REST pricing cards expose a secondary **Run full browser comps** action.
+It is the only dashboard path that calls `priceViaBrowser()` / `POST
+/v1/browser-price`; the vendored client owns job creation and authenticated polling.
+The action is never invoked by page load, normal row refresh, toolbar batches,
+timers, watches, monitor work, page decoration, or retry/fallback logic. Readiness
+retains only `browserAgentAvailable`, `browserAgentLastSeenAt`, and the bounded route
+name, and disables the action when the installed agent is known offline. Successful
+results require API v1, `tcg.valuation/v1`, the exact requested ProductRef, and
+`tcg.browser-comp-evidence/v1` with `mode:"interactive-extension"`; raw source/job
+evidence is discarded before rendering. Offline, timeout, queue, expiry, analysis,
+and validation failures preserve the prior valuation and show a sanitized row-level
+message without falling back to headless pricing. All browser-job state is
+memory-only and never enters collection state, Gists, exports, or debug reports.
 
 Watches remain extension-only and appear only after an exact returned `productId`
 matches the requested ProductRef and an extension bridge exists. The extension
@@ -653,10 +707,12 @@ match API v1, `tcg.valuation/v1`, request ID, and the requested ProductRef ID. E
 responses retain the exact origin/frame/channel/request gates. Never persist batch or
 valuation state in collection state, Gists, or exports.
 
-The read-only REST endpoint cannot prove a direct browser-tab gesture, so it never
-enables 130point. A direct per-product extension refresh may retain the existing
-user-initiated 130point path; row or toolbar batches never do. REST-only dashboards
-hide extension-owned watch controls. Missing pricing is unavailable, never `$0`.
+Ordinary `POST /v1/price` remains headless and never enables browser-session-only
+sources such as 130point. Only a direct click on **Run full browser comps** may ask
+the installed TCG Comps browser agent to run its interactive Analyzer; the client
+handles its separate job route and polling. Normal row refresh, toolbar batches,
+watches, timers, and monitor work never invoke it. REST-only dashboards still hide
+extension-owned watch controls. Missing pricing is unavailable, never `$0`.
 
 **Collection page-decoration snapshot.** The extension parent may send
 `{channel:"tcg-collection/v1", type:"collectionSnapshot", requestId}` to the

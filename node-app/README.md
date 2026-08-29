@@ -152,6 +152,31 @@ from the verified Buy Now low, with a provisional-current-bid warning; they neve
 change Market value or fixed-price watch semantics. The deployed non-secret base URL
 is `https://gogo.tail903ec0.ts.net`; **Save & test** verifies authenticated readiness
 before use. See `../docs/API_CREDENTIALS.md`.
+Exact responses whose verified recent-sale Market is still pending are labeled
+separately; review-only catalog reference amounts are never displayed or used for
+deals or watches. A pending or unavailable REST result can request bounded source
+health explicitly without exposing the dashboard's REST key.
+Every authenticated dashboard refresh actively checks exact product identity,
+current public recent sales, and requested live asks before the provider recomputes
+the valuation. Retained verified history is merged for continuity but never skips
+the current source checks. A successful exact response immediately replaces the
+row's static headline estimate with the top-level Market value. Pending results retain
+the static headline; cached or expired Analyzer values remain visible only as red
+**Stale** pricing. Multi-product rows use the primary catalog-priced product or a
+compact live range. Freshness is display-only: the largest bounded provider percentage
+signal (accepted monthly trend, venue spread, leave-one-out spread, or trend-versus-
+consensus difference) becomes a conservative monthly drift rate. Projected drift below
+5% is green **Market fresh**, 5% through under 8% amber **Market aging**, and 8% or more
+red **Market stale**. The card shows the estimated drift and the calculated time from
+refresh to the 4% target. This is a heuristic, not a forecast or guarantee. The UI never
+displays or uses held-out `trendProjection` dollars. This display remains memory-only.
+Expanded REST price cards also expose **Run full browser comps**. This separate,
+manual-only action requires the installed TCG Comps browser agent and may take several
+minutes. It is never used by normal refresh, toolbar batches, watches, timers, or
+monitor work. Exact ProductRef and interactive-browser provenance are required;
+offline, timeout, queue, expiry, analysis, and invalid-result failures keep the prior
+valuation and display a sanitized row message. Browser jobs and evidence stay
+memory-only and outside collection state, Gists, exports, and debug reports.
 
 ---
 
