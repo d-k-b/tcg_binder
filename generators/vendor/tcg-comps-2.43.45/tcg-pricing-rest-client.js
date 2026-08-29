@@ -59,6 +59,15 @@
 
     return {
       readiness() { return request("/v1/readiness"); },
+      diagnostics(product, options = {}) {
+        if (!product || typeof product !== "object" || !product.productId) throw new TypeError("product must be a canonical ProductRef with productId");
+        const requestId = String(options.requestId || `browser-diagnostics-${Date.now().toString(36)}`).slice(0, 128);
+        return request("/v1/diagnostics", {
+          method: "POST",
+          requestId,
+          body: { apiVersion: 1, schema: "tcg.pricing-diagnostics-request/v1", type: "pricing.diagnostics", requestId, target: product }
+        });
+      },
       async priceProduct(product, options = {}) {
         if (!product || typeof product !== "object" || !product.productId) throw new TypeError("product must be a canonical ProductRef with productId");
         const requestId = String(options.requestId || `browser-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`).slice(0, 128);
@@ -79,6 +88,36 @@
           }
         });
         if (!result.error && (!result.product || result.product.productId !== product.productId)) throw new PricingRestError("pricing service returned a different ProductRef", { code: "PRODUCT_MISMATCH", body: result });
+        return result;
+      },
+      async priceViaBrowser(product, options = {}) {
+        if (!product || typeof product !== "object" || !product.productId) throw new TypeError("product must be a canonical ProductRef with productId");
+        const requestId = String(options.requestId || `browser-agent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`).slice(0, 128);
+        let job = await request("/v1/browser-price", {
+          method: "POST",
+          requestId,
+          body: {
+            apiVersion: 1,
+            schema: "tcg.browser-price-request/v1",
+            type: "pricing.browserPriceProduct",
+            requestId,
+            target: product,
+            options: { includeActive: options.includeActive !== false, includePackOut: options.includePackOut === true }
+          }
+        });
+        const timeout = Math.max(30_000, Number(options.browserTimeoutMs) || 5 * 60_000);
+        const interval = Math.max(250, Number(options.pollIntervalMs) || 1000);
+        const deadline = Date.now() + timeout;
+        while (job.status === "queued" || job.status === "running") {
+          if (Date.now() >= deadline) throw new PricingRestError("browser pricing job timed out", { code: "BROWSER_JOB_TIMEOUT", body: job });
+          await new Promise((resolve) => setTimeout(resolve, interval));
+          job = await request("/v1/browser-price/" + encodeURIComponent(job.jobId), { requestId });
+        }
+        if (job.status === "failed") throw new PricingRestError(job.error && job.error.message || "browser pricing failed", { code: job.error && job.error.code || "BROWSER_ANALYSIS_FAILED", body: job });
+        const result = job.result;
+        if (job.status !== "complete" || !result || result.schema !== "tcg.valuation/v1" || !result.product || result.product.productId !== product.productId) {
+          throw new PricingRestError("browser pricing returned an incompatible result", { code: "INVALID_RESPONSE", body: job });
+        }
         return result;
       }
     };

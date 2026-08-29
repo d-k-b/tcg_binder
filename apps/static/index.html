@@ -308,12 +308,21 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .pricehead b{min-width:0;overflow-wrap:anywhere;color:var(--ink)}
 .pricebadge{margin-left:auto;flex:none;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:800;
   letter-spacing:.04em;text-transform:uppercase;background:var(--rowalt);color:var(--muted)}
-.pricebadge.live{background:rgba(39,134,95,.14);color:var(--good)}
+.pricebadge.live,.pricebadge.fresh{background:rgba(39,134,95,.14);color:var(--good)}
+.pricebadge.aging{background:rgba(181,133,42,.16);color:var(--gold)}
 .pricebadge.loading{background:rgba(181,133,42,.16);color:var(--gold)}
 .pricebadge.error{background:rgba(224,92,92,.14);color:#c94d4d}
-.pricebadge.stale{background:rgba(181,133,42,.16);color:var(--gold)}
+.pricebadge.stale{background:rgba(224,92,92,.14);color:#c94d4d}
+.pricebadge.pending{background:rgba(181,133,42,.16);color:var(--gold)}
 .pricefacts{display:flex;flex-wrap:wrap;gap:5px 13px;color:var(--muted)}
 .pricefacts span{white-space:nowrap}.pricefacts b{color:var(--ink)}
+.pricefreshnote{font-size:10px;color:var(--muted);line-height:1.35;overflow-wrap:anywhere}
+.pricepending{min-width:0;border:1px solid color-mix(in srgb,var(--gold) 55%,var(--line));border-radius:8px;
+  padding:7px;background:color-mix(in srgb,var(--gold) 7%,var(--card));display:grid;gap:5px}
+.pricepending-head{font-size:10.5px;font-weight:800;color:var(--gold);letter-spacing:.02em}
+.pricepending-copy,.pricediagnostics{font-size:10px;color:var(--muted);line-height:1.4;overflow-wrap:anywhere}
+.pricediagnostics{border-left:2px solid var(--line);padding-left:7px;display:grid;gap:4px}
+.pricediagnostics b{color:var(--ink)}
 .priceauction{min-width:0;border:1px solid color-mix(in srgb,var(--gold) 55%,var(--line));border-radius:8px;
   padding:7px;background:color-mix(in srgb,var(--gold) 7%,var(--card));display:grid;gap:5px}
 .priceauction-head{font-size:10.5px;font-weight:800;color:var(--gold);letter-spacing:.02em}
@@ -330,6 +339,10 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
   padding:5px 8px;font:700 10.5px/1.2 inherit;cursor:pointer}
 .pricebtn:hover,.pricebtn:focus-visible{border-color:var(--lpurple);background:var(--card)}
 .pricebtn:disabled{opacity:.55;cursor:wait}
+.pricebrowser{min-width:0;border-left:2px solid var(--lpurple);padding-left:7px;display:grid;gap:3px;
+  font-size:10px;color:var(--muted);line-height:1.4;overflow-wrap:anywhere}
+.pricebrowser b{color:var(--ink)}
+.pricebrowser.error{border-left-color:#c94d4d;color:#c94d4d}
 .watchbox{display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:6px}
 .watchbox label{font-size:10px;color:var(--muted)}
 .watchbox input{width:88px;height:27px;border:1px solid var(--line);border-radius:6px;background:var(--card);
@@ -384,6 +397,9 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 /* (row notes now live in the .rowdet drawer, not a tooltip) */
 .val{font-size:12.5px;font-weight:700;color:var(--ink);min-width:60px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
 .val.est{color:var(--gold)}
+.val.live.fresh{color:var(--good)}
+.val.live.aging{color:var(--gold)}
+.val.live.stale{color:#c94d4d}
 .slotlabel{font-size:9px;color:var(--muted);margin-right:2px}
 
 /* toast + modal */
@@ -536,7 +552,7 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
  <div class="top-in">
    <div class="brand">
      <div class="logo">M</div>
-     <div><h1>MTG Sealed Collecting Binder</h1><p>Live checklist &bull; auto-saved &bull; build 2026-08-28 14:01</p></div>
+     <div><h1>MTG Sealed Collecting Binder</h1><p>Live checklist &bull; auto-saved &bull; build 2026-08-29 17:05</p></div>
    </div>
    <div class="spacer"></div>
    <div class="hright">
@@ -800,6 +816,15 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 
     return {
       readiness() { return request("/v1/readiness"); },
+      diagnostics(product, options = {}) {
+        if (!product || typeof product !== "object" || !product.productId) throw new TypeError("product must be a canonical ProductRef with productId");
+        const requestId = String(options.requestId || `browser-diagnostics-${Date.now().toString(36)}`).slice(0, 128);
+        return request("/v1/diagnostics", {
+          method: "POST",
+          requestId,
+          body: { apiVersion: 1, schema: "tcg.pricing-diagnostics-request/v1", type: "pricing.diagnostics", requestId, target: product }
+        });
+      },
       async priceProduct(product, options = {}) {
         if (!product || typeof product !== "object" || !product.productId) throw new TypeError("product must be a canonical ProductRef with productId");
         const requestId = String(options.requestId || `browser-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`).slice(0, 128);
@@ -820,6 +845,36 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
           }
         });
         if (!result.error && (!result.product || result.product.productId !== product.productId)) throw new PricingRestError("pricing service returned a different ProductRef", { code: "PRODUCT_MISMATCH", body: result });
+        return result;
+      },
+      async priceViaBrowser(product, options = {}) {
+        if (!product || typeof product !== "object" || !product.productId) throw new TypeError("product must be a canonical ProductRef with productId");
+        const requestId = String(options.requestId || `browser-agent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`).slice(0, 128);
+        let job = await request("/v1/browser-price", {
+          method: "POST",
+          requestId,
+          body: {
+            apiVersion: 1,
+            schema: "tcg.browser-price-request/v1",
+            type: "pricing.browserPriceProduct",
+            requestId,
+            target: product,
+            options: { includeActive: options.includeActive !== false, includePackOut: options.includePackOut === true }
+          }
+        });
+        const timeout = Math.max(30_000, Number(options.browserTimeoutMs) || 5 * 60_000);
+        const interval = Math.max(250, Number(options.pollIntervalMs) || 1000);
+        const deadline = Date.now() + timeout;
+        while (job.status === "queued" || job.status === "running") {
+          if (Date.now() >= deadline) throw new PricingRestError("browser pricing job timed out", { code: "BROWSER_JOB_TIMEOUT", body: job });
+          await new Promise((resolve) => setTimeout(resolve, interval));
+          job = await request("/v1/browser-price/" + encodeURIComponent(job.jobId), { requestId });
+        }
+        if (job.status === "failed") throw new PricingRestError(job.error && job.error.message || "browser pricing failed", { code: job.error && job.error.code || "BROWSER_ANALYSIS_FAILED", body: job });
+        const result = job.result;
+        if (job.status !== "complete" || !result || result.schema !== "tcg.valuation/v1" || !result.product || result.product.productId !== product.productId) {
+          throw new PricingRestError("browser pricing returned an incompatible result", { code: "INVALID_RESPONSE", body: job });
+        }
         return result;
       }
     };
@@ -2296,6 +2351,9 @@ const PRICING_CHANNEL='tcg-pricing/v1';
 const PRICING_QUERY='pricingConsumerOrigin';
 const PRICING_TIMEOUT_MS=20000;
 const PRICING_STALE_MS=24*60*60*1000;
+const PRICING_FRESHNESS_HOUR_MS=60*60*1000;
+const PRICING_FRESHNESS_DAY_MS=24*PRICING_FRESHNESS_HOUR_MS;
+const PRICING_FRESHNESS_LIMITS={targetPct:4,greenPct:5,redPct:8,minMonthlyPct:1,maxMonthlyPct:100};
 const IDENTIFY_CHANNEL='tcg-product-identify/v1';
 const IDENTIFY_RESULT_SCHEMA='tcg.product-identification/v1';
 const IDENTIFY_TIMEOUT_MS=90000;
@@ -2307,6 +2365,9 @@ const DASHBOARD_PRICING_SETTINGS_KEY='tcgDashboardPricingRest_v1';
 const DASHBOARD_PRICING_SETTINGS_SCHEMA='tcg.dashboard-pricing-rest-settings/v1';
 const DASHBOARD_PRICING_DEFAULT_URL='https://gogo.tail903ec0.ts.net';
 const PRICING_READINESS_SCHEMA='tcg.pricing-rest-readiness/v1';
+const BROWSER_PRICE_ROUTE='/v1/browser-price';
+const BROWSER_EXECUTION_SCHEMA='tcg.browser-comp-evidence/v1';
+const BROWSER_EXECUTION_MODE='interactive-extension';
 const COLLECTION_CHANNEL='tcg-collection/v1';
 const COLLECTION_SNAPSHOT_SCHEMA='tcg.collection-snapshot/v2';
 const COLLECTION_NAMESPACE='collection-tracker';
@@ -2363,7 +2424,8 @@ function loadDashboardPricing(){
   return {baseUrl:DASHBOARD_PRICING_DEFAULT_URL,accessToken:'',remembered:false};
 }
 let dashboardPricing=loadDashboardPricing();
-let dashboardPricingReadiness={status:'idle',message:''};
+function emptyDashboardPricingReadiness(){return {status:'idle',message:'',browserAgentAvailable:null,browserAgentLastSeenAt:null,browserPriceRoute:null};}
+let dashboardPricingReadiness=emptyDashboardPricingReadiness();
 function hasDashboardPricing(){return !!(dashboardPricing.baseUrl&&dashboardPricing.accessToken);}
 function pricingAvailable(){return hasDashboardPricing()||!!pricingConsumerOrigin;}
 function pricingTransport(){return hasDashboardPricing()?'rest':(pricingConsumerOrigin?'extension':'none');}
@@ -2371,7 +2433,7 @@ function persistDashboardPricing(baseUrl,accessToken,remember){
   const normalized=TCGPricingRestClient.normalizeBaseUrl(baseUrl),clean=String(accessToken||'').trim();
   if(clean.length<32)throw pricingError('PRICING_KEY_INVALID','Paste the complete read-only pricing access key.');
   dashboardPricing={baseUrl:normalized,accessToken:clean,remembered:!!remember};
-  dashboardPricingReadiness={status:'idle',message:''};
+  dashboardPricingReadiness=emptyDashboardPricingReadiness();
   try{
     if(remember)localStorage.setItem(DASHBOARD_PRICING_SETTINGS_KEY,JSON.stringify({schema:DASHBOARD_PRICING_SETTINGS_SCHEMA,
       baseUrl:normalized,accessToken:clean,savedAt:new Date().toISOString()}));
@@ -2380,7 +2442,7 @@ function persistDashboardPricing(baseUrl,accessToken,remember){
 }
 function forgetDashboardPricing(){
   dashboardPricing={baseUrl:DASHBOARD_PRICING_DEFAULT_URL,accessToken:'',remembered:false};
-  dashboardPricingReadiness={status:'idle',message:''};
+  dashboardPricingReadiness=emptyDashboardPricingReadiness();
   try{localStorage.removeItem(DASHBOARD_PRICING_SETTINGS_KEY);}catch(_error){}
 }
 async function testDashboardPricingConnection(baseUrl,accessToken){
@@ -2390,7 +2452,11 @@ async function testDashboardPricingConnection(baseUrl,accessToken){
       result.authenticated!==true||result.providerAvailable!==true){
     throw pricingError('PRICING_NOT_READY','Pricing REST authenticated, but the canonical pricing authority is not ready.');
   }
-  return {providerVersion:boundedText(result.providerVersion,40)||'available'};
+  const seen=Date.parse(result.browserAgentLastSeenAt||''),route=boundedText(result.browserPriceRoute,80)||null;
+  return {providerVersion:boundedText(result.providerVersion,40)||'available',
+    browserAgentAvailable:typeof result.browserAgentAvailable==='boolean'?result.browserAgentAvailable:null,
+    browserAgentLastSeenAt:Number.isFinite(seen)?new Date(seen).toISOString():null,
+    browserPriceRoute:route&&/^\/v1\/[a-z0-9/-]{1,64}$/.test(route)?route:null};
 }
 function paintPricingSettings(){
   const url=document.getElementById('dashboardPricingBaseUrl'),token=document.getElementById('dashboardPricingAccessToken'),
@@ -2409,16 +2475,24 @@ async function runPricingSettingsTest(saveFirst){
     buttons=['pricingSettingsSave','pricingSettingsTest','pricingSettingsForget'].map(id=>document.getElementById(id)).filter(Boolean);
   try{
     if(saveFirst)persistDashboardPricing(baseUrl,accessToken,remember);
-    dashboardPricingReadiness={status:'testing',message:'Testing the authenticated Pricing REST connection…'};
+    dashboardPricingReadiness=Object.assign(emptyDashboardPricingReadiness(),{status:'testing',message:'Testing the authenticated Pricing REST connection…'});
     status.textContent=dashboardPricingReadiness.message;buttons.forEach(button=>button.disabled=true);
     const result=await testDashboardPricingConnection(baseUrl,accessToken);
-    dashboardPricingReadiness={status:'ready',message:'Connected to TCG Comps '+result.providerVersion+'. Exact-product pricing is ready.'};
+    const browserCopy=result.browserPriceRoute!==BROWSER_PRICE_ROUTE
+      ?' Full browser comps route is unavailable.'
+      :result.browserAgentAvailable===true
+        ?' Full browser comps agent is online.'
+        :result.browserAgentAvailable===false
+          ?' Full browser comps agent is offline'+(result.browserAgentLastSeenAt?' (last seen '+pricingTime(result.browserAgentLastSeenAt)+').':'.')
+          :' Full browser comps agent status was not reported.';
+    dashboardPricingReadiness={status:'ready',message:'Connected to TCG Comps '+result.providerVersion+'. Each refresh actively checks current sources; cached verified history only supplements the result.'+browserCopy,
+      browserAgentAvailable:result.browserAgentAvailable,browserAgentLastSeenAt:result.browserAgentLastSeenAt,browserPriceRoute:result.browserPriceRoute};
     status.textContent=dashboardPricingReadiness.message;
     if(saveFirst){pricingStates.clear();paintPricingBatch();updateAll();toast(dashboardPricing.remembered?'Pricing API connected and remembered on this device':'Pricing API connected for this session');}
     return true;
   }catch(error){
     const message=String(error&&error.message||error||'Pricing connection failed.').replace(/Bearer\s+\S+/gi,'Bearer [REDACTED]').slice(0,600);
-    dashboardPricingReadiness={status:'error',message:'Connection failed: '+message};status.textContent=dashboardPricingReadiness.message;return false;
+    dashboardPricingReadiness=Object.assign(emptyDashboardPricingReadiness(),{status:'error',message:'Connection failed: '+message});status.textContent=dashboardPricingReadiness.message;return false;
   }finally{buttons.forEach(button=>button.disabled=false);}
 }
 function openPricingSettings(){paintPricingSettings();const modal=document.getElementById('pricingSettingsModal');if(!modal)return;modal.classList.add('show');setTimeout(()=>{const input=document.getElementById('dashboardPricingBaseUrl');if(input)input.focus();},0);}
@@ -2460,21 +2534,25 @@ let pricingBatch={running:false,done:0,total:0,rows:0,label:'',checklistId:null}
 
 function pricingDefaultState(){
   return pricingAvailable()
-    ? {status:'idle',message:'Ready for a live price check.'}
+    ? {status:'idle',message:'Ready to refresh verified sales and live asks.'}
     : {status:'unavailable',code:'PRICING_NOT_CONFIGURED',message:'Add the Pricing REST URL and access key in Pricing API settings, or use the paired tracker extension.'};
 }
 function pricingState(productId){return pricingStates.get(productId)||pricingDefaultState();}
 function pricingError(code,message){const error=new Error(message||code||'Pricing request failed');error.code=code||'BRIDGE_FAILURE';return error;}
 function pricingRequest(type,payload){
   const requestId='tracker-'+Date.now().toString(36)+'-'+(++pricingRequestSerial).toString(36);
-  if(type==='priceProduct'&&hasDashboardPricing()){
+  if((type==='priceProduct'||type==='diagnostics')&&hasDashboardPricing()){
     try{
       const client=TCGPricingRestClient.createClient({baseUrl:dashboardPricing.baseUrl,accessToken:dashboardPricing.accessToken,timeoutMs:PRICING_TIMEOUT_MS});
-      return client.priceProduct(payload&&payload.target,Object.assign({},payload&&payload.options,{requestId})).catch(error=>{
+      const call=type==='diagnostics'
+        ?client.diagnostics(payload&&payload.target,{requestId})
+        :client.priceProduct(payload&&payload.target,Object.assign({},payload&&payload.options,{requestId}));
+      return call.catch(error=>{
         throw pricingError(String(error&&error.code||'REST_FAILURE'),String(error&&error.message||'Pricing REST request failed.').slice(0,600));
       });
     }catch(error){return Promise.reject(pricingError(String(error&&error.code||'REST_CONFIGURATION'),String(error&&error.message||error).slice(0,600)));}
   }
+  if(type==='diagnostics')return Promise.reject(pricingError('REST_REQUIRED','Source diagnostics require the standalone Pricing REST connection.'));
   if(!pricingConsumerOrigin)return Promise.reject(pricingError('MISSING_EXTENSION',type==='priceProduct'
     ?'Add a Pricing REST key in Pricing API settings or open this dashboard in the paired tracker extension.'
     :'This feature requires the paired tracker extension.'));
@@ -2483,6 +2561,28 @@ function pricingRequest(type,payload){
     pricingPending.set(requestId,{type:type+'Result',resolve,reject,timer});
     window.parent.postMessage(Object.assign({channel:PRICING_CHANNEL,type,requestId},payload||{}),pricingConsumerOrigin);
   });
+}
+function browserCompsAvailability(){
+  if(!hasDashboardPricing())return {enabled:false,message:'Configure Pricing REST to run full browser comps.'};
+  if(typeof TCGPricingRestClient.createClient!=='function')return {enabled:false,message:'Full browser comps are unavailable in this dashboard build.'};
+  if(dashboardPricingReadiness.status!=='ready')return {enabled:true,message:'The installed TCG Comps browser agent must be online. This may take several minutes.'};
+  if(dashboardPricingReadiness.browserPriceRoute!==BROWSER_PRICE_ROUTE)return {enabled:false,message:'Full browser comps are unavailable because the authenticated browser route was not reported.'};
+  if(dashboardPricingReadiness.browserAgentAvailable===false){
+    const last=dashboardPricingReadiness.browserAgentLastSeenAt?' Last seen '+pricingTime(dashboardPricingReadiness.browserAgentLastSeenAt)+'.':'';
+    return {enabled:false,message:'The installed TCG Comps browser agent is offline.'+last};
+  }
+  return {enabled:true,message:dashboardPricingReadiness.browserAgentAvailable===true
+    ?'The installed TCG Comps browser agent is online. A full run may take several minutes.'
+    :'The installed TCG Comps browser agent must be online. This may take several minutes.'};
+}
+function browserPricingRequest(product){
+  const requestId='tracker-browser-'+Date.now().toString(36)+'-'+(++pricingRequestSerial).toString(36);
+  if(!hasDashboardPricing())return Promise.reject(pricingError('REST_REQUIRED','Configure Pricing REST to run full browser comps.'));
+  try{
+    const client=TCGPricingRestClient.createClient({baseUrl:dashboardPricing.baseUrl,accessToken:dashboardPricing.accessToken,timeoutMs:PRICING_TIMEOUT_MS});
+    if(!client||typeof client.priceViaBrowser!=='function')return Promise.reject(pricingError('BROWSER_ROUTE_UNAVAILABLE','This dashboard build cannot run full browser comps.'));
+    return client.priceViaBrowser(product,{includeActive:true,includePackOut:true,requestId,browserTimeoutMs:5*60*1000,pollIntervalMs:1000});
+  }catch(error){return Promise.reject(error);}
 }
 window.addEventListener('message',(event)=>{
   if(!pricingConsumerOrigin||event.origin!==pricingConsumerOrigin||event.source!==window.parent)return;
@@ -2874,20 +2974,148 @@ function interpretPriceResponse(product,response){
   if(response.schema!=='tcg.valuation/v1'||!response.product||response.product.schema!=='tcg.product/v1'||response.product.productId!==product.productId){
     return {status:'error',code:'PRODUCT_MISMATCH',message:'TCG Comps did not return this exact product. No value or watch was accepted.',engineVersion:response.engineVersion||null};
   }
-  if(!(response.market&&Number.isFinite(Number(response.market.value)))&&!(response.lowestAsk&&Number.isFinite(Number(response.lowestAsk.landedPrice)))){
+  const hasMarket=!!(response.market&&Number.isFinite(Number(response.market.value)));
+  const hasAsk=!!(response.lowestAsk&&Number.isFinite(Number(response.lowestAsk.landedPrice)));
+  if(!hasMarket&&!hasAsk&&response.marketPending===true){
+    return {status:'pending',valuation:response,code:'MARKET_PENDING',message:'Verified recent-sale Market is still pending.',engineVersion:response.engineVersion||null};
+  }
+  if(!hasMarket&&!hasAsk){
     return {status:'unavailable',code:'NO_VERIFIED_PRICE',message:'No verified market value or ask is available for this exact product.',engineVersion:response.engineVersion||null};
   }
   return {status:'success',valuation:response,engineVersion:response.engineVersion||null};
 }
+function interpretBrowserPriceResponse(product,response){
+  if(!response||typeof response!=='object')return {status:'error',code:'INVALID_BROWSER_RESULT',message:'Full browser comps returned an invalid response.'};
+  if(response.apiVersion!==1)return {status:'error',code:'UNSUPPORTED_VERSION',message:'Full browser comps require API version 1.'};
+  if(response.schema!=='tcg.valuation/v1'||!response.product||response.product.schema!=='tcg.product/v1'||response.product.productId!==product.productId){
+    return {status:'error',code:'PRODUCT_MISMATCH',message:'Full browser comps did not return this exact product.'};
+  }
+  const execution=response.browserExecution;
+  if(!execution||execution.schema!==BROWSER_EXECUTION_SCHEMA||execution.mode!==BROWSER_EXECUTION_MODE){
+    return {status:'error',code:'INVALID_BROWSER_PROVENANCE',message:'Full browser comps did not include the required interactive browser provenance.'};
+  }
+  const completed=Date.parse(execution.completedAt||'');
+  const safeExecution={schema:BROWSER_EXECUTION_SCHEMA,mode:BROWSER_EXECUTION_MODE,
+    completedAt:Number.isFinite(completed)?new Date(completed).toISOString():null};
+  const interpreted=interpretPriceResponse(product,Object.assign({},response,{browserExecution:safeExecution}));
+  if(interpreted.status!=='success'&&interpreted.status!=='pending')return {status:'error',code:interpreted.code||'NO_VERIFIED_BROWSER_MARKET',message:'Full browser comps returned no usable verified valuation.'};
+  return Object.assign({},interpreted,{browserSource:safeExecution});
+}
+function browserPricingFailure(error){
+  const raw=String(error&&error.code||'BROWSER_COMPS_FAILED');
+  const messages={
+    BROWSER_AGENT_OFFLINE:'The installed TCG Comps browser agent is offline. Your previous price is unchanged.',
+    BROWSER_JOB_TIMEOUT:'Full browser comps timed out. Your previous price is unchanged.',
+    BROWSER_QUEUE_FULL:'The full browser comps queue is busy. Try again later; your previous price is unchanged.',
+    BROWSER_QUEUE_UNAVAILABLE:'The full browser comps queue is temporarily unavailable. Your previous price is unchanged.',
+    BROWSER_JOB_NOT_FOUND:'The full browser comps job expired before completion. Your previous price is unchanged.',
+    BROWSER_JOB_STATE:'The full browser comps job could not continue. Your previous price is unchanged.',
+    BROWSER_ANALYSIS_FAILED:'The browser Analyzer could not complete this product. Your previous price is unchanged.',
+    NO_VERIFIED_BROWSER_MARKET:'The browser Analyzer found no verified Market for this product. Your previous price is unchanged.',
+    BROWSER_EVIDENCE_REJECTED:'The browser Analyzer evidence did not pass verification. Your previous price is unchanged.',
+    INVALID_BROWSER_RESULT:'The browser Analyzer returned an invalid result. Your previous price is unchanged.',
+    INVALID_BROWSER_PROVENANCE:'Full browser comps returned invalid provenance. Your previous price is unchanged.',
+    PRODUCT_MISMATCH:'Full browser comps returned a different product. Your previous price is unchanged.',
+    UNSUPPORTED_VERSION:'Full browser comps returned an unsupported API version. Your previous price is unchanged.',
+    INVALID_RESPONSE:'Full browser comps returned an invalid response. Your previous price is unchanged.'
+  };
+  return {code:Object.prototype.hasOwnProperty.call(messages,raw)?raw:'BROWSER_COMPS_FAILED',
+    message:messages[raw]||'Full browser comps failed safely. Your previous price is unchanged.'};
+}
 function pricingCanWatch(priceState,product){
   return !!(pricingConsumerOrigin&&priceState&&priceState.status==='success'&&priceState.valuation&&
-    priceState.valuation.product&&priceState.valuation.product.productId===product.productId);
+    priceState.valuation.product&&priceState.valuation.product.productId===product.productId&&
+    priceState.valuation.lowestAsk&&Number.isFinite(Number(priceState.valuation.lowestAsk.landedPrice))&&
+    !(priceState.valuation.cache&&priceState.valuation.cache.mode==='stale-fallback'));
 }
 function pricingWatchId(product){return 'tracker:'+contentHash(product.productId);}
 function pricingMoney(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString('en-US',{style:'currency',currency:'USD'}):'Unavailable';}
 function pricingTime(value){
   const n=Date.parse(value||'');
   return Number.isFinite(n)?new Date(n).toLocaleString():'Unavailable';
+}
+function pricingMarketBasis(market){
+  if(!market||typeof market!=='object'||Array.isArray(market))return '';
+  const stability=market.stability&&typeof market.stability==='object'&&!Array.isArray(market.stability)?market.stability:null;
+  if(market.method==='venue-balanced-median')return 'Stable venue consensus';
+  if(market.method==='theil-sen-recent-sales'&&stability&&stability.trendUsed===true)return 'Stable recent-sales trend';
+  if(market.method==='median-recent-sales')return 'Recent-sales median';
+  return '';
+}
+function pricingBoundedPercent(value){
+  if(value===null||value===undefined||value==='')return null;
+  const n=Number(value);return Number.isFinite(n)&&n>=0&&n<=1000?n:null;
+}
+function pricingBoundedAbsolutePercent(value){
+  if(value===null||value===undefined||value==='')return null;
+  const n=Number(value);return Number.isFinite(n)&&Math.abs(n)<=1000?Math.abs(n):null;
+}
+function pricingAgeText(ageMs){
+  const minutes=Math.max(0,ageMs)/60000;
+  if(minutes<1)return 'just refreshed';
+  if(minutes<60)return Math.floor(minutes)+'m old';
+  const hours=minutes/60;if(hours<48)return (hours<10?hours.toFixed(1):Math.floor(hours))+'h old';
+  const days=hours/24;return (days<10?days.toFixed(1):Math.floor(days))+'d old';
+}
+function pricingHorizonText(hours){
+  if(!Number.isFinite(hours)||hours<0)return 'Unavailable';
+  if(hours<48)return Math.max(1,Math.round(hours))+'h';
+  const days=hours/24;if(days<365)return Math.round(days)+'d';
+  return (days/365).toFixed(1)+'y';
+}
+/* Display-only freshness policy. It consumes only allowlisted, bounded Market
+   evidence and never changes the provider's value, watches, deals, alerts,
+   monitoring preferences, ProductRefs, or persisted collection/Gist state. */
+function pricingFreshness(valuation,nowMs){
+  const market=valuation&&valuation.market&&typeof valuation.market==='object'&&!Array.isArray(valuation.market)?valuation.market:null,
+    stability=market&&market.stability&&typeof market.stability==='object'&&!Array.isArray(market.stability)?market.stability:null,
+    observed=Date.parse(valuation&&valuation.observedAt||''),now=Number.isFinite(Number(nowMs))?Number(nowMs):Date.now(),
+    ageMs=Number.isFinite(observed)?Math.max(0,now-observed):Infinity,
+    sample=market&&Number.isInteger(Number(market.sampleSize))&&Number(market.sampleSize)>=0&&Number(market.sampleSize)<=200?Number(market.sampleSize):null,
+    confidence=market&&['low','medium','high'].includes(market.confidence)?market.confidence:null,
+    basis=pricingMarketBasis(market),cacheStale=!!(valuation&&valuation.cache&&valuation.cache.mode==='stale-fallback');
+  const sourceSpread=pricingBoundedPercent(stability&&stability.sourceSpreadPct),
+    trendDelta=pricingBoundedPercent(stability&&stability.trendDeltaPct),
+    jackknifeSpread=pricingBoundedPercent(stability&&stability.jackknife&&stability.jackknife.spreadPct),
+    monthlyTrend=pricingBoundedAbsolutePercent(market&&market.monthlyTrendPct),
+    suppliedRisk=[sourceSpread,trendDelta,jackknifeSpread,monthlyTrend].filter(value=>value!==null),
+    fallbackRisk=market&&market.method==='theil-sen-recent-sales'&&stability&&stability.trendUsed===true?2:
+      (market&&market.method==='venue-balanced-median'?3:(market&&market.method==='median-recent-sales'?5:8));
+  let monthlyRiskPct=suppliedRisk.length?Math.max(...suppliedRisk):fallbackRisk,profile=basis||'Verified recent-sales Market';
+  if((sample!==null&&sample<3)||confidence==='low'){monthlyRiskPct=Math.max(monthlyRiskPct,10);profile='Limited recent-sales evidence';}
+  else if(confidence==='medium')monthlyRiskPct=Math.max(monthlyRiskPct,4);
+  monthlyRiskPct=Math.max(PRICING_FRESHNESS_LIMITS.minMonthlyPct,Math.min(PRICING_FRESHNESS_LIMITS.maxMonthlyPct,monthlyRiskPct));
+  const ageDays=ageMs/PRICING_FRESHNESS_DAY_MS,estimatedDriftPct=Number.isFinite(ageDays)?monthlyRiskPct*ageDays/30:Infinity,
+    greenHours=PRICING_FRESHNESS_LIMITS.greenPct/monthlyRiskPct*30*24,
+    redHours=PRICING_FRESHNESS_LIMITS.redPct/monthlyRiskPct*30*24,
+    targetHours=PRICING_FRESHNESS_LIMITS.targetPct/monthlyRiskPct*30*24,
+    state=cacheStale||!Number.isFinite(estimatedDriftPct)||estimatedDriftPct>=PRICING_FRESHNESS_LIMITS.redPct?'stale':
+      (estimatedDriftPct>=PRICING_FRESHNESS_LIMITS.greenPct?'aging':'fresh'),
+    label=state==='fresh'?'Market fresh':(state==='aging'?'Market aging':'Market stale'),ageText=Number.isFinite(ageMs)?pricingAgeText(ageMs):'refresh time unavailable',
+    sampleText=sample===null?'':sample+' verified sale'+(sample===1?'':'s'),
+    trendHeldOut=stability&&stability.trendUsed===false&&trendDelta!==null?
+      'Trend held out by stability checks · '+trendDelta.toFixed(trendDelta%1?1:0)+'% difference.':'';
+  const driftText=Number.isFinite(estimatedDriftPct)?estimatedDriftPct.toFixed(estimatedDriftPct<10?1:0)+'%':'Unavailable';
+  return {state,label,ageMs,ageText,basis,sampleSize:sample,sampleText,profile,trendHeldOut,monthlyRiskPct,estimatedDriftPct,driftText,
+    greenHours,redHours,targetHours,targetText:pricingHorizonText(targetHours),greenText:pricingHorizonText(greenHours),redText:pricingHorizonText(redHours),
+    title:label+' · '+ageText+' · estimated drift ±'+driftText+' · green below 5% · red at 8%'+(sampleText?' · '+sampleText:'')};
+}
+let pricingFreshnessTimer=null;
+function schedulePricingFreshnessRepaint(){
+  if(pricingFreshnessTimer){clearTimeout(pricingFreshnessTimer);pricingFreshnessTimer=null;}
+  const now=Date.now();let delay=Infinity;
+  pricingStates.forEach(ps=>{
+    const valuation=ps&&ps.status==='success'&&ps.valuation,market=valuation&&valuation.market;
+    if(!market||!Number.isFinite(Number(market.value)))return;
+    const freshness=pricingFreshness(valuation,now);
+    if(!Number.isFinite(freshness.ageMs)||freshness.state==='stale')return;
+    const boundaryHours=freshness.state==='fresh'?freshness.greenHours:freshness.redHours,
+      remaining=boundaryHours*PRICING_FRESHNESS_HOUR_MS-freshness.ageMs;
+    if(remaining>0)delay=Math.min(delay,remaining);
+  });
+  if(!Number.isFinite(delay))return;
+  pricingFreshnessTimer=setTimeout(()=>{pricingFreshnessTimer=null;renderContent();},Math.max(1000,Math.ceil(delay)+100));
+  if(pricingFreshnessTimer&&typeof pricingFreshnessTimer.unref==='function')pricingFreshnessTimer.unref();
 }
 function pricingIsStale(valuation){
   if(!valuation||typeof valuation!=='object')return false;
@@ -2900,13 +3128,65 @@ function safePriceUrl(value){
 }
 function refreshPrice(product,options){
   options=options||{};
-  const prior=options.prior||pricingState(product.productId),repaint=options.repaint!==false;
-  pricingStates.set(product.productId,Object.assign({},prior,{status:'loading',message:'Refreshing live pricing…'}));if(repaint)renderContent();
+  if(pricingState(product.productId).browserBusy)return Promise.resolve(false);
+  const prior=options.prior||pricingState(product.productId),repaint=options.repaint!==false,
+    base=Object.assign({},prior,{diagnosticsStatus:null,diagnostics:null,diagnosticsMessage:null,
+      browserSource:null,browserMessage:null,browserErrorCode:null});
+  pricingStates.set(product.productId,Object.assign({},base,{status:'loading',message:'Refreshing verified sales and live asks…'}));if(repaint)renderContent();
   const direct=options.userInitiated===true;
   return pricingRequest('priceProduct',{target:product,options:{includeActive:true,includeRecentSales:true,
       userInitiated:direct,include130point:direct}})
-    .then(response=>{pricingStates.set(product.productId,Object.assign({},prior,interpretPriceResponse(product,response)));if(repaint)renderContent();})
-    .catch(error=>{pricingStates.set(product.productId,Object.assign({},prior,{status:'error',code:error.code||'BRIDGE_FAILURE',message:String(error.message||error)}));if(repaint)renderContent();});
+    .then(response=>{pricingStates.set(product.productId,Object.assign({},base,interpretPriceResponse(product,response)));if(repaint)renderContent();})
+    .catch(error=>{pricingStates.set(product.productId,Object.assign({},base,{status:'error',code:error.code||'BRIDGE_FAILURE',message:String(error.message||error)}));if(repaint)renderContent();});
+}
+function refreshFullBrowserComps(product){
+  const prior=pricingState(product.productId);if(prior.browserBusy)return Promise.resolve(false);
+  const availability=browserCompsAvailability();if(!availability.enabled)return Promise.resolve(false);
+  pricingStates.set(product.productId,Object.assign({},prior,{browserBusy:true,browserErrorCode:null,
+    browserMessage:'Running full browser comps… The installed TCG Comps browser agent must remain online; this may take several minutes.'}));renderContent();
+  return browserPricingRequest(product).then(response=>{
+    const interpreted=interpretBrowserPriceResponse(product,response);
+    if(interpreted.status==='error')throw pricingError(interpreted.code,interpreted.message);
+    pricingStates.set(product.productId,Object.assign({},prior,interpreted,{browserBusy:false,browserErrorCode:null,
+      browserMessage:'Full browser comps completed from the installed TCG Comps browser agent.'}));renderContent();return true;
+  }).catch(error=>{
+    const failure=browserPricingFailure(error);
+    pricingStates.set(product.productId,Object.assign({},prior,{browserBusy:false,browserErrorCode:failure.code,browserMessage:failure.message}));renderContent();return false;
+  });
+}
+function pricingDiagnosticsView(product,response){
+  if(!response||typeof response!=='object'||Number(response.apiVersion)!==1||response.schema!=='tcg.pricing-diagnostics/v1'||response.productId!==product.productId){
+    throw pricingError('DIAGNOSTICS_MISMATCH','Pricing diagnostics did not match this exact product.');
+  }
+  const text=(value,max)=>typeof value==='string'&&value.trim()?value.trim().slice(0,max):null;
+  const time=value=>Number.isFinite(Date.parse(value||''))?new Date(value).toISOString():null;
+  const count=value=>Number.isInteger(Number(value))&&Number(value)>=0?Number(value):null;
+  const http=value=>Number.isInteger(Number(value))&&Number(value)>=100&&Number(value)<=599?Number(value):null;
+  const duration=value=>Number.isFinite(Number(value))&&Number(value)>=0?Math.round(Number(value)):null;
+  const latest=response.latestSales&&typeof response.latestSales==='object'?response.latestSales:{};
+  const analyzer=response.analyzerHandoff&&typeof response.analyzerHandoff==='object'?response.analyzerHandoff:{};
+  const retry=response.retryBackoff&&typeof response.retryBackoff==='object'?response.retryBackoff:{};
+  if(!['verified-analyzer-market','market-pending'].includes(response.marketState))throw pricingError('DIAGNOSTICS_MISMATCH','Pricing diagnostics returned an unsupported Market state.');
+  const marketState=response.marketState;
+  return {schema:'tcg.pricing-diagnostics/v1',productId:product.productId,checkedAt:time(response.checkedAt),marketState,
+    latestSales:{endpointStatus:text(latest.endpointStatus,40),httpStatus:http(latest.httpStatus),recentSaleCount:count(latest.recentSaleCount),
+      lastSuccessAt:time(latest.lastSuccessAt),fallbackReason:text(latest.fallbackReason,240),
+      warnings:Array.isArray(latest.warnings)?latest.warnings.map(value=>text(value,160)).filter(Boolean).slice(0,3):[]},
+    analyzerHandoff:{status:text(analyzer.status,40),observedAt:time(analyzer.observedAt),cacheAgeMs:duration(analyzer.cacheAgeMs),
+      expiresAt:time(analyzer.expiresAt),recentSaleCount:count(analyzer.recentSaleCount)},
+    retryBackoff:{state:text(retry.state,40),nextRetryAt:time(retry.nextRetryAt),reason:text(retry.reason,200)}};
+}
+function refreshPricingDiagnostics(product){
+  if(!hasDashboardPricing())return Promise.reject(pricingError('REST_REQUIRED','Source diagnostics require the standalone Pricing REST connection.'));
+  const prior=pricingState(product.productId);
+  pricingStates.set(product.productId,Object.assign({},prior,{diagnosticsStatus:'loading',diagnostics:null,diagnosticsMessage:'Checking source health…'}));renderContent();
+  return pricingRequest('diagnostics',{target:product}).then(response=>{
+    const latest=pricingState(product.productId),view=pricingDiagnosticsView(product,response);
+    pricingStates.set(product.productId,Object.assign({},latest,{diagnosticsStatus:'success',diagnostics:view,diagnosticsMessage:null}));renderContent();return view;
+  }).catch(error=>{
+    const latest=pricingState(product.productId),message=String(error&&error.message||error||'Source diagnostics failed.').slice(0,400);
+    pricingStates.set(product.productId,Object.assign({},latest,{diagnosticsStatus:'error',diagnostics:null,diagnosticsMessage:message}));renderContent();throw error;
+  });
 }
 function pricingItems(cl,mode,item){
   const rows=item?[item]:cl.eras.flatMap(era=>era.items);
@@ -2925,8 +3205,32 @@ function pricingItemStatus(item){
   const states=(item.pricingProducts||[]).map(record=>pricingState(record.ref.productId));
   if(states.some(ps=>ps.status==='loading'))return 'loading';
   if(states.some(ps=>ps.status==='error'))return 'error';
+  if(states.some(ps=>ps.status==='pending'))return 'pending';
   if(states.length&&states.every(ps=>ps.status==='success'))return 'live';
   return 'idle';
+}
+/* Keep the compact row value in step with the expanded live-pricing cards.
+   This is intentionally display-only: exact, fresh top-level Market values
+   never enter collection state, Gist payloads, watches, or static catalog data. */
+function pricingItemMarketSummary(item){
+  const products=Array.isArray(item&&item.pricingProducts)?item.pricingProducts:[],live=[];
+  products.forEach(record=>{
+    const product=record&&record.ref,ps=product&&pricingState(product.productId),valuation=ps&&ps.valuation;
+    if(!product||!ps||ps.status!=='success'||!valuation||valuation.schema!=='tcg.valuation/v1'||
+       !valuation.product||valuation.product.productId!==product.productId||
+       !valuation.market||!Number.isFinite(Number(valuation.market.value)))return;
+    live.push({record,value:Number(valuation.market.value),observedAt:valuation.observedAt,freshness:pricingFreshness(valuation)});
+  });
+  if(!live.length)return null;
+  const primary=live.find(entry=>entry.record.staticValue)||((products.length===1||live.length===1)?live[0]:null);
+  if(primary){
+    return {text:pricingMoney(primary.value),freshness:primary.freshness,
+      title:primary.freshness.title+' · '+primary.record.label+' · '+pricingTime(primary.observedAt)};
+  }
+  const values=live.map(entry=>entry.value),min=Math.min(...values),max=Math.max(...values),
+    rank={fresh:0,aging:1,stale:2},freshness=live.map(entry=>entry.freshness).sort((a,b)=>rank[b.state]-rank[a.state])[0];
+  return {text:min===max?pricingMoney(min):(pricingMoney(min)+'–'+pricingMoney(max)),
+    freshness,title:freshness.title+' · Market range across '+live.length+' refreshed products; open details for the product breakdown.'};
 }
 function paintPricingBatch(){
   const btn=document.getElementById('priceRefreshBtn');if(!btn)return;
@@ -2942,13 +3246,13 @@ function paintPricingBatch(){
   const status=document.getElementById('pricingMenuStatus');if(!status)return;
   if(pricingBatch.running)status.textContent=pricingBatch.label+' · '+pricingBatch.done+'/'+pricingBatch.total+' prices';
   else if(!pricingAvailable())status.textContent='Add a Pricing REST key in Settings or use the paired tracker extension.';
-  else status.textContent=(pricingTransport()==='rest'?'Pricing REST':'Paired extension')+' · refreshes every pricing product for the selected rows.';
+  else status.textContent=(pricingTransport()==='rest'?'Pricing REST':'Paired extension')+' · each refresh actively checks current sources; cached verified history only supplements the result.';
 }
 function startPricingRefresh(mode,item){
   if(!pricingAvailable()){toast('Add a Pricing REST key in Pricing API settings');openPricingSettings();return Promise.resolve(false);}
   if(pricingBatch.running){toast('A price refresh is already running');return Promise.resolve(false);}
   const cl=DATA.checklists.find(candidate=>candidate.id===active),items=pricingItems(cl,mode,item),products=pricingQueueFor(items)
-    .filter(product=>pricingState(product.productId).status!=='loading');
+    .filter(product=>pricingState(product.productId).status!=='loading'&&!pricingState(product.productId).browserBusy);
   if(!products.length){toast(mode==='unfinished'?'No unfinished items to refresh':'No pricing products to refresh');return Promise.resolve(false);}
   const queued=products.map(product=>({product,prior:pricingState(product.productId)}));
   queued.forEach(({product,prior})=>pricingStates.set(product.productId,Object.assign({},prior,{status:'loading',message:'Queued for live pricing…'})));
@@ -3001,6 +3305,46 @@ function appendFact(host,label,value){
   const span=document.createElement('span'),b=document.createElement('b');b.textContent=label+': ';
   span.appendChild(b);span.appendChild(document.createTextNode(value));host.appendChild(span);
 }
+function renderPricingDiagnostics(view){
+  const box=document.createElement('div');box.className='pricediagnostics';
+  const line=document.createElement('div');
+  const market=view.marketState==='verified-analyzer-market'?'Verified Analyzer Market is available.':'Live source refresh completed; verified recent-sale Market is still pending.';
+  line.textContent=market;box.appendChild(line);
+  const facts=document.createElement('div');facts.className='pricefacts';
+  if(view.latestSales.endpointStatus)appendFact(facts,'Latest sales',view.latestSales.endpointStatus+(view.latestSales.httpStatus?' (HTTP '+view.latestSales.httpStatus+')':''));
+  if(view.latestSales.recentSaleCount!==null)appendFact(facts,'Recent sales',String(view.latestSales.recentSaleCount));
+  if(view.analyzerHandoff.status)appendFact(facts,'Analyzer handoff',view.analyzerHandoff.status);
+  if(view.analyzerHandoff.recentSaleCount!==null)appendFact(facts,'Analyzer sales',String(view.analyzerHandoff.recentSaleCount));
+  if(view.retryBackoff.state)appendFact(facts,'Retry',view.retryBackoff.state);
+  if(facts.childNodes.length)box.appendChild(facts);
+  const reason=view.latestSales.fallbackReason||view.retryBackoff.reason;
+  if(reason){const detail=document.createElement('div');detail.textContent=reason;box.appendChild(detail);}
+  return box;
+}
+function renderMarketPending(valuation,ps,product){
+  const block=document.createElement('div');block.className='pricepending';
+  const head=document.createElement('div');head.className='pricepending-head';head.textContent='Market pending';block.appendChild(head);
+  const copy=document.createElement('div');copy.className='pricepending-copy';
+  const hasCatalogReference=!!(valuation&&valuation.sources&&valuation.sources.tcgplayer&&valuation.sources.tcgplayer.catalogReferenceMarket);
+  copy.textContent=(valuation&&valuation.marketPending===true
+    ?'Live source refresh completed; verified recent-sale Market is still pending. No unverified amount is used.'
+    :'Live pricing is unavailable. Check source health for the bounded provider explanation.')
+    +(hasCatalogReference?' An unverified catalog reference exists, but it is excluded from value, deals, alerts, and watches.':'');
+  block.appendChild(copy);
+  if(ps.diagnosticsStatus==='loading'){const status=document.createElement('div');status.className='pricediagnostics';status.textContent='Checking source health…';block.appendChild(status);}
+  else if(ps.diagnosticsStatus==='error'){const status=document.createElement('div');status.className='priceerror';status.textContent=ps.diagnosticsMessage||'Source diagnostics are unavailable.';block.appendChild(status);}
+  else if(ps.diagnosticsStatus==='success'&&ps.diagnostics){
+    block.appendChild(renderPricingDiagnostics(ps.diagnostics));
+    const copyButton=document.createElement('button');copyButton.type='button';copyButton.className='pricebtn';copyButton.textContent='Copy source health';
+    copyButton.onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(ps.diagnostics,null,2));toast('Source health copied');}catch(error){toast('Could not copy source health');}};
+    block.appendChild(copyButton);
+  }
+  if(hasDashboardPricing()&&ps.diagnosticsStatus!=='loading'){
+    const button=document.createElement('button');button.type='button';button.className='pricebtn';button.textContent=ps.diagnosticsStatus==='success'?'Refresh source health':'Check source health';
+    button.onclick=()=>refreshPricingDiagnostics(product).catch(()=>{});block.appendChild(button);
+  }
+  return block;
+}
 function pricingAuctionView(valuation){
   if(!valuation||typeof valuation!=='object'||(valuation.cache&&valuation.cache.mode==='stale-fallback'))return null;
   const auction=valuation.lowestAuction;
@@ -3046,29 +3390,53 @@ function renderPricingList(products){
     const badge=document.createElement('span');badge.className='pricebadge';
     if(ps.status==='loading'){badge.classList.add('loading');badge.textContent='Refreshing';}
     else if(ps.status==='success'){
-      const stale=pricingIsStale(ps.valuation);
-      badge.classList.add(stale?'stale':'live');badge.textContent=stale?'Stale':'Live';
+      if(ps.valuation&&ps.valuation.marketPending===true&&!(ps.valuation.market&&Number.isFinite(Number(ps.valuation.market.value)))){
+        badge.classList.add('pending');badge.textContent='Market pending';
+      }else{const freshness=pricingFreshness(ps.valuation);badge.classList.add(freshness.state);
+        badge.textContent=freshness.label;badge.title=freshness.title;}
+    }else if(ps.status==='pending'){badge.classList.add('pending');badge.textContent='Market pending';
     }else if(ps.status==='error'){badge.classList.add('error');badge.textContent='Error';}
     else if(ps.status==='unavailable'){badge.textContent=ps.code==='PRICING_NOT_CONFIGURED'?'Setup needed':'Unavailable';}
     else badge.textContent='Not checked';
     head.appendChild(label);head.appendChild(badge);card.appendChild(head);
-    if(ps.status==='success'){
-      const valuation=ps.valuation,facts=document.createElement('div');facts.className='pricefacts';
-      appendFact(facts,'Live value',pricingMoney(valuation.market&&valuation.market.value));
-      appendFact(facts,'Buy Now low',pricingMoney(valuation.lowestAsk&&valuation.lowestAsk.landedPrice));
-      appendFact(facts,'Confidence',String(valuation.market&&valuation.market.confidence||'unavailable'));
-      appendFact(facts,'Checked',pricingTime(valuation.observedAt));card.appendChild(facts);
+    if(ps.status==='success'||ps.status==='pending'){
+      const valuation=ps.valuation,facts=document.createElement('div');facts.className='pricefacts',
+        hasMarket=!!(valuation.market&&Number.isFinite(Number(valuation.market.value))),freshness=hasMarket?pricingFreshness(valuation):null;
+      if(hasMarket){appendFact(facts,'Live value',pricingMoney(valuation.market.value));appendFact(facts,'Confidence',String(valuation.market.confidence||'unavailable'));
+        if(freshness.basis)appendFact(facts,'Market basis',freshness.basis);
+        if(freshness.sampleText)appendFact(facts,'Evidence',freshness.sampleText);
+        appendFact(facts,'Freshness',freshness.label+' · ±'+freshness.driftText+' estimated drift');
+        appendFact(facts,'4% horizon',freshness.targetText+' after refresh');
+        appendFact(facts,'Drift signal',freshness.monthlyRiskPct.toFixed(freshness.monthlyRiskPct%1?1:0)+'% / month');
+        appendFact(facts,'Color thresholds','Green <5% · red ≥8%');}
+      if(valuation.lowestAsk&&Number.isFinite(Number(valuation.lowestAsk.landedPrice)))appendFact(facts,'Buy Now low',pricingMoney(valuation.lowestAsk.landedPrice));
+      const cachedFallback=!!(valuation.cache&&valuation.cache.mode==='stale-fallback');
+      appendFact(facts,cachedFallback?'Cached observation':(freshness&&freshness.state==='stale'?'Last live refresh':(ps.browserSource?'Full browser comps refreshed':'Live sources refreshed')),pricingTime(valuation.observedAt));card.appendChild(facts);
+      if(freshness&&freshness.trendHeldOut){const note=document.createElement('div');note.className='pricefreshnote';note.textContent=freshness.trendHeldOut;card.appendChild(note);}
       const askUrl=safePriceUrl(valuation.lowestAsk&&valuation.lowestAsk.url);
       if(askUrl){const link=document.createElement('a');link.href=askUrl;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open verified Buy Now low';card.appendChild(link);}
       const auction=renderPricingAuction(valuation);if(auction)card.appendChild(auction);
+      if(valuation.marketPending===true)card.appendChild(renderMarketPending(valuation,ps,product));
     }else if(ps.status==='unavailable'||ps.status==='error'){
       const error=document.createElement('div');error.className=ps.status==='error'?'priceerror':'pricefallback';error.textContent=ps.message||'Live pricing is unavailable.';card.appendChild(error);
+      if(ps.status==='unavailable'&&hasDashboardPricing()){
+        const pendingShell={marketPending:false,sources:{}},pending=renderMarketPending(pendingShell,ps,product);
+        const head=pending.childNodes[0];if(head)head.textContent='Source health';card.appendChild(pending);
+      }
     }
     if(record.staticValue){const fallback=document.createElement('div');fallback.className='pricefallback';
       const b=document.createElement('b');b.textContent='Static fallback: ';fallback.appendChild(b);fallback.appendChild(document.createTextNode(record.staticValue));card.appendChild(fallback);}
+    const browserAvailability=browserCompsAvailability(),browserStatus=document.createElement('div');browserStatus.className='pricebrowser'+(ps.browserErrorCode?' error':'');
+    if(ps.browserSource){const b=document.createElement('b');b.textContent='Full browser comps';browserStatus.appendChild(b);
+      const detail=document.createElement('span');detail.textContent=ps.browserMessage||'Verified through the installed TCG Comps browser Analyzer.';browserStatus.appendChild(detail);
+    }else browserStatus.textContent=ps.browserMessage||browserAvailability.message;
+    card.appendChild(browserStatus);
     const actions=document.createElement('div');actions.className='priceactions';
     const refresh=document.createElement('button');refresh.type='button';refresh.className='pricebtn';refresh.textContent=ps.status==='success'?'Refresh price':'Check live price';
-    refresh.disabled=ps.status==='loading'||pricingBatch.running||!pricingAvailable();refresh.onclick=()=>refreshPrice(product,{userInitiated:true});actions.appendChild(refresh);card.appendChild(actions);
+    refresh.disabled=ps.status==='loading'||ps.browserBusy||pricingBatch.running||!pricingAvailable();refresh.onclick=()=>refreshPrice(product,{userInitiated:true});actions.appendChild(refresh);
+    const full=document.createElement('button');full.type='button';full.className='pricebtn';full.textContent=ps.browserBusy?'Running full browser comps…':'Run full browser comps';
+    full.disabled=ps.browserBusy||ps.status==='loading'||pricingBatch.running||!browserAvailability.enabled;full.title=browserAvailability.message;
+    full.onclick=()=>refreshFullBrowserComps(product);actions.appendChild(full);card.appendChild(actions);
     if(pricingCanWatch(ps,product)){
       const box=document.createElement('div');box.className='watchbox';
       const watchLabel=document.createElement('label');watchLabel.textContent='Alert when verified Buy Now landed price ≤ $';
@@ -3364,10 +3732,15 @@ function renderContent(){
          row ~20px taller for information that fits comfortably beside it. */
       meta.innerHTML=`<div class="mline"><span class="mname">${it.name}</span>`
         + (it.code?`<span class="code">${it.code}</span>`:'') + tags + `</div>`;
-      row.appendChild(checks); row.appendChild(meta);
-      if(it.value){ const v=document.createElement('div'); v.className='val'+(it.est?' est':'');
-        v.innerHTML=valueHTML(it.value,it.est); v.title=it.value.includes(' / ')?'MSRP / current market':''; row.appendChild(v); }
       const pricingProducts=it.pricingProducts||[];
+      row.appendChild(checks); row.appendChild(meta);
+      const headlinePrice=pricingItemMarketSummary(it);
+      if(headlinePrice||it.value){ const v=document.createElement('div');
+        v.className='val'+(headlinePrice?(' live '+headlinePrice.freshness.state):(it.est?' est':''));
+        if(headlinePrice){v.textContent=headlinePrice.text;v.title=headlinePrice.title;
+          v.setAttribute('aria-label',headlinePrice.text+' · '+headlinePrice.freshness.label+' · '+headlinePrice.freshness.ageText);}
+        else{v.innerHTML=valueHTML(it.value,it.est);v.title=it.value.includes(' / ')?'MSRP / current market':'';}
+        row.appendChild(v); }
       if(pricingProducts.length){
         const priceStatus=pricingItemStatus(it),priceRefresh=document.createElement('button');
         priceRefresh.type='button';priceRefresh.className='rowpricebtn '+priceStatus;
@@ -3495,6 +3868,7 @@ function renderContent(){
     const none=document.createElement('div'); none.style.cssText="text-align:center;color:var(--muted);padding:50px;font-size:14px";
     none.textContent="No matches."; host.appendChild(none);
   }
+  schedulePricingFreshnessRepaint();
 }
 
 function updateAll(){ renderTabs(); renderContent(); updateOverall(); syncStickyTop(); paintPricingBatch(); }
@@ -3507,7 +3881,7 @@ function updateOverall(){
 }
 
 /* ---- GitHub Gist sync — runs entirely in this browser ---- */
-const BUILD="2026-08-28 14:01";
+const BUILD="2026-08-29 17:05";
 const GH_KEY="mtgBinder_gh", GH_API="https://api.github.com";
 /* The whole connection is persisted, not just the token — so a refresh restores
    the username, the gist ids and the "synced Xm ago" state instead of looking
