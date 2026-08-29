@@ -167,6 +167,20 @@ PACK_MAIN_OVERRIDES = {
     "Mystery Booster 2": ("Mystery", "Booster"),
 }
 
+# Some historically event-only boosters are distinct sealed pack products rather
+# than alternate wrapper art for the normal retail booster.  They remain in the
+# main Packs checklist (two copies of each exact pack type), but use explicit
+# variants so discovery, pricing, and ownership never conflate them with a
+# regular Mirrodin Besieged booster.
+EXTRA_PACK_VARIANTS = {
+    "Mirrodin Besieged": (
+        {"name":"Mirran Faction Pack", "group":"Mirran Faction",
+         "variant":"Mirran Faction", "color":"#b5852a", "target":2},
+        {"name":"Phyrexian Faction Pack", "group":"Phyrexian Faction",
+         "variant":"Phyrexian Faction", "color":"#b5852a", "target":2},
+    ),
+}
+
 def main_pack_label(era, set_name=None):
     """What the *standard* pack was actually called in that era. Tagging a 1994
     pack 'Draft/Play' was wrong — Draft Boosters arrive 2019, Play Boosters 2024."""
@@ -196,6 +210,18 @@ def pack_items(rows, era=None):
             label=PRODUCT_LABEL_BY_GROUP["Collector"]+" Pack"
             tags.append({"t":"Collector","c":C_COLL}); variants.append({"name":label,"group":"Collector","target":2})
             slots+=[{"l":label+" copy 1","g":"Collector","k":"Collector","c":C_COLL},{"l":label+" copy 2","g":"Collector","k":"Collector","c":C_COLL}]
+        for extra in EXTRA_PACK_VARIANTS.get(s, ()):
+            label=extra["name"]
+            group=extra["group"]
+            target=extra["target"]
+            tags.append({"t":group,"c":extra["color"]})
+            variants.append({"name":label,"group":group,"target":target,
+                             "pricingVariant":extra["variant"]})
+            for copy in range(target):
+                # These were not part of the original positional checklist, so
+                # historical generic MBS booster progress cannot claim them.
+                slots.append({"l":label+" copy "+str(copy+1),"g":group,
+                              "k":group,"c":extra["color"],"legacy":None})
         out.append({"name":s,"code":code,"note":note,"est":est,"value":None,
                     "tags":tags,"variants":variants,"slots":slots})
     return out
@@ -341,6 +367,8 @@ def attach_pricing_products(checklists):
                         products.append(_pricing_record(group,label,ref,static))
                 elif cl["id"]=="packs":
                     seen=set()
+                    pricing_variants={variant["group"]:variant.get("pricingVariant")
+                                      for variant in item.get("variants",[])}
                     for slot in item.get("slots",[]):
                         group=slot.get("g") or slot.get("l")
                         if group in seen: continue
@@ -349,7 +377,8 @@ def attach_pricing_products(checklists):
                         label=PRODUCT_LABEL_BY_GROUP.get(group,group)+" Pack"
                         product_name=item["name"]+" "+label
                         ref=_product_ref("mtg",item,product_name,product_type,"pack",
-                                         group if group=="JS Vol. 2" else None)
+                                         pricing_variants.get(group) or
+                                         (group if group=="JS Vol. 2" else None))
                         products.append(_pricing_record(group,label,ref))
                 elif cl["id"]=="prerelease":
                     for si,slot in enumerate(item.get("slots",[])):

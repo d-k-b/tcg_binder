@@ -44,9 +44,9 @@ const packCodes = new Set(packItems.map(item => item.code));
 assert.deepStrictEqual(catalog.sets.filter(set => !packCodes.has(set.setCode)).map(set => set.setCode), ['UNH', 'UST', 'UMA'],
   'only the three cataloged regular products absent from the ownership model need wrapper-only rows');
 assert.strictEqual(binder.checklists.flatMap(checklist => checklist.eras.flatMap(era => era.items.flatMap(item => item.slots)))
-  .filter(slot => slot.r !== false).length, 910, 'wrapper art must not alter required targets');
+  .filter(slot => slot.r !== false).length, 914, 'wrapper art must not alter required targets');
 assert.strictEqual(binder.checklists.flatMap(checklist => checklist.eras.flatMap(era => era.items.flatMap(item => item.slots))).length,
-  950, 'wrapper art must not alter inventory slots');
+  954, 'wrapper art must not alter inventory slots');
 
 assert.match(html, /const WRAPPER_ART_CATALOG = \{"schema":"mtg-booster-wrapper-art-catalog\/v1"/,
   'generated dashboard must embed the reviewed catalog');

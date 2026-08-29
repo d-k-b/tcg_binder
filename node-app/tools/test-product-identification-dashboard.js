@@ -13,9 +13,9 @@ const wrappers = JSON.parse(fs.readFileSync(path.join(root, 'data', 'booster_wra
 const productCount = binder.checklists.flatMap(checklist => checklist.eras.flatMap(era => era.items.flatMap(item => item.pricingProducts || []))).length;
 const wrapperCount = wrappers.sets.flatMap(set => set.artworks).length;
 
-assert.strictEqual(productCount, 686);
+assert.strictEqual(productCount, 688);
 assert.strictEqual(wrapperCount, 378);
-assert.strictEqual(productCount + wrapperCount, 1064, 'the scanner must constrain matching to every canonical product and reviewed wrapper ID');
+assert.strictEqual(productCount + wrapperCount, 1066, 'the scanner must constrain matching to every canonical product and reviewed wrapper ID');
 assert.match(html, /id="identifyBtn"/, 'the dashboard toolbar must expose photo identification');
 assert.match(html, /id="identifyFile"[^>]*capture="environment"/, 'mobile capture must prefer the rear camera while desktop still accepts uploads');
 assert.match(html, /The result is only a suggestion; your collection changes only when you press \+ or −/);
@@ -51,4 +51,4 @@ assert.deepStrictEqual(JSON.parse(JSON.stringify(normalizeWrapperArts({
 
 assert.doesNotMatch(html, /state\.(?:openai|vision|identif)|openaiVisionApiKey/,
   'API keys and identification results must stay outside dashboard collection state');
-console.log('product-identification dashboard tests: 1064 catalog candidates, camera/upload UI, exact bridge validation, explicit-only mutation, image re-encoding, and wrapper quantity migration passing');
+console.log('product-identification dashboard tests: 1066 catalog candidates, camera/upload UI, exact bridge validation, explicit-only mutation, image re-encoding, and wrapper quantity migration passing');

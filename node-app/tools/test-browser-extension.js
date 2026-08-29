@@ -176,10 +176,10 @@ for (const checklist of binder.checklists || []) {
     }
   }
 }
-assert.strictEqual(Object.keys(catalogProducts).length, 686, 'all canonical Tracker ProductRefs must fit one page-decoration request');
+assert.strictEqual(Object.keys(catalogProducts).length, 688, 'all canonical Tracker ProductRefs must fit one page-decoration request');
 assert.ok(contracts.validateCollectionSnapshot({
   schema: 'tcg.collection-snapshot/v2', namespace: 'collection-tracker', products: catalogProducts
-}).ok, 'the exact provider contract must accept all 686 full canonical ProductRefs atomically');
+}).ok, 'the exact provider contract must accept all 688 full canonical ProductRefs atomically');
 const firstProductId = Object.keys(catalogProducts)[0];
 const mismatched = JSON.parse(JSON.stringify(catalogProducts[firstProductId]));
 mismatched.product.productId = 'mtg:bad:mismatched-product:booster:pack:en';

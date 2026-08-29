@@ -71,10 +71,10 @@ ok(JSON.stringify(result.state.monitorPreferences) === JSON.stringify({
   dailyDigest:{enabled:true,time:'07:00',timezone:'America/Chicago'}
 }) && result.state.monitorPreferencesUpdatedAt === null,
   'migrates older saved state to the exact non-secret monitoring defaults');
-ok(result.allKeys.length === 950 && new Set(result.allKeys).size === 950,
-  'all 950 required and bonus inventory keys are unique');
-ok(result.requiredKeys.length === 910 && new Set(result.requiredKeys).size === 910,
-  'keeps the collection goal at 910 required targets');
+ok(result.allKeys.length === 954 && new Set(result.allKeys).size === 954,
+  'all 954 required and bonus inventory keys are unique');
+ok(result.requiredKeys.length === 914 && new Set(result.requiredKeys).size === 914,
+  'keeps the collection goal at 914 required targets');
 ok(Object.keys(result.state.wrapperArts).length === 0,
   'loads older saved state into an empty, separate wrapper-art namespace');
 ok(Object.keys(result.state.ordered).length === 0 && Object.keys(result.state.orderedWrapperArts).length === 0,
@@ -89,8 +89,8 @@ ok(result.productImages.length === 33 &&
 ok(result.productImages.every(image => !image.url.includes('cards.scryfall.io/art_crop')),
   'never presents fallback card art as a sealed-product image');
 const pricingIds = result.pricingProducts.map(product => product.ref.productId);
-ok(result.pricingProducts.length === 686 && new Set(pricingIds).size === 686,
-  'generates one unique ProductRef identity for each of the 686 actual products and groups');
+ok(result.pricingProducts.length === 688 && new Set(pricingIds).size === 688,
+  'generates one unique ProductRef identity for each of the 688 actual products and groups');
 ok(result.pricingProducts.every(product => pricingContracts.validateProductRef(product.ref).ok),
   'validates every generated identity against the vendored ProductRef v1 contract');
 ok(result.pricingProducts.filter(product => product.checklist === 'prerelease').length === 148 &&
@@ -222,6 +222,7 @@ const productAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
     acrPacks:packGroups("Assassin's Creed"),
     mysteryPacks:packGroups('Mystery Booster 2'),
     znrVariants:packVariants('Zendikar Rising'),
+    mbsVariants:packVariants('Mirrodin Besieged'),
     explicitPackLabels:packItems.every(it=>it.slots.every(slot=>/ Pack copy [12]$/.test(slot.l)))
   };
 })())`, context));
@@ -259,6 +260,11 @@ ok(productAudit.packMode === 'group_variants' &&
      {name:'Set Booster Pack',group:'Set',target:2},
      {name:'Collector Booster Pack',group:'Collector',target:2}]) && productAudit.explicitPackLabels,
   'names every booster pack type and exposes multi-type rows as variants');
+ok(JSON.stringify(productAudit.mbsVariants) === JSON.stringify([
+     {name:'Booster Pack',group:'Booster',target:2},
+     {name:'Mirran Faction Pack',group:'Mirran Faction',target:2,pricingVariant:'Mirran Faction'},
+     {name:'Phyrexian Faction Pack',group:'Phyrexian Faction',target:2,pricingVariant:'Phyrexian Faction'}]),
+  'keeps Mirrodin Besieged regular, Mirran faction, and Phyrexian faction boosters as distinct exact pack targets');
 
 const bonus = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const cl=DATA.checklists.find(x=>x.id==='boxes');

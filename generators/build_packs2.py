@@ -99,7 +99,7 @@ ERAS = [
  ("Magic 2010","M10",1,-1,-1,False,""),("Zendikar","ZEN",1,-1,-1,False,""),
  ("Worldwake","WWK",1,-1,-1,False,""),("Rise of the Eldrazi","ROE",1,-1,-1,False,""),
  ("Magic 2011","M11",1,-1,-1,False,""),("Scars of Mirrodin","SOM",1,-1,-1,False,""),
- ("Mirrodin Besieged","MBS",1,-1,-1,False,""),("New Phyrexia","NPH",1,-1,-1,False,""),
+ ("Mirrodin Besieged","MBS",1,-1,-1,False,"Regular booster plus Mirran and Phyrexian faction-pack variants"),("New Phyrexia","NPH",1,-1,-1,False,""),
 ]),
 ("Innistrad to Origins — 2011–2015", [
  ("Magic 2012","M12",1,-1,-1,False,""),("Innistrad","ISD",1,-1,-1,False,""),
