@@ -58,7 +58,7 @@ function createContext(search, initialData = { checklists: [] }, options = {}) {
     instantFixedPriceEmail: true,
     dailyDigest: { enabled: true, time: '07:00', timezone: 'America/Chicago' } };
   const normalizeMonitorPreferences = input => JSON.parse(JSON.stringify(input || monitorDefaults));
-  const storage = new Map();
+  const storage = options.storage || new Map();
   if (options.restSettings) storage.set('tcgDashboardPricingRest_v1', JSON.stringify(options.restSettings));
   const localStorage = { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) };
   const restCalls = [];
@@ -375,6 +375,59 @@ const product = {
       buyingOptions: ['AUCTION'],
     },
   };
+  const cacheStorage = new Map();
+  const cacheData = { checklists: [{ id: 'cache-test', eras: [{ items: [{ name: 'Cached product', code: 'WOE', slots: [],
+    pricingProducts: [{ label: 'Cached exact product', ref: product }] }] }] }] };
+  const cacheWriter = createContext('', cacheData, { storage: cacheStorage });
+  cacheWriter.context.cacheProduct = product;
+  cacheWriter.context.cacheLive = {
+    apiVersion: 1, schema: 'tcg.valuation/v1', requestId: 'must-not-persist', engineVersion: '2.43.54', product,
+    observedAt: new Date().toISOString(), market: { value: 123, confidence: 'high', method: 'theil-sen-recent-sales',
+      sampleSize: 12, monthlyTrendPct: 2.2, stability: { trendUsed: true, sourceSpreadPct: 2.5, trendDeltaPct: 1.86,
+        jackknife: { spreadPct: 4.34, rawRows: ['never'] }, trendProjection: 999999, compSetHash: 'private-hash' } },
+    lowestAsk: { landedPrice: 119, url: 'https://example.com/ask', rawEvidence: 'must-not-persist' },
+    lowestAuction: { landedPrice: 90, currentBid: 82, shippingKnown: true, shipping: 8,
+      endTime: '2099-08-29T20:00:00.000Z', bidCount: 4, uniqueBidderCount: 3, url: 'https://example.com/auction',
+      verificationReason: 'raw provider detail must not persist' },
+    sources: { tcgplayer: { catalogReferenceMarket: { value: 987654.32, verified: false }, raw: 'must-not-persist' } },
+    recentSales: [{ price: 123, raw: 'must-not-persist' }], verifiedAsks: [{ landedPrice: 119 }],
+  };
+  vm.runInContext("cacheState=Object.assign({},interpretPriceResponse(cacheProduct,cacheLive));pricingStates.set(cacheProduct.productId,cacheState);cachePricingState(cacheProduct,cacheState)", cacheWriter.context);
+  const pricingCacheRaw = cacheStorage.get('tcgDashboardPricingCache_v1');
+  assert.ok(pricingCacheRaw, 'a successful exact valuation must create the separate device-local pricing cache');
+  const pricingCache = JSON.parse(pricingCacheRaw);
+  assert.strictEqual(pricingCache.schema, 'tcg.dashboard-pricing-cache/v1');
+  assert.deepStrictEqual(Object.keys(pricingCache.products), [product.productId]);
+  assert.strictEqual(pricingCache.products[product.productId].valuation.market.value, 123);
+  assert.strictEqual(pricingCache.products[product.productId].valuation.lowestAsk.landedPrice, 119);
+  assert.strictEqual(pricingCache.products[product.productId].valuation.lowestAuction.landedPrice, 90);
+  assert.deepStrictEqual(pricingCache.products[product.productId].valuation.sources,
+    { tcgplayer: { catalogReferenceMarket: { available: true } } },
+    'the cache may retain only the existence of a review-only catalog reference, never its amount');
+  assert.doesNotMatch(pricingCacheRaw, /must-not-persist|987654|999999|private-hash|requestId|recentSales|verifiedAsks|rawEvidence|verificationReason|trendProjection|compSetHash/,
+    'device pricing cache must exclude raw provider evidence, review-only values, held-out projections, and request details');
+  assert.doesNotMatch(pricingCacheRaw, /accessToken|Bearer|ghp_|checklist\|v2|checks|extras|ordered|legacyChecks|gist|diagnostics|watch/i,
+    'device pricing cache must exclude credentials, collection/Gist state, diagnostics, and watches');
+  assert.strictEqual(cacheWriter.ownership.persistWrites, 0, 'saving pricing must not persist collection state');
+
+  const cacheReader = createContext('?pricingConsumerOrigin=' + encodeURIComponent(origin), cacheData, { storage: cacheStorage });
+  cacheReader.context.cacheProduct = product;
+  const reloadedPrice = JSON.parse(JSON.stringify(vm.runInContext('pricingStates.get(cacheProduct.productId)', cacheReader.context)));
+  assert.strictEqual(reloadedPrice.status, 'success');
+  assert.strictEqual(reloadedPrice.cachedOnDevice, true);
+  assert.strictEqual(reloadedPrice.valuation.product.productId, product.productId);
+  assert.strictEqual(reloadedPrice.valuation.market.value, 123);
+  assert.strictEqual(reloadedPrice.valuation.lowestAsk.landedPrice, 119);
+  assert.strictEqual(vm.runInContext('pricingCanWatch(pricingStates.get(cacheProduct.productId),cacheProduct)', cacheReader.context), false,
+    'a locally reloaded price must not enable privileged extension watches until a live exact response succeeds in this page session');
+  const cachedCardText = nodeText(vm.runInContext("renderPricingList([{label:'Cached product',ref:cacheProduct}])", cacheReader.context));
+  assert.ok(cachedCardText.includes('Saved live refresh:'), 'reloaded values must be labeled as saved device-local observations');
+  assert.ok(cachedCardText.includes('Live value: $123.00') && cachedCardText.includes('Buy Now low: $119.00'),
+    'Market and Buy Now values must survive a full page-context reload');
+  const cachedHeader = JSON.parse(JSON.stringify(vm.runInContext("pricingItemMarketSummary({pricingProducts:[{label:'Cached product',ref:cacheProduct}]})", cacheReader.context)));
+  assert.strictEqual(cachedHeader.text, '$123.00', 'the compact row headline must use the reloaded verified Market instead of its static fallback');
+  assert.strictEqual(cacheReader.ownership.persistWrites, 0, 'loading pricing must not persist or mutate collection state');
+
   assert.strictEqual(vm.runInContext('interpretPriceResponse(testProduct,live).status', bridge.context), 'success');
   assert.strictEqual(vm.runInContext(`interpretPriceResponse(testProduct,{apiVersion:1,error:{code:'NO_VERIFIED_PRICE',message:'none'}}).status`, bridge.context), 'unavailable');
   assert.strictEqual(vm.runInContext(`interpretPriceResponse(testProduct,{apiVersion:1,error:{code:'UNAUTHORIZED',message:'denied'}}).status`, bridge.context), 'error');
@@ -836,7 +889,7 @@ const product = {
   assert.match(html, /data-monitor-source="ebay"/, 'monitoring UI must expose the contract source choices');
   assert.match(html, /@media\(max-width:480px\)[\s\S]*\.monitor-grid\{grid-template-columns:1fr\}/,
     'monitoring preferences must collapse to one column at narrow side-panel widths');
-  console.log('pricing dashboard tests: exact bridges, deterministic 688-product subscription, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
+  console.log('pricing dashboard tests: exact bridges, deterministic 688-product subscription, sanitized reload-safe device cache, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);

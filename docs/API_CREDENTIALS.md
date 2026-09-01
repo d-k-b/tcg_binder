@@ -17,6 +17,16 @@ Pricing and OpenAI records are separate from the exported collection object. The
 debug report exposes only configured/remembered booleans and transport state—not
 keys, endpoints, request bodies, chat contents, prices, or account identity.
 
+Verified price summaries use a fourth, non-credential namespace:
+`localStorage["tcgDashboardPricingCache_v1"]`. This cache lets refreshed Market and
+Buy Now values survive a page reload, but it never contains an API key. It retains
+only an allowlisted exact-product display summary and the original observation time,
+so the dashboard's adaptive freshness colors continue aging normally. Raw provider
+evidence, request IDs, recent-sale rows, diagnostics, watches, collection/Gist state,
+catalog-reference amounts, and held-out trend projections are excluded. Cached
+entries are never exported or synced and cannot enable privileged extension watches
+until the page receives a new exact live response.
+
 ## Pricing transports
 
 | Transport | Path and credential | Supported surface | Credential boundary |
