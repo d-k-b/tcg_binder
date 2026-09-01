@@ -64,6 +64,16 @@ least-privilege REST access key under **More → Pricing API settings**; an expl
 **Remember on this device** choice stores it only in
 `localStorage["tcgDashboardPricingRest_v1"]`. The record is separate from collection
 state and never enters generated source, URLs, Gists, exports, or debug reports.
+Successful exact valuations are independently stored as a sanitized device-local
+summary under `localStorage["tcgDashboardPricingCache_v1"]`, so a page reload does
+not replace verified row values with static fallbacks. The cache is keyed by the
+current canonical ProductRef, capped at 1,200 products, and rejects entries older
+than two years. It retains only the fields rendered by the dashboard: observation
+time, verified Market and bounded freshness inputs, verified Buy Now landed low and
+safe link, a bounded qualifying auction summary, and the safe interactive-browser
+source label. It excludes credentials, request IDs, raw evidence, recent-sale rows,
+diagnostics, watches, collection keys/quantities, Gist metadata, held-out trend
+projections, and catalog-reference amounts. It is never exported or synced.
 
 TCG Comps 2.43.45 deploys the standalone facade at the non-secret base URL
 `https://gogo.tail903ec0.ts.net`. New devices receive that URL as a prefilled value;
@@ -103,10 +113,12 @@ never suppresses those current-source fetches. Dashboard refresh copy states thi
 explicitly; Market still renders only from verified evidence returned by the
 provider. A fresh, exact top-level `market.value` also replaces the matching row's
 static headline estimate immediately after refresh. Market-pending results leave the
-static headline intact. Exact cached Markets remain visible only with an explicit red
-**Stale** state; rows with several live products use the primary catalog-priced product
-or a compact range rather than choosing an arbitrary variant. Header pricing remains
-memory-only and is never written to collection or Gist state.
+static headline intact. Exact provider stale-fallback Markets remain visible only
+with an explicit red **Stale** state; rows with several live products use the primary
+catalog-priced product or a compact range rather than choosing an arbitrary variant.
+Reloaded device-cache Markets retain their original observation time and therefore
+continue through the same adaptive green/amber/red freshness model. Header pricing
+is never written to collection or Gist state.
 
 Market freshness is display-only and adaptive. It takes the largest bounded percentage
 signal among the provider's accepted monthly trend, venue spread, leave-one-out spread,
@@ -135,8 +147,10 @@ results require API v1, `tcg.valuation/v1`, the exact requested ProductRef, and
 `tcg.browser-comp-evidence/v1` with `mode:"interactive-extension"`; raw source/job
 evidence is discarded before rendering. Offline, timeout, queue, expiry, analysis,
 and validation failures preserve the prior valuation and show a sanitized row-level
-message without falling back to headless pricing. All browser-job state is
-memory-only and never enters collection state, Gists, exports, or debug reports.
+message without falling back to headless pricing. Browser-job state and raw
+provenance remain memory-only; only the allowlisted successful valuation summary and
+its safe interactive-browser source label may enter the separate device price cache.
+Nothing enters collection state, Gists, or exports.
 
 Watches remain extension-only and appear only after an exact returned `productId`
 matches the requested ProductRef and an extension bridge exists. The extension
@@ -314,6 +328,16 @@ coverage proves immutable-ID reuse, owned/duplicate/ordered migration, empty new
 products, named loss disclosure, base-revision gating, staged-Gist exclusion, and
 generated parity. Full `npm test` passed; the HTTP-served dialog and saved rows were
 verified at 545px, 390px, and 360px without overflow or console warnings/errors.
+Device-local verified pricing persistence was added on build `2026-08-31 22:32`.
+Fresh exact Market, Buy Now low, bounded auction, and adaptive freshness inputs now
+survive a full page reload through the separate `tcgDashboardPricingCache_v1`
+namespace. A generated-code reload regression proves the compact row and expanded
+card restore the verified values and original observation time while excluding
+credentials, raw evidence, diagnostics, watches, collection/Gist state, catalog
+reference amounts, and held-out trend projections. Reloaded cache entries cannot
+enable privileged watches until a new exact live response arrives. The full `npm
+test` suite passed, all generated/data copies match, and the HTTP-served build has no
+console warnings/errors or horizontal overflow at desktop, 390px, and 360px.
 
 ---
 
@@ -700,12 +724,15 @@ remain in the detail drawer. The control-bar arrow opens choices for every price
 item or unfinished goal items on the active checklist. “Unfinished” means a row has
 at least one required ownership slot and is not complete, so bonus-only inventory is
 not perpetually swept into that mode. “All” includes completed and bonus-only rows.
-Batch work is memory-only, deduplicates `productId`, and runs at four concurrent
+Batch queue/progress is memory-only, deduplicates `productId`, and runs at four concurrent
 requests. It calls the same `refreshPrice()`/`pricingRequest()` path, preserving exact
 request/product validation and all unavailable/error/watch gates. REST responses must
 match API v1, `tcg.valuation/v1`, request ID, and the requested ProductRef ID. Extension
 responses retain the exact origin/frame/channel/request gates. Never persist batch or
-valuation state in collection state, Gists, or exports.
+valuation state in collection state, Gists, or exports. Successful allowlisted
+valuation summaries may persist only in `tcgDashboardPricingCache_v1`; reloaded cache
+entries never enable privileged watch controls until the current page receives a new
+exact live response.
 
 Ordinary `POST /v1/price` remains headless and never enables browser-session-only
 sources such as 130point. Only a direct click on **Run full browser comps** may ask

@@ -552,7 +552,7 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
  <div class="top-in">
    <div class="brand">
      <div class="logo">M</div>
-     <div><h1>MTG Sealed Collecting Binder</h1><p>Live checklist &bull; auto-saved &bull; build 2026-08-29 18:14</p></div>
+     <div><h1>MTG Sealed Collecting Binder</h1><p>Live checklist &bull; auto-saved &bull; build 2026-08-31 22:32</p></div>
    </div>
    <div class="spacer"></div>
    <div class="hright">
@@ -2346,7 +2346,9 @@ function valueHTML(val, est){
    The dashboard never sees the provider extension id or capability token. The
    tracker extension owns those credentials and accepts messages only from this
    exact iframe/origin pair; this side answers only to the exact extension origin
-   supplied in the iframe URL. Pricing state is intentionally memory-only. */
+   supplied in the iframe URL. Sanitized successful valuations may be cached in a
+   separate device-local namespace; requests, credentials, diagnostics, watches,
+   and collection/Gist state remain outside that cache. */
 const PRICING_CHANNEL='tcg-pricing/v1';
 const PRICING_QUERY='pricingConsumerOrigin';
 const PRICING_TIMEOUT_MS=20000;
@@ -2363,6 +2365,10 @@ const DASHBOARD_OPENAI_SETTINGS_KEY='tcgDashboardOpenAI_v1';
 const DASHBOARD_OPENAI_SETTINGS_SCHEMA='tcg.dashboard-openai-settings/v1';
 const DASHBOARD_PRICING_SETTINGS_KEY='tcgDashboardPricingRest_v1';
 const DASHBOARD_PRICING_SETTINGS_SCHEMA='tcg.dashboard-pricing-rest-settings/v1';
+const DASHBOARD_PRICING_CACHE_KEY='tcgDashboardPricingCache_v1';
+const DASHBOARD_PRICING_CACHE_SCHEMA='tcg.dashboard-pricing-cache/v1';
+const DASHBOARD_PRICING_CACHE_MAX_PRODUCTS=1200;
+const DASHBOARD_PRICING_CACHE_MAX_AGE_MS=2*365*24*60*60*1000;
 const DASHBOARD_PRICING_DEFAULT_URL='https://gogo.tail903ec0.ts.net';
 const PRICING_READINESS_SCHEMA='tcg.pricing-rest-readiness/v1';
 const BROWSER_PRICE_ROUTE='/v1/browser-price';
@@ -2488,7 +2494,7 @@ async function runPricingSettingsTest(saveFirst){
     dashboardPricingReadiness={status:'ready',message:'Connected to TCG Comps '+result.providerVersion+'. Each refresh actively checks current sources; cached verified history only supplements the result.'+browserCopy,
       browserAgentAvailable:result.browserAgentAvailable,browserAgentLastSeenAt:result.browserAgentLastSeenAt,browserPriceRoute:result.browserPriceRoute};
     status.textContent=dashboardPricingReadiness.message;
-    if(saveFirst){pricingStates.clear();paintPricingBatch();updateAll();toast(dashboardPricing.remembered?'Pricing API connected and remembered on this device':'Pricing API connected for this session');}
+    if(saveFirst){restorePricingCacheStates();paintPricingBatch();updateAll();toast(dashboardPricing.remembered?'Pricing API connected and remembered on this device':'Pricing API connected for this session');}
     return true;
   }catch(error){
     const message=String(error&&error.message||error||'Pricing connection failed.').replace(/Bearer\s+\S+/gi,'Bearer [REDACTED]').slice(0,600);
@@ -2525,7 +2531,8 @@ function closeAISettings(){document.getElementById('aiSettingsModal').classList.
 const pricingPending=new Map();
 const identifyPending=new Map();
 const authorPending=new Map();
-const pricingStates=new Map();
+const pricingCacheEntries=new Map();
+const pricingStates=loadPricingCache();
 let pricingRequestSerial=0;
 let identifyRequestSerial=0;
 let authorRequestSerial=0;
@@ -2539,6 +2546,121 @@ function pricingDefaultState(){
 }
 function pricingState(productId){return pricingStates.get(productId)||pricingDefaultState();}
 function pricingError(code,message){const error=new Error(message||code||'Pricing request failed');error.code=code||'BRIDGE_FAILURE';return error;}
+function pricingCatalogById(){
+  const products=new Map();
+  DATA.checklists.filter(checklist=>typeof BUILTIN_CHECKLIST_IDS==='undefined'||BUILTIN_CHECKLIST_IDS.has(checklist.id)).forEach(checklist=>
+    checklist.eras.forEach(era=>era.items.forEach(item=>(item.pricingProducts||[]).forEach(record=>{
+      const ref=record&&record.ref;
+      if(ref&&typeof ref.productId==='string'&&!products.has(ref.productId))products.set(ref.productId,ref);
+    }))));
+  return products;
+}
+function pricingCacheMoney(value){
+  const number=Number(value);return Number.isFinite(number)&&number>0&&number<=100000000?number:null;
+}
+function pricingCacheCount(value,max){
+  const number=Number(value);return Number.isInteger(number)&&number>=0&&number<=max?number:null;
+}
+function pricingCachePercent(value){
+  if(value===null||value===undefined||value==='')return null;
+  const number=Number(value);return Number.isFinite(number)&&Math.abs(number)<=1000?number:null;
+}
+function pricingCacheTime(value){
+  const parsed=Date.parse(value||'');return Number.isFinite(parsed)?new Date(parsed).toISOString():null;
+}
+function pricingCacheMarket(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const value=pricingCacheMoney(raw.value);if(value===null)return null;
+  const market={value};
+  if(['low','medium','high'].includes(raw.confidence))market.confidence=raw.confidence;
+  if(['venue-balanced-median','theil-sen-recent-sales','median-recent-sales'].includes(raw.method))market.method=raw.method;
+  const sampleSize=pricingCacheCount(raw.sampleSize,200);if(sampleSize!==null)market.sampleSize=sampleSize;
+  const monthlyTrendPct=pricingCachePercent(raw.monthlyTrendPct);if(monthlyTrendPct!==null)market.monthlyTrendPct=monthlyTrendPct;
+  const rawStability=raw.stability&&typeof raw.stability==='object'&&!Array.isArray(raw.stability)?raw.stability:null;
+  if(rawStability){
+    const stability={};
+    if(typeof rawStability.trendUsed==='boolean')stability.trendUsed=rawStability.trendUsed;
+    for(const name of ['sourceSpreadPct','trendDeltaPct']){
+      const amount=pricingCachePercent(rawStability[name]);if(amount!==null&&amount>=0)stability[name]=amount;
+    }
+    const spread=pricingCachePercent(rawStability.jackknife&&rawStability.jackknife.spreadPct);
+    if(spread!==null&&spread>=0)stability.jackknife={spreadPct:spread};
+    if(Object.keys(stability).length)market.stability=stability;
+  }
+  return market;
+}
+function pricingCacheAsk(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const landedPrice=pricingCacheMoney(raw.landedPrice);if(landedPrice===null)return null;
+  const ask={landedPrice},url=safePriceUrl(raw.url);if(url)ask.url=url;return ask;
+}
+function pricingCacheAuction(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const landedPrice=pricingCacheMoney(raw.landedPrice);if(landedPrice===null)return null;
+  const auction={landedPrice},currentBid=pricingCacheMoney(raw.currentBid),shipping=pricingCacheMoney(raw.shipping),
+    endTime=pricingCacheTime(raw.endTime),bidCount=pricingCacheCount(raw.bidCount,100000),
+    uniqueBidderCount=pricingCacheCount(raw.uniqueBidderCount,100000),url=safePriceUrl(raw.url);
+  if(currentBid!==null)auction.currentBid=currentBid;
+  if(raw.shippingKnown===true){auction.shippingKnown=true;if(shipping!==null)auction.shipping=shipping;}
+  if(endTime&&Date.parse(endTime)<=Date.now())return null;
+  if(endTime)auction.endTime=endTime;if(bidCount!==null)auction.bidCount=bidCount;
+  if(uniqueBidderCount!==null)auction.uniqueBidderCount=uniqueBidderCount;if(url)auction.url=url;
+  return auction;
+}
+function sanitizePricingCacheEntry(product,raw){
+  if(!product||!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const valuation=raw.valuation&&typeof raw.valuation==='object'&&!Array.isArray(raw.valuation)?raw.valuation:raw,
+    observedAt=pricingCacheTime(valuation.observedAt),observed=Date.parse(observedAt||'');
+  if(!observedAt||observed>Date.now()+24*60*60*1000||Date.now()-observed>DASHBOARD_PRICING_CACHE_MAX_AGE_MS)return null;
+  const market=pricingCacheMarket(valuation.market),lowestAsk=pricingCacheAsk(valuation.lowestAsk);
+  if(!market&&!lowestAsk)return null;
+  const safe={apiVersion:1,schema:'tcg.valuation/v1',product:product,observedAt,market:market,lowestAsk:lowestAsk,
+    marketPending:valuation.marketPending===true};
+  const auction=pricingCacheAuction(valuation.lowestAuction);if(auction)safe.lowestAuction=auction;
+  if(valuation.cache&&valuation.cache.mode==='stale-fallback')safe.cache={mode:'stale-fallback'};
+  if(valuation.sources&&valuation.sources.tcgplayer&&valuation.sources.tcgplayer.catalogReferenceMarket)
+    safe.sources={tcgplayer:{catalogReferenceMarket:{available:true}}};
+  const engineVersion=typeof raw.engineVersion==='string'?raw.engineVersion.slice(0,40):
+    (typeof valuation.engineVersion==='string'?valuation.engineVersion.slice(0,40):null),
+    completedAt=pricingCacheTime(raw.browserCompletedAt),sourceMode=raw.sourceMode==='interactive-browser'?'interactive-browser':'headless';
+  return {valuation:safe,engineVersion,browserCompletedAt:completedAt,sourceMode};
+}
+function pricingStateFromCache(entry){
+  const browserSource=entry.sourceMode==='interactive-browser'?{schema:BROWSER_EXECUTION_SCHEMA,mode:BROWSER_EXECUTION_MODE,
+    completedAt:entry.browserCompletedAt||entry.valuation.observedAt}:null;
+  return {status:'success',valuation:entry.valuation,engineVersion:entry.engineVersion||null,cachedOnDevice:true,browserSource,
+    message:'Loaded a previously verified price saved on this device.'};
+}
+function loadPricingCache(){
+  const states=new Map(),catalog=pricingCatalogById();
+  try{
+    const envelope=JSON.parse(localStorage.getItem(DASHBOARD_PRICING_CACHE_KEY)||'null'),products=envelope&&envelope.products;
+    if(!envelope||envelope.schema!==DASHBOARD_PRICING_CACHE_SCHEMA||!products||typeof products!=='object'||Array.isArray(products))return states;
+    Object.entries(products).slice(0,DASHBOARD_PRICING_CACHE_MAX_PRODUCTS).forEach(([productId,raw])=>{
+      const product=catalog.get(productId),entry=product&&sanitizePricingCacheEntry(product,raw);
+      if(!entry)return;pricingCacheEntries.set(productId,entry);states.set(productId,pricingStateFromCache(entry));
+    });
+  }catch(_error){}
+  return states;
+}
+function writePricingCache(){
+  try{
+    const sorted=[...pricingCacheEntries.entries()].sort((left,right)=>
+      Date.parse(right[1].valuation.observedAt)-Date.parse(left[1].valuation.observedAt)).slice(0,DASHBOARD_PRICING_CACHE_MAX_PRODUCTS);
+    pricingCacheEntries.clear();sorted.forEach(([productId,entry])=>pricingCacheEntries.set(productId,entry));
+    localStorage.setItem(DASHBOARD_PRICING_CACHE_KEY,JSON.stringify({schema:DASHBOARD_PRICING_CACHE_SCHEMA,
+      savedAt:new Date().toISOString(),products:Object.fromEntries(sorted)}));
+  }catch(_error){}
+}
+function cachePricingState(product,priceState){
+  if(!priceState||priceState.status!=='success'||!priceState.valuation)return false;
+  const entry=sanitizePricingCacheEntry(product,{valuation:priceState.valuation,engineVersion:priceState.engineVersion,
+    sourceMode:priceState.browserSource?'interactive-browser':'headless',browserCompletedAt:priceState.browserSource&&priceState.browserSource.completedAt});
+  if(!entry)return false;pricingCacheEntries.set(product.productId,entry);writePricingCache();return true;
+}
+function restorePricingCacheStates(){
+  pricingStates.clear();pricingCacheEntries.forEach((entry,productId)=>pricingStates.set(productId,pricingStateFromCache(entry)));
+}
 function pricingRequest(type,payload){
   const requestId='tracker-'+Date.now().toString(36)+'-'+(++pricingRequestSerial).toString(36);
   if((type==='priceProduct'||type==='diagnostics')&&hasDashboardPricing()){
@@ -3023,7 +3145,7 @@ function browserPricingFailure(error){
     message:messages[raw]||'Full browser comps failed safely. Your previous price is unchanged.'};
 }
 function pricingCanWatch(priceState,product){
-  return !!(pricingConsumerOrigin&&priceState&&priceState.status==='success'&&priceState.valuation&&
+  return !!(pricingConsumerOrigin&&priceState&&priceState.status==='success'&&priceState.cachedOnDevice!==true&&priceState.valuation&&
     priceState.valuation.product&&priceState.valuation.product.productId===product.productId&&
     priceState.valuation.lowestAsk&&Number.isFinite(Number(priceState.valuation.lowestAsk.landedPrice))&&
     !(priceState.valuation.cache&&priceState.valuation.cache.mode==='stale-fallback'));
@@ -3130,13 +3252,14 @@ function refreshPrice(product,options){
   options=options||{};
   if(pricingState(product.productId).browserBusy)return Promise.resolve(false);
   const prior=options.prior||pricingState(product.productId),repaint=options.repaint!==false,
-    base=Object.assign({},prior,{diagnosticsStatus:null,diagnostics:null,diagnosticsMessage:null,
+    base=Object.assign({},prior,{diagnosticsStatus:null,diagnostics:null,diagnosticsMessage:null,cachedOnDevice:false,
       browserSource:null,browserMessage:null,browserErrorCode:null});
   pricingStates.set(product.productId,Object.assign({},base,{status:'loading',message:'Refreshing verified sales and live asks…'}));if(repaint)renderContent();
   const direct=options.userInitiated===true;
   return pricingRequest('priceProduct',{target:product,options:{includeActive:true,includeRecentSales:true,
       userInitiated:direct,include130point:direct}})
-    .then(response=>{pricingStates.set(product.productId,Object.assign({},base,interpretPriceResponse(product,response)));if(repaint)renderContent();})
+    .then(response=>{const next=Object.assign({},base,interpretPriceResponse(product,response),{cachedOnDevice:false});
+      pricingStates.set(product.productId,next);cachePricingState(product,next);if(repaint)renderContent();})
     .catch(error=>{pricingStates.set(product.productId,Object.assign({},base,{status:'error',code:error.code||'BRIDGE_FAILURE',message:String(error.message||error)}));if(repaint)renderContent();});
 }
 function refreshFullBrowserComps(product){
@@ -3147,8 +3270,9 @@ function refreshFullBrowserComps(product){
   return browserPricingRequest(product).then(response=>{
     const interpreted=interpretBrowserPriceResponse(product,response);
     if(interpreted.status==='error')throw pricingError(interpreted.code,interpreted.message);
-    pricingStates.set(product.productId,Object.assign({},prior,interpreted,{browserBusy:false,browserErrorCode:null,
-      browserMessage:'Full browser comps completed from the installed TCG Comps browser agent.'}));renderContent();return true;
+    const next=Object.assign({},prior,interpreted,{cachedOnDevice:false,browserBusy:false,browserErrorCode:null,
+      browserMessage:'Full browser comps completed from the installed TCG Comps browser agent.'});
+    pricingStates.set(product.productId,next);cachePricingState(product,next);renderContent();return true;
   }).catch(error=>{
     const failure=browserPricingFailure(error);
     pricingStates.set(product.productId,Object.assign({},prior,{browserBusy:false,browserErrorCode:failure.code,browserMessage:failure.message}));renderContent();return false;
@@ -3411,7 +3535,8 @@ function renderPricingList(products){
         appendFact(facts,'Color thresholds','Green <5% · red ≥8%');}
       if(valuation.lowestAsk&&Number.isFinite(Number(valuation.lowestAsk.landedPrice)))appendFact(facts,'Buy Now low',pricingMoney(valuation.lowestAsk.landedPrice));
       const cachedFallback=!!(valuation.cache&&valuation.cache.mode==='stale-fallback');
-      appendFact(facts,cachedFallback?'Cached observation':(freshness&&freshness.state==='stale'?'Last live refresh':(ps.browserSource?'Full browser comps refreshed':'Live sources refreshed')),pricingTime(valuation.observedAt));card.appendChild(facts);
+      appendFact(facts,cachedFallback?'Cached observation':(ps.cachedOnDevice?'Saved live refresh':
+        (freshness&&freshness.state==='stale'?'Last live refresh':(ps.browserSource?'Full browser comps refreshed':'Live sources refreshed'))),pricingTime(valuation.observedAt));card.appendChild(facts);
       if(freshness&&freshness.trendHeldOut){const note=document.createElement('div');note.className='pricefreshnote';note.textContent=freshness.trendHeldOut;card.appendChild(note);}
       const askUrl=safePriceUrl(valuation.lowestAsk&&valuation.lowestAsk.url);
       if(askUrl){const link=document.createElement('a');link.href=askUrl;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open verified Buy Now low';card.appendChild(link);}
@@ -3881,7 +4006,7 @@ function updateOverall(){
 }
 
 /* ---- GitHub Gist sync — runs entirely in this browser ---- */
-const BUILD="2026-08-29 18:14";
+const BUILD="2026-08-31 22:32";
 const GH_KEY="mtgBinder_gh", GH_API="https://api.github.com";
 /* The whole connection is persisted, not just the token — so a refresh restores
    the username, the gist ids and the "synced Xm ago" state instead of looking
@@ -4148,7 +4273,9 @@ function buildDebugReport(){
     monitor:{state:monitorSyncStatus.state,configured:monitorSyncStatus.monitorConfigured,
       productCount:monitorSyncStatus.productCount,activeTargetCount:monitorSyncStatus.activeTargetCount},
     pricing:{transport:pricingTransport(),restConfigured:hasDashboardPricing(),restRemembered:!!dashboardPricing.remembered,
-      extensionBridge:!!pricingConsumerOrigin,inMemoryResultCount:pricingStates.size,batchRunning:!!pricingBatch.running},
+      extensionBridge:!!pricingConsumerOrigin,inMemoryResultCount:pricingStates.size,
+      deviceCacheCount:typeof pricingCacheEntries==='undefined'?0:pricingCacheEntries.size,
+      batchRunning:!!pricingBatch.running},
     diagnostics:{recentErrors:runtimeDiagnostics.slice(-5)}
   };
 }
@@ -4508,7 +4635,7 @@ on('aiSettingsClose','click',closeAISettings);
 on('aiSettingsModal','click',(e)=>{if(e.target.id==='aiSettingsModal')closeAISettings();});
 on('pricingSettingsSave','click',()=>runPricingSettingsTest(true));
 on('pricingSettingsTest','click',()=>runPricingSettingsTest(false));
-on('pricingSettingsForget','click',()=>{forgetDashboardPricing();pricingStates.clear();paintPricingSettings();paintPricingBatch();updateAll();toast('Pricing API key removed from this device');});
+on('pricingSettingsForget','click',()=>{forgetDashboardPricing();restorePricingCacheStates();paintPricingSettings();paintPricingBatch();updateAll();toast('Pricing API key removed from this device; saved price summaries remain available');});
 on('pricingSettingsClose','click',closePricingSettings);
 on('pricingSettingsModal','click',(e)=>{if(e.target.id==='pricingSettingsModal')closePricingSettings();});
 on('drivePill','click',openSync);
