@@ -69,11 +69,23 @@ summary under `localStorage["tcgDashboardPricingCache_v1"]`, so a page reload do
 not replace verified row values with static fallbacks. The cache is keyed by the
 current canonical ProductRef, capped at 1,200 products, and rejects entries older
 than two years. It retains only the fields rendered by the dashboard: observation
-time, verified Market and bounded freshness inputs, verified Buy Now landed low and
-safe link, a bounded qualifying auction summary, and the safe interactive-browser
-source label. It excludes credentials, request IDs, raw evidence, recent-sale rows,
+time, the separate sale-derived Market observation time, verified Market and bounded
+freshness inputs, verified Buy Now landed low and safe link, a bounded qualifying
+auction summary, the safe interactive-browser source label, and allowlisted Pricing
+Analyzer cache provenance. The latter preserves only `cold`, `incremental-analysis`,
+`market-cache`, or `stale-fallback` plus bounded scheduling timestamps/flags; it never
+stores provider cache keys or raw evidence. Freshness is calculated from the Market
+observation, not a newer live-listing check, so reusing Market within its provider
+adaptive band cannot make old sales evidence look newly refreshed. The cache excludes credentials, request IDs, raw evidence, recent-sale rows,
 diagnostics, watches, collection keys/quantities, Gist metadata, held-out trend
 projections, and catalog-reference amounts. It is never exported or synced.
+
+Do not confuse that page-local price cache with Collection Authority derived caches.
+An Authority snapshot carrying `tcg.collection-derived-cache-status/v1` mode
+`complete-snapshot-fallback` is always `CONDITIONAL`, is ineligible for mutation, and
+must remain review-only. An incomplete seven-lane response is a typed failure: retain
+the dashboard's existing inventory rows and never reinterpret it as an empty
+collection. See `docs/COLLECTION_AUTHORITY_API.md`.
 
 TCG Comps 2.43.45 deploys the standalone facade at the non-secret base URL
 `https://gogo.tail903ec0.ts.net`. New devices receive that URL as a prefilled value;

@@ -156,14 +156,19 @@ Exact responses whose verified recent-sale Market is still pending are labeled
 separately; review-only catalog reference amounts are never displayed or used for
 deals or watches. A pending or unavailable REST result can request bounded source
 health explicitly without exposing the dashboard's REST key.
-Every authenticated dashboard refresh actively checks exact product identity,
-current public recent sales, and requested live asks before the provider recomputes
-the valuation. Retained verified history is merged for continuity but never skips
-the current source checks. A successful exact response immediately replaces the
+Every authenticated dashboard refresh checks exact product identity and requested
+live asks. The Provider Authority persists ProductRef-keyed sale identities,
+discovers only new public recent-sale rows once per UTC day, and recomputes Market
+only when new evidence arrives or its adaptive trend/dispersion forecast reaches the
+configured change band. A successful exact response immediately replaces the
 row's static headline estimate with the top-level Market value. Pending results retain
 the static headline; cached or expired Analyzer values remain visible only as red
 **Stale** pricing. Multi-product rows use the primary catalog-priced product or a
-compact live range. Freshness is display-only: the largest bounded provider percentage
+compact live range. The separate reload-safe dashboard cache retains only the
+provider's allowlisted cache mode and bounded scheduling timestamps/flags. Market
+freshness follows the sale-derived `market.observedAt` or
+`cache.marketRefreshedAt`, not a newer live-listing observation, and no provider
+cache key or raw evidence is stored. Freshness is display-only: the largest bounded provider percentage
 signal (accepted monthly trend, venue spread, leave-one-out spread, or trend-versus-
 consensus difference) becomes a conservative monthly drift rate. Projected drift below
 5% is green **Market fresh**, 5% through under 8% amber **Market aging**, and 8% or more

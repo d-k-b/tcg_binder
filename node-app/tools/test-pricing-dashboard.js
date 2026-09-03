@@ -380,9 +380,10 @@ const product = {
     pricingProducts: [{ label: 'Cached exact product', ref: product }] }] }] }] };
   const cacheWriter = createContext('', cacheData, { storage: cacheStorage });
   cacheWriter.context.cacheProduct = product;
+  const cachedMarketAt = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   cacheWriter.context.cacheLive = {
     apiVersion: 1, schema: 'tcg.valuation/v1', requestId: 'must-not-persist', engineVersion: '2.43.54', product,
-    observedAt: new Date().toISOString(), market: { value: 123, confidence: 'high', method: 'theil-sen-recent-sales',
+    observedAt: new Date().toISOString(), market: { value: 123, confidence: 'high', method: 'theil-sen-recent-sales', observedAt: cachedMarketAt,
       sampleSize: 12, monthlyTrendPct: 2.2, stability: { trendUsed: true, sourceSpreadPct: 2.5, trendDeltaPct: 1.86,
         jackknife: { spreadPct: 4.34, rawRows: ['never'] }, trendProjection: 999999, compSetHash: 'private-hash' } },
     lowestAsk: { landedPrice: 119, url: 'https://example.com/ask', rawEvidence: 'must-not-persist' },
@@ -391,6 +392,12 @@ const product = {
       verificationReason: 'raw provider detail must not persist' },
     sources: { tcgplayer: { catalogReferenceMarket: { value: 987654.32, verified: false }, raw: 'must-not-persist' } },
     recentSales: [{ price: 123, raw: 'must-not-persist' }], verifiedAsks: [{ landedPrice: 119 }],
+    cache: { hit: true, mode: 'market-cache', key: 'private-cache-key', savedAt: new Date().toISOString(), ageMs: 1234,
+      marketRefreshedAt: cachedMarketAt, salesLastCheckedAt: new Date().toISOString(), salesDiscoveryDue: false, marketAnalysisDue: false,
+      marketAnalysisMode: 'reused-within-band', salesDiscoveryMode: 'already-checked-today', sales: { raw: 'must-not-persist' },
+      marketAnalysis: { schema: 'tcg.adaptive-market-schedule/v1', computedAt: cachedMarketAt, changeBandPct: 10,
+        trendMonthlyPct: 2.2, volatilityPct: 4.34, dailyRiskPct: 0.12, reanalysisDueAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+        reason: 'arbitrary provider explanation must not persist' } },
   };
   vm.runInContext("cacheState=Object.assign({},interpretPriceResponse(cacheProduct,cacheLive));pricingStates.set(cacheProduct.productId,cacheState);cachePricingState(cacheProduct,cacheState)", cacheWriter.context);
   const pricingCacheRaw = cacheStorage.get('tcgDashboardPricingCache_v1');
@@ -399,12 +406,21 @@ const product = {
   assert.strictEqual(pricingCache.schema, 'tcg.dashboard-pricing-cache/v1');
   assert.deepStrictEqual(Object.keys(pricingCache.products), [product.productId]);
   assert.strictEqual(pricingCache.products[product.productId].valuation.market.value, 123);
+  assert.strictEqual(pricingCache.products[product.productId].valuation.market.observedAt, cachedMarketAt,
+    'the sale-derived Market timestamp must remain distinct from the newer live-listing observation');
   assert.strictEqual(pricingCache.products[product.productId].valuation.lowestAsk.landedPrice, 119);
   assert.strictEqual(pricingCache.products[product.productId].valuation.lowestAuction.landedPrice, 90);
   assert.deepStrictEqual(pricingCache.products[product.productId].valuation.sources,
     { tcgplayer: { catalogReferenceMarket: { available: true } } },
     'the cache may retain only the existence of a review-only catalog reference, never its amount');
-  assert.doesNotMatch(pricingCacheRaw, /must-not-persist|987654|999999|private-hash|requestId|recentSales|verifiedAsks|rawEvidence|verificationReason|trendProjection|compSetHash/,
+  assert.deepStrictEqual(pricingCache.products[product.productId].valuation.cache, {
+    mode: 'market-cache', hit: true, savedAt: cacheWriter.context.cacheLive.cache.savedAt, marketRefreshedAt: cachedMarketAt,
+    salesLastCheckedAt: cacheWriter.context.cacheLive.cache.salesLastCheckedAt, ageMs: 1234, salesDiscoveryDue: false, marketAnalysisDue: false,
+    marketAnalysisMode: 'reused-within-band', salesDiscoveryMode: 'already-checked-today',
+    marketAnalysis: { schema: 'tcg.adaptive-market-schedule/v1', computedAt: cachedMarketAt, reanalysisDueAt: cacheWriter.context.cacheLive.cache.marketAnalysis.reanalysisDueAt,
+      changeBandPct: 10, trendMonthlyPct: 2.2, volatilityPct: 4.34, dailyRiskPct: 0.12 },
+  }, 'the local cache must retain only bounded provider cache provenance');
+  assert.doesNotMatch(pricingCacheRaw, /must-not-persist|arbitrary provider explanation|private-cache-key|987654|999999|private-hash|requestId|recentSales|verifiedAsks|rawEvidence|verificationReason|trendProjection|compSetHash/,
     'device pricing cache must exclude raw provider evidence, review-only values, held-out projections, and request details');
   assert.doesNotMatch(pricingCacheRaw, /accessToken|Bearer|ghp_|checklist\|v2|checks|extras|ordered|legacyChecks|gist|diagnostics|watch/i,
     'device pricing cache must exclude credentials, collection/Gist state, diagnostics, and watches');
@@ -417,11 +433,15 @@ const product = {
   assert.strictEqual(reloadedPrice.cachedOnDevice, true);
   assert.strictEqual(reloadedPrice.valuation.product.productId, product.productId);
   assert.strictEqual(reloadedPrice.valuation.market.value, 123);
+  assert.strictEqual(reloadedPrice.valuation.cache.mode, 'market-cache');
+  assert.strictEqual(reloadedPrice.valuation.cache.marketRefreshedAt, cachedMarketAt);
   assert.strictEqual(reloadedPrice.valuation.lowestAsk.landedPrice, 119);
   assert.strictEqual(vm.runInContext('pricingCanWatch(pricingStates.get(cacheProduct.productId),cacheProduct)', cacheReader.context), false,
     'a locally reloaded price must not enable privileged extension watches until a live exact response succeeds in this page session');
   const cachedCardText = nodeText(vm.runInContext("renderPricingList([{label:'Cached product',ref:cacheProduct}])", cacheReader.context));
   assert.ok(cachedCardText.includes('Saved live refresh:'), 'reloaded values must be labeled as saved device-local observations');
+  assert.ok(cachedCardText.includes('Market source: Market reused within adaptive band') && cachedCardText.includes('Market refreshed:'),
+    'reloaded pricing must explain its bounded provider cache mode and separate Market timestamp');
   assert.ok(cachedCardText.includes('Live value: $123.00') && cachedCardText.includes('Buy Now low: $119.00'),
     'Market and Buy Now values must survive a full page-context reload');
   const cachedHeader = JSON.parse(JSON.stringify(vm.runInContext("pricingItemMarketSummary({pricingProducts:[{label:'Cached product',ref:cacheProduct}]})", cacheReader.context)));
@@ -545,6 +565,21 @@ const product = {
   const consensusFreshness = JSON.parse(JSON.stringify(vm.runInContext('pricingFreshness(consensusMarket,freshnessNow)', bridge.context)));
   assert.deepStrictEqual({ state: consensusFreshness.state, monthlyRiskPct: consensusFreshness.monthlyRiskPct, basis: consensusFreshness.basis },
     { state: 'fresh', monthlyRiskPct: 6, basis: 'Stable venue consensus' });
+  bridge.context.providerCachedMarket = Object.assign({}, bridge.context.stableTrend, {
+    observedAt: '2026-08-29T11:59:00.000Z',
+    market: Object.assign({}, bridge.context.stableTrend.market, { observedAt: '2026-06-29T12:00:00.000Z', monthlyTrendPct: 5 }),
+    cache: { mode: 'market-cache', marketRefreshedAt: '2026-06-29T12:00:00.000Z', marketAnalysisMode: 'reused-within-band' },
+  });
+  const providerCachedFreshness = JSON.parse(JSON.stringify(vm.runInContext('pricingFreshness(providerCachedMarket,freshnessNow)', bridge.context)));
+  assert.strictEqual(providerCachedFreshness.state, 'stale',
+    'a new listing observation must not make an older provider-cached sale-derived Market look fresh');
+  assert.strictEqual(providerCachedFreshness.observedAt, '2026-06-29T12:00:00.000Z');
+  assert.deepStrictEqual(['cold', 'incremental-analysis', 'market-cache', 'stale-fallback'].map(mode =>
+    vm.runInContext(`pricingCacheProvider({mode:${JSON.stringify(mode)}}).mode`, bridge.context)),
+    ['cold', 'incremental-analysis', 'market-cache', 'stale-fallback'],
+    'all documented Pricing Analyzer cache modes must survive the bounded dashboard sanitizer');
+  assert.strictEqual(vm.runInContext("pricingCacheProvider({mode:'unknown-provider-mode'})", bridge.context), null,
+    'unknown cache modes must fail closed instead of entering device state or UI');
   bridge.context.medianMarket = Object.assign({}, bridge.context.stableTrend, {
     observedAt: '2026-07-29T12:00:00.000Z',
     market: { value: 123, method: 'median-recent-sales', sampleSize: 8, confidence: 'high' },
@@ -869,7 +904,9 @@ const product = {
   assert.match(html, /Refreshing verified sales and live asks…/);
   assert.match(html, /Live sources refreshed/);
   assert.match(html, /Cached observation/);
-  assert.match(html, /cached verified history only supplements the result/);
+  assert.match(html, /sale discovery and Market analysis reuse the durable ProductRef cache until their adaptive schedules are due/);
+  assert.match(vm.runInContext('browserPricingRequest.toString()', browserRest.context), /userInitiated:true/,
+    'the only browser-comps control is an explicit user action at the dashboard boundary');
   assert.match(html, /Check source health/);
   assert.match(html, /tcg\.pricing-diagnostics\/v1/);
   assert.match(html, /Run full browser comps/);

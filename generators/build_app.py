@@ -1536,6 +1536,7 @@ const DASHBOARD_PRICING_CACHE_KEY='tcgDashboardPricingCache_v1';
 const DASHBOARD_PRICING_CACHE_SCHEMA='tcg.dashboard-pricing-cache/v1';
 const DASHBOARD_PRICING_CACHE_MAX_PRODUCTS=1200;
 const DASHBOARD_PRICING_CACHE_MAX_AGE_MS=2*365*24*60*60*1000;
+const PRICING_PROVIDER_CACHE_MODES=['cold','incremental-analysis','market-cache','stale-fallback'];
 const DASHBOARD_PRICING_DEFAULT_URL='https://gogo.tail903ec0.ts.net';
 const PRICING_READINESS_SCHEMA='tcg.pricing-rest-readiness/v1';
 const BROWSER_PRICE_ROUTE='/v1/browser-price';
@@ -1658,7 +1659,7 @@ async function runPricingSettingsTest(saveFirst){
         :result.browserAgentAvailable===false
           ?' Full browser comps agent is offline'+(result.browserAgentLastSeenAt?' (last seen '+pricingTime(result.browserAgentLastSeenAt)+').':'.')
           :' Full browser comps agent status was not reported.';
-    dashboardPricingReadiness={status:'ready',message:'Connected to TCG Comps '+result.providerVersion+'. Each refresh actively checks current sources; cached verified history only supplements the result.'+browserCopy,
+    dashboardPricingReadiness={status:'ready',message:'Connected to TCG Comps '+result.providerVersion+'. Live listings refresh separately; sale discovery and Market analysis reuse the durable ProductRef cache until their adaptive schedules are due.'+browserCopy,
       browserAgentAvailable:result.browserAgentAvailable,browserAgentLastSeenAt:result.browserAgentLastSeenAt,browserPriceRoute:result.browserPriceRoute};
     status.textContent=dashboardPricingReadiness.message;
     if(saveFirst){restorePricingCacheStates();paintPricingBatch();updateAll();toast(dashboardPricing.remembered?'Pricing API connected and remembered on this device':'Pricing API connected for this session');}
@@ -1735,10 +1736,14 @@ function pricingCachePercent(value){
 function pricingCacheTime(value){
   const parsed=Date.parse(value||'');return Number.isFinite(parsed)?new Date(parsed).toISOString():null;
 }
+function pricingCacheDuration(value,max=DASHBOARD_PRICING_CACHE_MAX_AGE_MS){
+  const number=Number(value);return Number.isFinite(number)&&number>=0&&number<=max?number:null;
+}
 function pricingCacheMarket(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
   const value=pricingCacheMoney(raw.value);if(value===null)return null;
   const market={value};
+  const observedAt=pricingCacheTime(raw.observedAt);if(observedAt)market.observedAt=observedAt;
   if(['low','medium','high'].includes(raw.confidence))market.confidence=raw.confidence;
   if(['venue-balanced-median','theil-sen-recent-sales','median-recent-sales'].includes(raw.method))market.method=raw.method;
   const sampleSize=pricingCacheCount(raw.sampleSize,200);if(sampleSize!==null)market.sampleSize=sampleSize;
@@ -1755,6 +1760,28 @@ function pricingCacheMarket(raw){
     if(Object.keys(stability).length)market.stability=stability;
   }
   return market;
+}
+function pricingCacheProvider(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)||!PRICING_PROVIDER_CACHE_MODES.includes(raw.mode))return null;
+  const safe={mode:raw.mode};
+  if(typeof raw.hit==='boolean')safe.hit=raw.hit;
+  for(const name of ['savedAt','marketRefreshedAt','salesLastCheckedAt']){
+    const value=pricingCacheTime(raw[name]);if(value)safe[name]=value;
+  }
+  const ageMs=pricingCacheDuration(raw.ageMs);if(ageMs!==null)safe.ageMs=ageMs;
+  for(const name of ['salesDiscoveryDue','marketAnalysisDue'])if(typeof raw[name]==='boolean')safe[name]=raw[name];
+  if(['new-exact-sale','adaptive-due','reused-within-band'].includes(raw.marketAnalysisMode))safe.marketAnalysisMode=raw.marketAnalysisMode;
+  if(['daily-incremental-live','failed-retained-history','already-checked-today'].includes(raw.salesDiscoveryMode))safe.salesDiscoveryMode=raw.salesDiscoveryMode;
+  const schedule=raw.marketAnalysis;
+  if(schedule&&typeof schedule==='object'&&!Array.isArray(schedule)&&schedule.schema==='tcg.adaptive-market-schedule/v1'){
+    const accepted={schema:'tcg.adaptive-market-schedule/v1'};
+    for(const name of ['computedAt','reanalysisDueAt']){const value=pricingCacheTime(schedule[name]);if(value)accepted[name]=value;}
+    for(const name of ['changeBandPct','trendMonthlyPct','volatilityPct','dailyRiskPct']){
+      const value=pricingCachePercent(schedule[name]);if(value!==null&&value>=0)accepted[name]=value;
+    }
+    safe.marketAnalysis=accepted;
+  }
+  return safe;
 }
 function pricingCacheAsk(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
@@ -1784,7 +1811,7 @@ function sanitizePricingCacheEntry(product,raw){
   const safe={apiVersion:1,schema:'tcg.valuation/v1',product:product,observedAt,market:market,lowestAsk:lowestAsk,
     marketPending:valuation.marketPending===true};
   const auction=pricingCacheAuction(valuation.lowestAuction);if(auction)safe.lowestAuction=auction;
-  if(valuation.cache&&valuation.cache.mode==='stale-fallback')safe.cache={mode:'stale-fallback'};
+  const providerCache=pricingCacheProvider(valuation.cache);if(providerCache)safe.cache=providerCache;
   if(valuation.sources&&valuation.sources.tcgplayer&&valuation.sources.tcgplayer.catalogReferenceMarket)
     safe.sources={tcgplayer:{catalogReferenceMarket:{available:true}}};
   const engineVersion=typeof raw.engineVersion==='string'?raw.engineVersion.slice(0,40):
@@ -1870,7 +1897,7 @@ function browserPricingRequest(product){
   try{
     const client=TCGPricingRestClient.createClient({baseUrl:dashboardPricing.baseUrl,accessToken:dashboardPricing.accessToken,timeoutMs:PRICING_TIMEOUT_MS});
     if(!client||typeof client.priceViaBrowser!=='function')return Promise.reject(pricingError('BROWSER_ROUTE_UNAVAILABLE','This dashboard build cannot run full browser comps.'));
-    return client.priceViaBrowser(product,{includeActive:true,includePackOut:true,requestId,browserTimeoutMs:5*60*1000,pollIntervalMs:1000});
+    return client.priceViaBrowser(product,{includeActive:true,includePackOut:true,userInitiated:true,requestId,browserTimeoutMs:5*60*1000,pollIntervalMs:1000});
   }catch(error){return Promise.reject(error);}
 }
 window.addEventListener('message',(event)=>{
@@ -2352,13 +2379,25 @@ function pricingHorizonText(hours){
   const days=hours/24;if(days<365)return Math.round(days)+'d';
   return (days/365).toFixed(1)+'y';
 }
+function pricingProviderCacheLabel(valuation){
+  const cache=valuation&&valuation.cache;
+  if(!cache||typeof cache!=='object'||Array.isArray(cache))return '';
+  const labels={
+    cold:'New exact-product analysis',
+    'incremental-analysis':'Incremental Market analysis',
+    'market-cache':'Market reused within adaptive band',
+    'stale-fallback':'Cached fallback — review only'
+  };
+  return labels[cache.mode]||'';
+}
 /* Display-only freshness policy. It consumes only allowlisted, bounded Market
    evidence and never changes the provider's value, watches, deals, alerts,
    monitoring preferences, ProductRefs, or persisted collection/Gist state. */
 function pricingFreshness(valuation,nowMs){
   const market=valuation&&valuation.market&&typeof valuation.market==='object'&&!Array.isArray(valuation.market)?valuation.market:null,
     stability=market&&market.stability&&typeof market.stability==='object'&&!Array.isArray(market.stability)?market.stability:null,
-    observed=Date.parse(valuation&&valuation.observedAt||''),now=Number.isFinite(Number(nowMs))?Number(nowMs):Date.now(),
+    observedAt=market&&market.observedAt||valuation&&valuation.cache&&valuation.cache.marketRefreshedAt||valuation&&valuation.observedAt||'',
+    observed=Date.parse(observedAt),now=Number.isFinite(Number(nowMs))?Number(nowMs):Date.now(),
     ageMs=Number.isFinite(observed)?Math.max(0,now-observed):Infinity,
     sample=market&&Number.isInteger(Number(market.sampleSize))&&Number(market.sampleSize)>=0&&Number(market.sampleSize)<=200?Number(market.sampleSize):null,
     confidence=market&&['low','medium','high'].includes(market.confidence)?market.confidence:null,
@@ -2385,7 +2424,7 @@ function pricingFreshness(valuation,nowMs){
     trendHeldOut=stability&&stability.trendUsed===false&&trendDelta!==null?
       'Trend held out by stability checks · '+trendDelta.toFixed(trendDelta%1?1:0)+'% difference.':'';
   const driftText=Number.isFinite(estimatedDriftPct)?estimatedDriftPct.toFixed(estimatedDriftPct<10?1:0)+'%':'Unavailable';
-  return {state,label,ageMs,ageText,basis,sampleSize:sample,sampleText,profile,trendHeldOut,monthlyRiskPct,estimatedDriftPct,driftText,
+  return {state,label,observedAt:Number.isFinite(observed)?new Date(observed).toISOString():null,ageMs,ageText,basis,sampleSize:sample,sampleText,profile,trendHeldOut,monthlyRiskPct,estimatedDriftPct,driftText,
     greenHours,redHours,targetHours,targetText:pricingHorizonText(targetHours),greenText:pricingHorizonText(greenHours),redText:pricingHorizonText(redHours),
     title:label+' · '+ageText+' · estimated drift ±'+driftText+' · green below 5% · red at 8%'+(sampleText?' · '+sampleText:'')};
 }
@@ -2537,7 +2576,7 @@ function paintPricingBatch(){
   const status=document.getElementById('pricingMenuStatus');if(!status)return;
   if(pricingBatch.running)status.textContent=pricingBatch.label+' · '+pricingBatch.done+'/'+pricingBatch.total+' prices';
   else if(!pricingAvailable())status.textContent='Add a Pricing REST key in Settings or use the paired tracker extension.';
-  else status.textContent=(pricingTransport()==='rest'?'Pricing REST':'Paired extension')+' · each refresh actively checks current sources; cached verified history only supplements the result.';
+  else status.textContent=(pricingTransport()==='rest'?'Pricing REST':'Paired extension')+' · live listings refresh separately; sales and Market reuse their ProductRef cache until due.';
 }
 function startPricingRefresh(mode,item){
   if(!pricingAvailable()){toast('Add a Pricing REST key in Pricing API settings');openPricingSettings();return Promise.resolve(false);}
@@ -2696,6 +2735,8 @@ function renderPricingList(products){
       if(hasMarket){appendFact(facts,'Live value',pricingMoney(valuation.market.value));appendFact(facts,'Confidence',String(valuation.market.confidence||'unavailable'));
         if(freshness.basis)appendFact(facts,'Market basis',freshness.basis);
         if(freshness.sampleText)appendFact(facts,'Evidence',freshness.sampleText);
+        const providerCacheLabel=pricingProviderCacheLabel(valuation);if(providerCacheLabel)appendFact(facts,'Market source',providerCacheLabel);
+        if(freshness.observedAt)appendFact(facts,'Market refreshed',pricingTime(freshness.observedAt));
         appendFact(facts,'Freshness',freshness.label+' · ±'+freshness.driftText+' estimated drift');
         appendFact(facts,'4% horizon',freshness.targetText+' after refresh');
         appendFact(facts,'Drift signal',freshness.monthlyRiskPct.toFixed(freshness.monthlyRiskPct%1?1:0)+'% / month');
@@ -3220,6 +3261,8 @@ async function ghPull(firstConnect){if(!gh.token)return;
       let c=f.content; if(f.truncated&&f.raw_url)c=await (await fetch(f.raw_url)).text();
       const b=JSON.parse(c),m=migrateChecks(b.checks||{});Object.assign(merged,m.checks);
       Object.assign(mergedExtras,b.extras||{});
+      const missingCollectionDefaults=!Object.prototype.hasOwnProperty.call(b,'wrapperArts')||
+        !Object.prototype.hasOwnProperty.call(b,'orderedWrapperArts');
       const hasOrdered=Object.prototype.hasOwnProperty.call(b,'ordered'),pulledOrdered=normalizeOrdered(b.ordered);
       if(hasOrdered){sawOrdered.add(cl);Object.assign(remoteOrdered,pulledOrdered);}
       Object.assign(legacy,b.legacyChecksV1||{},m.legacy,m.unknown);
@@ -3236,9 +3279,10 @@ async function ghPull(firstConnect){if(!gh.token)return;
       if(b.definition){const definition=normalizeCollectionDefinition(b.definition);
         if(definition&&definition.collectionId===cl&&definition.lifecycle==='live')remoteDefinitions.push(definition);
         else state.collectionLibrary.recovery.push({reason:'invalid-gist-definition',preservedAt:new Date().toISOString(),definition:jsonClone(b.definition)});}
-      gh.snap[cl]=monitorGistSnapshot(cl,b.checks||{},b.extras||{},candidate?{
+      const pulledSnapshot=monitorGistSnapshot(cl,b.checks||{},b.extras||{},candidate?{
         monitorPreferences:candidate.preferences,monitorPreferencesUpdatedAt:candidate.updatedAt}:null,pulledWrapperArts,
         pulledOrdered,pulledOrderedWrapperArts,b.definition||null);
+      if(missingCollectionDefaults){delete gh.snap[cl];ghDirty=true;}else gh.snap[cl]=pulledSnapshot;
       if(m.migrated||Object.keys(m.unknown).length)ghDirty=true;}catch(e){}}));
   let changed=false;
   for(const remote of remoteDefinitions){
@@ -3314,14 +3358,19 @@ async function ghPush(unloading){if(!gh.token||gh.busy)return;gh.busy=true;
     for(const[k,v]of Object.entries(state.legacyChecksV1||{})){if(!v)continue;
       const cl=k.split("|")[0];if(syncableChecklist(cl))(legacyGroups[cl]=legacyGroups[cl]||{})[k]=v;}
     const localWrapperArts=normalizeWrapperArts(state.wrapperArts),localOrderedWrapperArts=normalizeWrapperArts(state.orderedWrapperArts);
-    const clIds=new Set([...Object.keys(gh.ids).filter(syncableChecklist),...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(orderedGroups),...Object.keys(legacyGroups),...liveDefinitions.keys()]);
+    // Every built-in checklist is authoritative even when its current state is
+    // zero.  Omitting empty built-ins left newly introduced lanes undiscoverable
+    // by Collection Authority until their first ownership change.
+    const builtInIds=typeof BUILTIN_CHECKLIST_IDS==='undefined'
+      ?DATA.checklists.map(checklist=>checklist.id):[...BUILTIN_CHECKLIST_IDS];
+    const clIds=new Set([...builtInIds,...Object.keys(gh.ids).filter(syncableChecklist),...Object.keys(groups),...Object.keys(extraGroups),...Object.keys(orderedGroups),...Object.keys(legacyGroups),...liveDefinitions.keys()]);
     if(Object.keys(localWrapperArts).length)clIds.add(WRAPPER_ART_GIST_CHECKLIST);
     if(Object.keys(localOrderedWrapperArts).length)clIds.add(WRAPPER_ART_GIST_CHECKLIST);
     if(state.monitorPreferencesUpdatedAt)clIds.add(MONITOR_GIST_CHECKLIST);
     for(const cl of clIds){const checks=groups[cl]||{},extras=extraGroups[cl]||{},ordered=orderedGroups[cl]||{},legacy=legacyGroups[cl]||{};
       const monitorFields=cl===MONITOR_GIST_CHECKLIST?monitorGistFields():null;
-      const wrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST?localWrapperArts:undefined;
-      const orderedWrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST?localOrderedWrapperArts:undefined;
+      const wrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST?localWrapperArts:{};
+      const orderedWrapperArts=cl===WRAPPER_ART_GIST_CHECKLIST?localOrderedWrapperArts:{};
       const definition=liveDefinitions.get(cl)||null;
       const snap=monitorGistSnapshot(cl,checks,extras,monitorFields,wrapperArts,ordered,orderedWrapperArts,definition);
       if(gh.snap[cl]===snap&&gh.ids[cl])continue;            // unchanged → skip
