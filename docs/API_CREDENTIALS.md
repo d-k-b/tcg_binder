@@ -40,13 +40,18 @@ available. Pricing requests then use `POST /v1/price`; an explicit source-health
 button may use `POST /v1/diagnostics`; **Run full browser comps** may use the separate
 `POST /v1/browser-price` job route only after a direct click. All protected routes remain fail-closed behind
 the dedicated bearer token and strict `https://d-k-b.github.io` CORS policy.
-Each `POST /v1/price` actively refreshes exact product identity, current public
-recent sales, and requested live asks. Retained verified history is merge-only; the
-dashboard never substitutes a catalog reference or stale cache entry for current
-verified Market evidence. The manual browser action requires the installed TCG Comps
-agent, validates exact interactive provenance, and preserves the previous valuation
-on offline, timeout, queue, expiry, analysis, or contract failure. It is never used
-by normal refreshes, batches, watches, monitoring, timers, or automatic retries.
+Each `POST /v1/price` rechecks exact product identity and requested live asks. The
+provider discovers new public recent-sale rows once per UTC day, stores stable sale
+identities in its ProductRef ledger, and reuses Market until the adaptive
+trend/dispersion forecast reaches its change band. The dashboard never substitutes
+a catalog reference for verified Market evidence. Its separate sanitized device
+cache preserves the allowlisted provider mode (`cold`, `incremental-analysis`,
+`market-cache`, or `stale-fallback`) and sale-derived Market timestamp so page reloads
+do not erase provenance or make a reused Market appear newly analyzed. No provider
+cache key, raw sale row, credential, or request body is retained. A browser run requires the
+installed agent **and** an explicit `userInitiated:true` direct click; it preserves
+the extension evidence cache and is rejected before queueing when called by a
+scheduled/background path.
 
 An application that uses more than one API must request each required credential
 in a separately labeled password field, explain its scope, and store it in a

@@ -68,7 +68,12 @@ function fakeFetch(url, options = {}) {
       files: Object.assign({}, gistStore[match[1]].files, body.files) };
     return response({ id: match[1] });
   }
-  if (String(url).endsWith('/gists') && method === 'POST') return response({ id: 'unexpected' });
+  if (String(url).endsWith('/gists') && method === 'POST') {
+    const body = JSON.parse(options.body);
+    const id = 'gist' + (Object.keys(gistStore).length + 1);
+    gistStore[id] = { description: body.description, files: body.files };
+    return response({ id });
+  }
   return response({}, false);
 }
 
@@ -98,6 +103,7 @@ function createContext() {
     DATA: { checklists: [
       { id: 'collector', title: 'MTG Collector Booster Boxes' },
       { id: 'packs', title: 'MTG Booster Packs' },
+      { id: 'lorcana_coll', title: 'Lorcana Collector Boxes' },
     ] },
     document: { getElementById: () => null },
     migrateChecks: checks => ({ checks: checks || {}, legacy: {}, unknown: {}, migrated: 0 }),
@@ -169,6 +175,10 @@ function createContext() {
   assert.strictEqual(payload.extras[collectorExtra], 2, 'preference push must preserve quantities/extras');
   assert.strictEqual(payload.ordered[collectorExtra], 3, 'preference push must preserve ordered quantities');
   assert.strictEqual(payload.legacyChecksV1['collector|0|0|0'], true, 'preference push must preserve legacy recovery data');
+  assert.deepStrictEqual(payload.wrapperArts, {},
+    'every collection Gist must retain the Authority-required wrapperArts default');
+  assert.deepStrictEqual(payload.orderedWrapperArts, {},
+    'every collection Gist must retain the Authority-required orderedWrapperArts default');
   assert.doesNotMatch(JSON.stringify(payload), /fake-test-token|provider|capability|apiToken/i,
     'Gist monitor payload must contain no GitHub or provider credentials');
   const packsPayload = JSON.parse(gistStore.gist2.files['mtg-binder-packs.json'].content);
@@ -178,6 +188,15 @@ function createContext() {
     'packs Gist push must round-trip ordered wrapper quantities');
   assert.doesNotMatch(JSON.stringify(packsPayload), /fake-test-token|provider|capability|apiToken/i,
     'wrapper-art Gist payload must contain no GitHub or provider credentials');
+  const lorcanaCollector = Object.values(gistStore).find(gist => gist.files['mtg-binder-lorcana_coll.json']);
+  assert.ok(lorcanaCollector, 'a built-in zero-state checklist must still publish its canonical Gist lane');
+  const lorcanaCollectorPayload = JSON.parse(lorcanaCollector.files['mtg-binder-lorcana_coll.json'].content);
+  assert.deepStrictEqual(lorcanaCollectorPayload.checks, {});
+  assert.deepStrictEqual(lorcanaCollectorPayload.extras, {});
+  assert.deepStrictEqual(lorcanaCollectorPayload.ordered, {});
+  assert.deepStrictEqual(lorcanaCollectorPayload.legacyChecksV1, {});
+  assert.deepStrictEqual(lorcanaCollectorPayload.wrapperArts, {});
+  assert.deepStrictEqual(lorcanaCollectorPayload.orderedWrapperArts, {});
 
   const second = createContext();
   await vm.runInContext('ghPull(false)', second.context);
@@ -223,12 +242,18 @@ function createContext() {
   draftOnly.state.orderedWrapperArts = {};
   draftOnly.state.monitorPreferencesUpdatedAt = null;
   draftOnly.state.collectionLibrary = { collections: [{ collectionId: draftId, lifecycle: 'draft' }] };
+  const beforeDraftGists = new Set(Object.keys(gistStore));
   calls = [];
   await vm.runInContext('ghPush(false)', draftOnly.context);
-  assert.deepStrictEqual(calls, [],
-    'a local draft definition and all of its owned/extras/ordered quantities must make zero GitHub requests');
+  const draftPassFiles = Object.entries(gistStore).filter(([id]) => !beforeDraftGists.has(id))
+    .flatMap(([, gist]) => Object.keys(gist.files || {})).sort();
+  assert.deepStrictEqual(draftPassFiles, [
+    'mtg-binder-collector.json', 'mtg-binder-lorcana_coll.json', 'mtg-binder-packs.json',
+  ], 'a sync may materialize built-in zero-state lanes but must not publish a local draft');
+  assert.ok(!Object.values(gistStore).some(gist => gist.files[`mtg-binder-${draftId}.json`]),
+    'a local draft definition and all of its owned/extras/ordered quantities must remain outside GitHub');
 
-  console.log('dashboard Gist tests: monitor preferences, owned/ordered product and wrapper round-trips, legacy preservation, and zero-request local-draft isolation passing');
+  console.log('dashboard Gist tests: monitor preferences, owned/ordered product and wrapper round-trips, zero-state built-in publication, legacy preservation, and local-draft isolation passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);
