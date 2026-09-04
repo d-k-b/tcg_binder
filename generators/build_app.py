@@ -481,6 +481,22 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .monitor-sources label{display:flex;align-items:center;gap:7px;font-size:12px}
 .monitor-status{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 11px}
 .monitor-status b{display:block;font-size:12px;margin-bottom:3px}.monitor-status span{font-size:11px;color:var(--muted);line-height:1.45}
+.monitor-source-health{display:grid;gap:8px;margin-top:10px}
+.monitor-source-health[hidden]{display:none}
+.monitor-source-title{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:750;color:var(--muted)}
+.monitor-source-title time{font-size:9.5px;font-weight:500;text-align:right}
+.monitor-source-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.monitor-source-card{min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px;background:var(--card);display:grid;gap:4px}
+.monitor-source-head{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+.monitor-source-name{font-size:11px;font-weight:750;min-width:0;overflow-wrap:anywhere}
+.monitor-source-badge{flex:none;border-radius:999px;padding:2px 6px;font-size:8.5px;font-weight:800;letter-spacing:.15px}
+.monitor-source-badge.fresh{background:rgba(39,134,95,.14);color:var(--good)}
+.monitor-source-badge.verified-empty{background:rgba(72,118,185,.13);color:#356ca8}
+.monitor-source-badge.stale{background:rgba(193,132,28,.15);color:var(--gold)}
+.monitor-source-badge.unavailable{background:rgba(224,92,92,.14);color:#c94d4d}
+.monitor-source-meta,.monitor-source-cache,.monitor-source-blocker{font-size:9.5px;line-height:1.35;color:var(--muted);overflow-wrap:anywhere}
+.monitor-source-blocker{color:#b34a4a}.monitor-source-card.stale .monitor-source-meta{color:var(--gold)}
+@media(max-width:520px){.monitor-source-list{grid-template-columns:1fr}.monitor-source-title{align-items:flex-start}.monitor-source-title time{max-width:48%}}
 .identify-modal{max-width:620px;max-height:calc(100vh - 36px);overflow:auto}
 .identify-layout{display:grid;grid-template-columns:170px minmax(0,1fr);gap:14px;margin-top:14px;align-items:start}
 .identify-preview{width:170px;aspect-ratio:3/4;object-fit:contain;border:1px solid var(--line);border-radius:11px;background:#fff}
@@ -792,7 +808,12 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
        <div class="monitor-field"><label for="monitorDigestTime">Digest time</label><input id="monitorDigestTime" type="time"></div>
        <div class="monitor-field"><label for="monitorTimezone">Timezone</label><select id="monitorTimezone"><option value="America/Chicago">America/Chicago</option></select></div>
      </div>
-     <div class="monitor-status"><b id="monitorStatusTitle">Monitor status</b><span id="monitorStatusText">Open in the paired Tracker extension to synchronize monitoring.</span></div>
+     <div class="monitor-status"><b id="monitorStatusTitle">Monitor status</b><span id="monitorStatusText">Open in the paired Tracker extension to synchronize monitoring.</span>
+       <section class="monitor-source-health" id="monitorSourceHealth" aria-label="Marketplace source health" hidden>
+         <div class="monitor-source-title"><span>Marketplace source health</span><time id="monitorSourceObservedAt"></time></div>
+         <div class="monitor-source-list" id="monitorSourceList"></div>
+       </section>
+     </div>
    </div>
    <div class="actions"><button class="pbtn g" id="monitorSave">Save preferences</button><button class="pbtn ghost" id="monitorClose">Close</button></div>
  </div>
@@ -1550,6 +1571,12 @@ const MONITOR_CHANNEL='tcg-collection-monitor/v1';
 const MONITOR_SUBSCRIPTION_SCHEMA='tcg.collection-monitor-subscription/v1';
 const MONITOR_STATUS_SCHEMA='tcg.collection-monitor-sync-status/v1';
 const MONITOR_STATUS_ACK_SCHEMA='tcg.collection-monitor-sync-status-ack/v1';
+const MONITOR_SOURCE_HEALTH_SCHEMA='tcg.collection-monitor-source-health/v1';
+const MONITOR_HEALTH_SOURCE_ORDER=['ebay','tcgplayer','heritage','fanatics','hakes','goldin','pristine','hibid','store'];
+const MONITOR_HEALTH_SOURCE_LABELS={ebay:'eBay',tcgplayer:'TCGplayer',heritage:'Heritage',fanatics:'Fanatics Collect',
+  hakes:"Hake's",goldin:'Goldin',pristine:'Pristine Auction',hibid:'HiBid Texas',store:'Supported stores'};
+const MONITOR_HEALTH_STATES=['fresh','verified-empty','stale','unavailable'];
+const MONITOR_CANDIDATE_ORIGINS=['current-capture','retained-last-success'];
 const pricingConsumerOrigin=(()=>{
   try{
     const candidate=new URLSearchParams(location.search).get(PRICING_QUERY)||'';
@@ -2218,7 +2245,53 @@ function scheduleMonitorStateChanged(){
 }
 let monitorSyncStatus={schema:MONITOR_STATUS_SCHEMA,state:pricingConsumerOrigin?'idle':'unavailable',revision:null,
   productCount:null,activeTargetCount:null,monitorConfigured:null,syncedAt:null,
-  message:pricingConsumerOrigin?'Waiting for the Tracker extension to synchronize.':'Open in the paired Tracker extension to synchronize monitoring.',errorCode:null};
+  message:pricingConsumerOrigin?'Waiting for the Tracker extension to synchronize.':'Open in the paired Tracker extension to synchronize monitoring.',errorCode:null,sourceStatus:null};
+function monitorHealthIso(value){
+  if(value==null)return null;
+  if(typeof value!=='string'||Number.isNaN(Date.parse(value)))return undefined;
+  return new Date(value).toISOString();
+}
+function monitorHealthCount(value){return Number.isInteger(value)&&value>=0&&value<=1000000000?value:null;}
+function sanitizeMonitorSourceHealth(value){
+  if(value==null)return null;
+  if(!value||typeof value!=='object'||Array.isArray(value)||value.schema!==MONITOR_SOURCE_HEALTH_SCHEMA||
+      typeof value.observedAt!=='string'||Number.isNaN(Date.parse(value.observedAt))||!Array.isArray(value.sources)||
+      !value.sources.length||value.sources.length>MONITOR_HEALTH_SOURCE_ORDER.length||
+      Object.keys(value).some(key=>!['schema','observedAt','sources'].includes(key)))return null;
+  const seen=new Set(),sources=[];
+  for(const raw of value.sources){
+    if(!raw||typeof raw!=='object'||Array.isArray(raw)||
+        Object.keys(raw).some(key=>!['source','state','checkedAt','observedAt','lastSuccessAt','candidateCount','retainedCandidateCount','cache','actionable','candidateOrigin','blocker','ageMs'].includes(key))||
+        !MONITOR_HEALTH_SOURCE_ORDER.includes(raw.source)||seen.has(raw.source)||!MONITOR_HEALTH_STATES.includes(raw.state))return null;
+    seen.add(raw.source);
+    const checkedAt=monitorHealthIso(raw.checkedAt),observedAt=monitorHealthIso(raw.observedAt),lastSuccessAt=monitorHealthIso(raw.lastSuccessAt);
+    if(checkedAt===undefined||observedAt===undefined||lastSuccessAt===undefined)return null;
+    const candidateCount=monitorHealthCount(raw.candidateCount),retainedCandidateCount=monitorHealthCount(raw.retainedCandidateCount);
+    if(candidateCount===null||retainedCandidateCount===null||typeof raw.actionable!=='boolean'||
+        (raw.candidateOrigin!=null&&!MONITOR_CANDIDATE_ORIGINS.includes(raw.candidateOrigin))||
+        !raw.cache||typeof raw.cache!=='object'||Array.isArray(raw.cache)||
+        Object.keys(raw.cache).some(key=>!['hit','new','changed','aiSkipped'].includes(key)))return null;
+    const cache={hit:monitorHealthCount(raw.cache.hit),new:monitorHealthCount(raw.cache.new),
+      changed:monitorHealthCount(raw.cache.changed),aiSkipped:monitorHealthCount(raw.cache.aiSkipped)};
+    if(Object.values(cache).some(count=>count===null)||
+        (['stale','unavailable','verified-empty'].includes(raw.state)&&raw.actionable!==false)||
+        (raw.state==='verified-empty'&&candidateCount!==0)||(raw.state==='fresh'&&candidateCount===0))return null;
+    let blocker=null;
+    if(raw.blocker!=null){
+      if(!raw.blocker||typeof raw.blocker!=='object'||Array.isArray(raw.blocker)||
+          Object.keys(raw.blocker).some(key=>!['code','message'].includes(key))||
+          typeof raw.blocker.code!=='string'||!/^[A-Z][A-Z0-9_]{0,79}$/.test(raw.blocker.code)||
+          typeof raw.blocker.message!=='string'||!raw.blocker.message.trim()||raw.blocker.message.length>300)return null;
+      blocker={code:raw.blocker.code,message:raw.blocker.message.trim()};
+    }
+    const ageMs=raw.ageMs==null?null:Number(raw.ageMs);
+    if(ageMs!==null&&(!Number.isFinite(ageMs)||ageMs<0||ageMs>315576000000))return null;
+    sources.push({source:raw.source,state:raw.state,checkedAt,observedAt,lastSuccessAt,candidateCount,retainedCandidateCount,
+      cache,actionable:raw.actionable,candidateOrigin:raw.candidateOrigin||null,blocker,ageMs});
+  }
+  sources.sort((left,right)=>MONITOR_HEALTH_SOURCE_ORDER.indexOf(left.source)-MONITOR_HEALTH_SOURCE_ORDER.indexOf(right.source));
+  return {schema:MONITOR_SOURCE_HEALTH_SCHEMA,observedAt:new Date(value.observedAt).toISOString(),sources};
+}
 function sanitizeMonitorSyncStatus(value){
   const states=new Set(['idle','syncing','synced','error','unavailable']);
   if(!value||typeof value!=='object'||Array.isArray(value)||value.schema!==MONITOR_STATUS_SCHEMA||!states.has(value.state))return null;
@@ -2236,7 +2309,46 @@ function sanitizeMonitorSyncStatus(value){
   if(value.syncedAt!=null){if(typeof value.syncedAt!=='string'||Number.isNaN(Date.parse(value.syncedAt)))return null;
     syncedAt=new Date(value.syncedAt).toISOString();}
   return {schema:MONITOR_STATUS_SCHEMA,state:value.state,revision,productCount,activeTargetCount,
-    monitorConfigured:value.monitorConfigured==null?null:value.monitorConfigured,syncedAt,message,errorCode};
+    monitorConfigured:value.monitorConfigured==null?null:value.monitorConfigured,syncedAt,message,errorCode,
+    sourceStatus:sanitizeMonitorSourceHealth(value.sourceStatus)};
+}
+function monitorHealthTimestamp(source){
+  const value=source.checkedAt||source.observedAt||source.lastSuccessAt;
+  return value?'Checked '+new Date(value).toLocaleString():'No successful check timestamp';
+}
+function renderMonitorSourceHealth(sourceStatus){
+  const list=document.createElement('div');list.className='monitor-source-list';
+  const badgeLabels={fresh:'Fresh','verified-empty':'Verified empty',stale:'Stale',unavailable:'Unavailable'};
+  (sourceStatus&&sourceStatus.sources||[]).forEach(source=>{
+    const card=document.createElement('article');card.className='monitor-source-card '+source.state;
+    const head=document.createElement('div');head.className='monitor-source-head';
+    const name=document.createElement('span');name.className='monitor-source-name';name.textContent=MONITOR_HEALTH_SOURCE_LABELS[source.source]||source.source;
+    const badge=document.createElement('span');badge.className='monitor-source-badge '+source.state;badge.textContent=badgeLabels[source.state];
+    head.appendChild(name);head.appendChild(badge);card.appendChild(head);
+    const meta=document.createElement('div');meta.className='monitor-source-meta';
+    if(source.state==='fresh')meta.textContent=source.candidateCount+' current candidate'+(source.candidateCount===1?'':'s')+
+      (source.actionable?'':' · monitoring actions disabled');
+    else if(source.state==='verified-empty')meta.textContent='Current check completed · no candidates';
+    else if(source.state==='stale')meta.textContent=source.retainedCandidateCount+' retained candidate'+(source.retainedCandidateCount===1?'':'s')+' · not active';
+    else meta.textContent='Source check unavailable'+(source.retainedCandidateCount?' · '+source.retainedCandidateCount+' retained, not active':'');
+    card.appendChild(meta);
+    const stamp=document.createElement('div');stamp.className='monitor-source-meta';stamp.textContent=monitorHealthTimestamp(source);card.appendChild(stamp);
+    const cache=document.createElement('div');cache.className='monitor-source-cache';
+    cache.textContent='Cache '+source.cache.hit+' hit · '+source.cache.new+' new · '+source.cache.changed+' changed · '+source.cache.aiSkipped+' AI skipped';
+    card.appendChild(cache);
+    if(source.blocker){const blocker=document.createElement('div');blocker.className='monitor-source-blocker';blocker.textContent=source.blocker.message;card.appendChild(blocker);}
+    list.appendChild(card);
+  });
+  return list;
+}
+function paintMonitorSourceHealth(sourceStatus){
+  if(typeof document==='undefined')return;
+  const host=document.getElementById('monitorSourceHealth'),list=document.getElementById('monitorSourceList'),observed=document.getElementById('monitorSourceObservedAt');
+  if(!host||!list||!observed)return;
+  const available=!!(sourceStatus&&sourceStatus.sources&&sourceStatus.sources.length);
+  host.hidden=!available;if(!available){list.replaceChildren();observed.textContent='';return;}
+  observed.textContent='Status '+new Date(sourceStatus.observedAt).toLocaleString();
+  list.replaceChildren(...renderMonitorSourceHealth(sourceStatus).childNodes);
 }
 function paintMonitorSyncStatus(){
   if(typeof document==='undefined')return;
@@ -2250,6 +2362,7 @@ function paintMonitorSyncStatus(){
   if(monitorSyncStatus.activeTargetCount!==null)parts.push(monitorSyncStatus.activeTargetCount+' active targets');
   if(monitorSyncStatus.syncedAt)parts.push('Last sync '+new Date(monitorSyncStatus.syncedAt).toLocaleString());
   text.textContent=parts.join(' · ')||'No synchronization status has been supplied yet.';
+  paintMonitorSourceHealth(monitorSyncStatus.sourceStatus);
 }
 function postCollectionSnapshot(requestId){
   let result=null,error=null;
