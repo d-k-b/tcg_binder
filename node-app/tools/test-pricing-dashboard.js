@@ -342,6 +342,56 @@ const product = {
   assert.strictEqual(vm.runInContext('monitorSyncStatus.activeTargetCount', snapshotBridge.context), 321);
   assert.strictEqual(snapshotBridge.ownership.persistWrites, 0, 'painting monitor status must never persist dashboard state');
 
+  const sourceHealth = {
+    schema: 'tcg.collection-monitor-source-health/v1', observedAt: '2026-09-04T15:00:00.000Z', sources: [
+      { source: 'heritage', state: 'stale', checkedAt: '2026-09-04T14:55:00.000Z', observedAt: '2026-09-01T12:00:00.000Z', lastSuccessAt: '2026-09-01T12:00:00.000Z',
+        candidateCount: 0, retainedCandidateCount: 7, cache: { hit: 7, new: 0, changed: 0, aiSkipped: 7 }, actionable: false,
+        candidateOrigin: 'retained-last-success', blocker: { code: 'CAPTURE_STALE', message: 'Latest reviewed catalog capture is stale.' }, ageMs: 270000000 },
+      { source: 'ebay', state: 'fresh', checkedAt: '2026-09-04T14:59:00.000Z', observedAt: '2026-09-04T14:59:00.000Z', lastSuccessAt: '2026-09-04T14:59:00.000Z',
+        candidateCount: 3, retainedCandidateCount: 0, cache: { hit: 2, new: 1, changed: 0, aiSkipped: 2 }, actionable: true,
+        candidateOrigin: 'current-capture', blocker: null, ageMs: 60000 },
+      { source: 'hakes', state: 'unavailable', checkedAt: '2026-09-04T14:58:00.000Z', observedAt: null, lastSuccessAt: null,
+        candidateCount: 0, retainedCandidateCount: 0, cache: { hit: 0, new: 0, changed: 0, aiSkipped: 0 }, actionable: false,
+        candidateOrigin: null, blocker: { code: 'SOURCE_UNAVAILABLE', message: 'Source capture is not available.' }, ageMs: null },
+      { source: 'goldin', state: 'verified-empty', checkedAt: '2026-09-04T14:57:00.000Z', observedAt: '2026-09-04T14:57:00.000Z', lastSuccessAt: '2026-09-04T14:57:00.000Z',
+        candidateCount: 0, retainedCandidateCount: 0, cache: { hit: 0, new: 0, changed: 0, aiSkipped: 0 }, actionable: false,
+        candidateOrigin: 'current-capture', blocker: null, ageMs: 180000 },
+    ],
+  };
+  const sourceStatusRequest = { ...statusRequest, requestId: 'status-sources', status: { ...statusRequest.status, sourceStatus: sourceHealth } };
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: sourceStatusRequest });
+  const projectedSourceStatus = JSON.parse(JSON.stringify(vm.runInContext('monitorSyncStatus.sourceStatus', snapshotBridge.context)));
+  assert.deepStrictEqual(projectedSourceStatus.sources.map(source => source.source), ['ebay', 'heritage', 'hakes', 'goldin'],
+    'source health must render in the fixed allowlisted order rather than provider input order');
+  assert.deepStrictEqual(projectedSourceStatus.sources.map(source => source.state), ['fresh', 'stale', 'unavailable', 'verified-empty']);
+  const sourceHealthText = nodeText(vm.runInContext('renderMonitorSourceHealth(monitorSyncStatus.sourceStatus)', snapshotBridge.context));
+  assert.ok(sourceHealthText.includes('Fresh') && sourceHealthText.includes('Verified empty') && sourceHealthText.includes('Stale') && sourceHealthText.includes('Unavailable'),
+    'the monitor dialog must distinguish every provider-authored source state');
+  assert.ok(sourceHealthText.includes('3 current candidates') && sourceHealthText.includes('Current check completed · no candidates'),
+    'fresh and verified-empty sources must show truthful candidate coverage');
+  assert.ok(sourceHealthText.includes('7 retained candidates · not active') && sourceHealthText.includes('Source check unavailable'),
+    'stale and unavailable retained evidence must never look like normal active listings');
+  assert.ok(sourceHealthText.includes('Cache 2 hit · 1 new · 0 changed · 2 AI skipped'),
+    'source health must show the bounded cache and AI-skip metrics');
+  assert.doesNotMatch(sourceHealthText, /https?:|productRef|authorization|bearer|raw candidate/i,
+    'source-health rendering must remain credential- and listing-free');
+  assert.doesNotMatch(JSON.stringify(snapshotBridge.context.state), /CAPTURE_STALE|sourceHealth|aiSkipped/i,
+    'source health must remain memory-only and outside collection/Gist state');
+
+  const invalidSourceStatus = JSON.parse(JSON.stringify(sourceHealth));
+  invalidSourceStatus.sources[1].state = 'stale';
+  invalidSourceStatus.sources[1].actionable = true;
+  const invalidSourceRequest = { ...statusRequest, requestId: 'status-invalid-sources', status: {
+    ...statusRequest.status, message: 'Core status remains accepted.', sourceStatus: invalidSourceStatus,
+  } };
+  const beforeInvalidSource = snapshotBridge.posted.length;
+  snapshotBridge.listener()({ origin, source: snapshotBridge.parent, data: invalidSourceRequest });
+  assert.strictEqual(snapshotBridge.posted.length, beforeInvalidSource + 1,
+    'invalid additive source health must not prevent the core status acknowledgement');
+  assert.strictEqual(vm.runInContext('monitorSyncStatus.message', snapshotBridge.context), 'Core status remains accepted.');
+  assert.strictEqual(vm.runInContext('monitorSyncStatus.sourceStatus', snapshotBridge.context), null,
+    'a contradictory source entry must fail the additive source-health object closed');
+
   const postedBeforeHint = snapshotBridge.posted.length;
   vm.runInContext('scheduleMonitorStateChanged();scheduleMonitorStateChanged()', snapshotBridge.context);
   await new Promise(resolve => setTimeout(resolve, 425));
@@ -926,7 +976,7 @@ const product = {
   assert.match(html, /data-monitor-source="ebay"/, 'monitoring UI must expose the contract source choices');
   assert.match(html, /@media\(max-width:480px\)[\s\S]*\.monitor-grid\{grid-template-columns:1fr\}/,
     'monitoring preferences must collapse to one column at narrow side-panel widths');
-  console.log('pricing dashboard tests: exact bridges, deterministic 688-product subscription, sanitized reload-safe device cache, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
+  console.log('pricing dashboard tests: exact bridges, deterministic 688-product subscription, fail-closed monitor source health, sanitized reload-safe device cache, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);
