@@ -141,3 +141,77 @@ host is a later deployment step.
 The service and these helpers never bid, buy, send offers, contact sellers, or
 read stored marketplace passwords. Marketplace watch changes remain a separate,
 explicitly authorized action.
+
+## Slow Pricing REST refresh
+
+Use this optional worker when the current monitor scope needs a fresh provider
+Market pass outside its normal cadence. It reads active targets, active listings,
+and review rows from the durable monitor state, deduplicates their canonical
+ProductRefs, then invokes the Provider's documented Python
+`PricingRestClient.price_product()` method one at a time. Each request actively
+refreshes exact identity, recent sales, and live asks. It uses the dedicated
+Pricing REST token from the protected pricing config and never prints it.
+
+Only a fresh, sale-derived method such as `theil-sen-recent-sales`,
+`median-recent-sales`, or the Analyzer's `venue-balanced-median` stable
+cross-venue consensus is stored as `status: market`. A catalog reference,
+`source-market-fallback`, stale fallback, missing observation timestamp, or
+unresolved response is recorded separately as non-actionable evidence and retried
+on the next invocation. It never becomes a ceiling, Buy Now, or alert input.
+When the provider supplies additive `market.stability`, the checkpoint retains
+its safe consensus/dispersion diagnostics for email display. The displayed
+Market and any future ceiling must still use only top-level `market.value`;
+`trendProjection` is diagnostic and is never promoted. When a verified
+recent-sales `monthlyTrendPct` is present, the worker also saves a separately
+labeled **timing advisory** (down, up, or steady). It is a collector-facing
+hint only: current Market remains primary, and the timing advisory cannot
+change a ceiling, deal ratio, alert, or recommendation eligibility.
+
+The normal worker intentionally does **not** call `price_via_browser()`.
+Interactive browser comps are a direct-user-action-only feature for **one
+explicit ProductRef**—never a scheduled or bulk monitor operation. Browser
+mode requires `--mode browser`, `--user-initiated`, and exactly one
+`--product-id`, passes `user_initiated=True` to the packaged client, and accepts
+only `interactive-extension` provenance. Its sidecar checkpoint is separate
+from the monitor-owned `state.json`; no raw response is inserted into a
+collection record or turned into a recommendation.
+
+Inspect the planned scope first:
+
+```bash
+python3 scripts/refresh_monitored_markets.py --dry-run
+```
+
+Run a small verification batch, with a twelve-second pause between calls:
+
+```bash
+python3 scripts/refresh_monitored_markets.py --max-items 5 --force
+```
+
+Resume the remaining unique ProductRefs later. A verified Market is reused only
+inside its six-day freshness TTL (configurable with `--market-ttl-hours`), then
+it is repriced. Transient failures persist a bounded `nextRetryAt` backoff;
+they are not retried hot and they do not wait a full week:
+
+```bash
+python3 scripts/refresh_monitored_markets.py
+```
+
+An explicitly requested foreground Analyzer inspection uses a separate resume
+state from headless results. Scheduled and bulk monitoring must use headless
+REST; the browser path accepts a single ProductRef only:
+
+```bash
+python3 scripts/refresh_monitored_markets.py --mode browser --user-initiated \\
+  --product-id mtg:dis:dissension:booster:display:en
+```
+
+`install_weekly_browser_market_refresh.py` is retained only as a fail-closed
+legacy entry point and refuses to create a schedule. A legacy plist may remain
+on disk as historical configuration, but the service must not be loaded.
+
+The default checkpoint is
+`~/.config/tcg-price-monitor/data/market-refresh-checkpoint.json`, created
+atomically with mode `0600`. The script never starts, stops, or changes the
+always-on monitor service; future monitor runs continue to own listing lifecycle,
+alert eligibility, and email delivery.
