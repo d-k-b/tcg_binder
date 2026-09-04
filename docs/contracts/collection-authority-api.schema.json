@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/tcg/collection-authority-api.schema.json",
+  "title": "Tracker Collection Authority API contracts",
+  "$defs": {
+    "ProductRef": {
+      "type": "object",
+      "required": ["schema", "productId", "game", "setCode", "setName", "productName", "productType", "unit", "language", "variant"],
+      "properties": {
+        "schema": { "const": "tcg.product/v1" },
+        "productId": { "type": "string", "minLength": 1 },
+        "game": { "type": "string", "minLength": 1 },
+        "setCode": { "type": "string", "minLength": 1 },
+        "setName": { "type": "string", "minLength": 1 },
+        "productName": { "type": "string", "minLength": 1 },
+        "productType": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "minLength": 1 },
+        "language": { "type": "string", "minLength": 1 },
+        "variant": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "CacheStatus": {
+      "type": "object",
+      "required": ["schema", "mode", "savedAt", "ageMs"],
+      "properties": {
+        "schema": { "const": "tcg.collection-derived-cache-status/v1" },
+        "mode": { "enum": ["readiness-hit", "readiness-refresh", "snapshot-refresh", "complete-snapshot-fallback", "monitor-subscription-hit", "monitor-subscription-refresh"] },
+        "savedAt": { "type": "string", "format": "date-time" },
+        "ageMs": { "type": "number", "minimum": 0 },
+        "maxAgeMs": { "type": "number", "minimum": 0 },
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "eligibleForMutation": { "type": "boolean" },
+        "key": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "ReadinessResponse": {
+      "type": "object",
+      "required": ["schema", "version", "ready", "credentialConfigured", "checklistCount", "validChecklistCount", "checklistStates", "degradedReasonCodes", "retry", "dependencies"],
+      "properties": {
+        "schema": { "const": "tcg.collection-authority-readiness/v1" },
+        "version": { "type": "string" },
+        "ready": { "type": "boolean" },
+        "credentialConfigured": { "type": "boolean" },
+        "checklistCount": { "const": 7 },
+        "validChecklistCount": { "type": "integer", "minimum": 0, "maximum": 7 },
+        "checklistStates": { "type": "array", "minItems": 7, "maxItems": 7 },
+        "lastSuccessfulSnapshotAt": { "type": ["string", "null"], "format": "date-time" },
+        "lastSuccessfulRevision": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "degradedReasonCodes": { "type": "array", "items": { "type": "string" } },
+        "retry": { "type": "object" },
+        "cache": { "$ref": "#/$defs/CacheStatus" },
+        "dependencies": {
+          "type": "object",
+          "required": ["pricing", "monitor"],
+          "properties": {
+            "pricing": { "type": "object", "required": ["configured", "ready", "reasonCode"] },
+            "monitor": { "type": "object", "required": ["configured"] }
+          }
+        }
+      }
+    },
+    "SnapshotResponse": {
+      "type": "object",
+      "required": ["schema", "generatedAt", "revision", "authority", "snapshot"],
+      "properties": {
+        "schema": { "const": "tcg.collection-snapshot-response/v1" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "authority": {
+          "type": "object",
+          "required": ["state", "consumerStatus", "degradedReasonCodes"],
+          "properties": {
+            "state": { "enum": ["fresh", "stale"] },
+            "consumerStatus": { "enum": ["AUTHORITATIVE", "CONDITIONAL"] },
+            "degradedReasonCodes": { "type": "array", "items": { "type": "string" } },
+            "oldestSourceAt": { "type": ["string", "null"], "format": "date-time" },
+            "oldestVerifiedAt": { "type": ["string", "null"], "format": "date-time" },
+            "oldestContentUpdatedAt": { "type": ["string", "null"], "format": "date-time" },
+            "maxAgeMs": { "type": "number", "minimum": 0 }
+          }
+        },
+        "cache": { "$ref": "#/$defs/CacheStatus" },
+        "snapshot": {
+          "type": "object",
+          "required": ["schema", "namespace", "generatedAt", "revision", "source", "lanes", "products", "wrapperArt", "authority"],
+          "properties": {
+            "schema": { "const": "tcg.collection-snapshot/v2" },
+            "namespace": { "const": "collection-tracker" },
+            "products": { "type": "object", "minProperties": 688, "maxProperties": 688 },
+            "lanes": {
+              "type": "object",
+              "required": ["collector", "boxes", "packs", "prerelease", "lorcana", "lorcana_pre", "lorcana_coll"]
+            }
+          }
+        }
+      }
+    },
+    "PricingRequest": {
+      "type": "object",
+      "required": ["schema", "product"],
+      "properties": {
+        "schema": { "const": "tcg.collection-pricing-request/v1" },
+        "requestId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+        "product": { "$ref": "#/$defs/ProductRef" },
+        "options": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "MonitorSyncRequest": {
+      "type": "object",
+      "required": ["schema", "preferences"],
+      "properties": {
+        "schema": { "const": "tcg.collection-monitor-sync-request/v1" },
+        "preferences": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "OwnershipPolicy": {
+      "type": "object",
+      "required": ["snapshotRevision", "consumerStatus", "reviewOnly", "mayInferOwnership", "eligibleForAction", "degradedReasonCodes"],
+      "properties": {
+        "schema": { "const": "tcg.collection-ownership-policy/v1" },
+        "snapshotRevision": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "consumerStatus": { "enum": ["AUTHORITATIVE", "CONDITIONAL"] },
+        "reviewOnly": { "type": "boolean" },
+        "mayInferOwnership": { "type": "boolean" },
+        "eligibleForAction": { "type": "boolean" },
+        "degradedReasonCodes": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 80 } },
+        "verifiedAt": { "type": "string", "format": "date-time" },
+        "oldestSourceAt": { "type": ["string", "null"], "format": "date-time" },
+        "maxAgeMs": { "type": ["integer", "null"], "minimum": 0, "maximum": 31536000000 }
+      },
+      "additionalProperties": false
+    },
+    "MonitorSyncResponse": {
+      "type": "object",
+      "required": ["accepted", "revision", "productCount", "activeTargetCount", "ownershipPolicy", "requestedMonitorEnabled", "effectiveMonitorEnabled", "authorityCache"],
+      "properties": {
+        "accepted": { "const": true },
+        "revision": { "type": "string", "pattern": "^[a-z0-9][a-z0-9:._-]{7,199}$" },
+        "productCount": { "const": 688 },
+        "activeTargetCount": { "type": "integer", "minimum": 0 },
+        "ownershipPolicy": { "$ref": "#/$defs/OwnershipPolicy" },
+        "requestedMonitorEnabled": { "type": "boolean" },
+        "effectiveMonitorEnabled": { "type": "boolean" },
+        "authorityCache": { "$ref": "#/$defs/CacheStatus" }
+      }
+    },
+    "ReceiptOperationRequest": {
+      "type": "object",
+      "required": ["schema", "idempotencyKey", "expectedSnapshotRevision", "product", "quantity", "deliveredAt", "evidence"],
+      "properties": {
+        "schema": { "const": "tcg.collection-receipt-operation/v1" },
+        "idempotencyKey": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+        "expectedSnapshotRevision": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "product": { "$ref": "#/$defs/ProductRef" },
+        "quantity": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "deliveredAt": { "type": "string", "format": "date-time" },
+        "evidence": {
+          "type": "object",
+          "required": ["type", "referenceId"],
+          "properties": {
+            "type": { "enum": ["provider-message", "order", "manual-receipt"] },
+            "referenceId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,199}$" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptOperationResponse": {
+      "type": "object",
+      "required": ["schema", "applied", "idempotentReplay", "operation", "snapshot"],
+      "properties": {
+        "schema": { "const": "tcg.collection-receipt-operation-response/v1" },
+        "applied": { "const": true },
+        "idempotentReplay": { "type": "boolean" },
+        "operation": { "type": "object" },
+        "snapshot": { "$ref": "#/$defs/SnapshotResponse" }
+      }
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "required": ["schema", "error"],
+      "properties": {
+        "schema": { "const": "tcg.collection-authority-error/v1" },
+        "error": {
+          "type": "object",
+          "required": ["code", "message", "consumerStatus", "retryable"],
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" },
+            "consumerStatus": { "const": "CONDITIONAL" },
+            "retryable": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}
