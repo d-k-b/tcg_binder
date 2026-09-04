@@ -31,7 +31,8 @@ until the page receives a new exact live response.
 
 | Transport | Path and credential | Supported surface | Credential boundary |
 | --- | --- | --- | --- |
-| Tracker extension | Dashboard iframe → exact-origin `postMessage` → Tracker extension → TCG Comps extension. Provider extension ID and capability token stay in the Tracker extension's `chrome.storage.local`. | Exact-product pricing plus privileged extension-owned watches, monitor controls, and page decoration where applicable. | Never place the capability token in page `localStorage` or Pricing REST settings. |
+| Tracker extension + Collection Authority | Dashboard iframe → exact-origin `postMessage` → Tracker extension → authenticated Collection Authority at `https://gogo.tail903ec0.ts.net/collection` (or loopback `http://127.0.0.1:3102`). The Authority bearer stays in the Tracker extension's `chrome.storage.local`. | Complete seven-lane snapshots, exact-product pricing with Pricing Analyzer cache provenance intact, and Authority-routed monitor synchronization. A complete stale snapshot remains all 688 products but is review-only with zero active targets. | Never place the Authority bearer in page `localStorage`, Pricing REST settings, bridge payloads, Gists, exports, diagnostics, or URLs. The static dashboard must not request this server/extension credential. |
+| TCG Comps extension pairing | Dashboard iframe → exact-origin `postMessage` → Tracker extension → TCG Comps extension. Provider extension ID and capability token stay in the Tracker extension's `chrome.storage.local`. | Privileged extension-owned watches, explicit monitor controls/runs, and page decoration where applicable. | Never place the capability token in page `localStorage`, Authority fields, or Pricing REST settings. |
 | Standalone Pricing REST | Dashboard page → `https://gogo.tail903ec0.ts.net`. Uses the separate least-privilege read-only Pricing REST token, held in memory or `localStorage["tcgDashboardPricingRest_v1"]` only after **Remember on this device**. | Authenticated readiness, headless exact-product `priceProduct`, explicit bounded source diagnostics, and direct-click-only `priceViaBrowser`. No watches, monitor mutation, page decoration, buying, or bidding. Browser-session sources are available only through the separately labeled manual Analyzer action. | Never place the REST token in source, URLs, Gists, exports, browser-job state, diagnostic results, or extension-pairing fields. |
 
 The standalone settings prefill the non-secret production base URL. **Save & test**
@@ -65,6 +66,12 @@ Tracker extension's `chrome.storage.local`. They authorize extension messaging,
 watches, page decoration, and monitor operations. They are not interchangeable
 with the Pricing REST key and must never be pasted into the dashboard webpage.
 
+The Collection Authority bearer is a second extension-private credential. It
+authorizes the wrapper's `/v1/collection/snapshot`, `/v1/pricing/*`, and
+`/v1/monitor/sync` calls and is not interchangeable with either the TCG Comps
+capability token or the standalone Pricing REST key. Static dashboard pages must
+never accept or store it.
+
 ## Server-only credentials
 
 These belong in private server/extension runtime configuration and must never be
@@ -72,7 +79,7 @@ accepted by the static dashboard:
 
 - eBay application/OAuth credentials
 - the provider's OpenAI key
-- provider-authority and monitor bearer tokens
+- Collection Authority, provider-authority, and monitor bearer tokens
 - Resend and Discord delivery credentials
 - marketplace cookies or browser sessions
 

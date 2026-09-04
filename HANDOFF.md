@@ -54,7 +54,7 @@ dashboard refactor must bundle this pure core through `generators/build_app.py` 
 call a versioned API, never copy its semantics into another browser-only path. See
 `docs/COLLECTION_STATE_CLI.md`.
 
-**Current pricing boundary:** `gen_data.py` adds 686 unique, contract-valid pricing
+**Current pricing boundary:** `gen_data.py` adds 688 unique, contract-valid pricing
 products outside ownership slots. `build_app.py` renders per-product refresh/value,
 verified Buy Now low, confidence, observation time, explicit unavailable/error, and
 static fallback states. Pricing prefers the configured read-only TCG Pricing REST
@@ -86,6 +86,31 @@ An Authority snapshot carrying `tcg.collection-derived-cache-status/v1` mode
 must remain review-only. An incomplete seven-lane response is a typed failure: retain
 the dashboard's existing inventory rows and never reinterpret it as an empty
 collection. See `docs/COLLECTION_AUTHORITY_API.md`.
+
+**Collection Authority boundary:** the installed Tracker extension uses the
+authenticated Collection Authority API for complete snapshots, protected pricing,
+and monitor synchronization. Its production base is
+`https://gogo.tail903ec0.ts.net/collection`; the loopback base is
+`http://127.0.0.1:3102`. The Authority bearer stays exclusively in extension-private
+`chrome.storage.local` and never enters dashboard page storage, Gists, exports,
+diagnostics, URLs, or bridge payloads. Standalone browser pages continue to use the
+separate least-privilege Pricing REST transport described below; they must never ask
+for or retain the Authority bearer.
+
+Collection Authority preserves Pricing Analyzer cache provenance rather than
+reimplementing or flattening its sales ledger and cache policy. A complete but stale
+seven-lane snapshot retains all 688 ProductRefs with a bounded
+`tcg.collection-ownership-policy/v1`: `CONDITIONAL`, `reviewOnly:true`,
+`mayInferOwnership:false`, and `eligibleForAction:false`. It is not an empty or
+all-missing collection. Monitor sync must go through authenticated
+`POST /v1/monitor/sync`; the effective conditional subscription is disabled and must
+acknowledge zero active targets until the owning workflow supplies genuinely fresh
+ownership evidence. The verified 2026-09-04 state on Pricing Analyzer 2.43.69 is
+subscription revision
+`sha256:6f8b585b06de4a8e2606cd9500abea1da43a2fb8170e7347efc6489eaed36394`,
+snapshot revision
+`d6c29e907232dc2e595b0432d249383d9f0b66531d7232d8203ea9eefed5bc32`,
+688 retained products, and zero active targets.
 
 TCG Comps 2.43.45 deploys the standalone facade at the non-secret base URL
 `https://gogo.tail903ec0.ts.net`. New devices receive that URL as a prefilled value;
@@ -175,7 +200,7 @@ camera/upload modal and an extension-owned BYOK OpenAI bridge on
 `tcg-product-identify/v1`. The generated dashboard also embeds the same validated
 OpenAI client so camera/upload identification works as a standalone web app in
 Safari, Chrome, and Edge. The dashboard re-encodes photos before sending them,
-supplies 686 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
+supplies 688 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
 accepts only returned IDs that exist in that in-memory catalog. Identification is
 suggestion-only. Collection quantities change only through the explicit −/+ controls
 shown beside a result.
@@ -239,7 +264,7 @@ and every Gist-sync partition so they cannot double-count or leak before publica
 **Photo-identification boundary:** extension 1.4 adds a generator-owned
 camera/upload modal and an extension-owned BYOK OpenAI bridge on
 `tcg-product-identify/v1`. The dashboard re-encodes photos before sending them,
-supplies 686 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
+supplies 688 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
 accepts only returned IDs that exist in that in-memory catalog. The extension
 remembers the user's key in private `chrome.storage.local` when **Remember on this
 device** is selected; the key never enters generated HTML, iframe messages,
@@ -762,7 +787,7 @@ dashboard. `buildCollectionSnapshot()` rebuilds one atomic
 `window.parent` source, the exact channel/type, and a bounded nonempty request ID,
 and never posts to `*`.
 
-Every one of the 686 unique `pricingProducts` becomes a catalog entry keyed by its
+Every one of the 688 unique `pricingProducts` becomes a catalog entry keyed by its
 canonical `ProductRef.productId`. `collectionOwnership()` uses `slotOrdinal` for a
 named prerelease variant (including that variant's duplicate quantity); all other
 products match `slotGroup` to `groupedSlots(item).n`, which preserves pack targets,
@@ -796,6 +821,19 @@ versioned `monitorSyncStatus` envelope, whitelists its non-secret fields, paints
 dialog status, and returns `monitorSyncStatusResult`; it never persists the status.
 No monitor message uses `*`, and no bundle/hint/status contains GitHub/provider
 credentials, checklist/extras keys, valuations, watches, listing history, or email.
+
+The status envelope may include the additive
+`tcg.collection-monitor-source-health/v1` projection produced by Tracker extension
+1.6.4 from Pricing Analyzer 2.43.72's provider-authored capture state. The dashboard
+accepts only the fixed nine-source allowlist and explicit `fresh`,
+`verified-empty`, `stale`, or `unavailable` state; it never infers freshness from a
+candidate count or timestamp. The Monitoring dialog shows the evidence timestamp,
+current or retained candidate count, and bounded cache hit/new/changed/AI-skipped
+metrics. Stale and unavailable evidence is labeled **not active**, while a
+verified-empty source is shown as a successful current check with zero candidates.
+Malformed or contradictory source health is dropped atomically without invalidating
+the compact monitor status. URLs, listings, ProductRefs, headers, credentials, and
+raw provider fields never cross this projection or enter dashboard/Gist state.
 
 **Diagnostics.** The header subtitle carries a build stamp (`const BUILD`, stamped by
 `build_app.py` at build time) — the fastest way to tell whether a browser is running
