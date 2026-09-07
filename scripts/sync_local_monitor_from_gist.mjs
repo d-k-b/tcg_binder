@@ -9,7 +9,8 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const NODE_APP = path.join(ROOT, "node-app");
-const MONITOR_ENV = "/Users/dkb/.config/tcg-price-monitor/monitor.env";
+const { CollectionAuthorityClient } = require(path.join(NODE_APP, "lib", "collection-authority-client.js"));
+const DEFAULT_MONITOR_ENV = "/Users/dkb/.config/tcg-price-monitor/monitor.env";
 const CHECKLISTS = new Set(["collector", "boxes", "packs", "prerelease", "lorcana", "lorcana_pre", "lorcana_coll"]);
 // Complete missing collection targets at verified exact Market after required
 // landed costs; deal discounts belong only to discretionary acquisition profiles.
@@ -22,6 +23,10 @@ const BUY_ANYWAY_MAX_MARKET_RATIO = 0.5;
 // packs remain subject to the provider's stricter 70% rip/gift profile.
 const LOOSE_PACK_MAX_MARKET_RATIO = 0.75;
 const BACKGROUND_DAILY_DIGEST_ENABLED = false;
+// Fanatics Collect is the live successor to PWCC.  The monitor enables the
+// auction houses through its fail-closed sanitized feed adapters; no account
+// session is required for public discovery/history.
+const AUCTION_MONITOR_SOURCES = ["heritage", "fanatics", "hakes", "goldin", "pristine", "hibid"];
 
 function parseEnv(contents) {
   const values = {};
@@ -93,6 +98,13 @@ function groupedSlots(item) {
   return groups;
 }
 
+function expectedProductCount(binder) {
+  return (binder.checklists || [])
+    .filter((checklist) => CHECKLISTS.has(checklist.id))
+    .reduce((total, checklist) => total + (checklist.eras || []).reduce((eraTotal, era) => eraTotal
+      + (era.items || []).reduce((itemTotal, item) => itemTotal + (item.pricingProducts || []).length, 0), 0), 0);
+}
+
 function buildSubscription(binder, remote, generatedAt = new Date().toISOString()) {
   const checks = remote.checks || {};
   const extras = remote.extras || {};
@@ -149,7 +161,8 @@ function buildSubscription(binder, remote, generatedAt = new Date().toISOString(
   }
   const activeRemoteKeys = [...Object.keys(checks), ...Object.keys(extras)].filter((key) => checks[key] || Number(extras[key]) > 0);
   const matchedRemoteKeys = activeRemoteKeys.filter((key) => knownKeys.has(key));
-  if (Object.keys(products).length !== 686) throw new Error(`expected 686 ProductRefs, found ${Object.keys(products).length}`);
+  const expectedCount = expectedProductCount(binder);
+  if (Object.keys(products).length !== expectedCount) throw new Error(`expected ${expectedCount} ProductRefs, found ${Object.keys(products).length}`);
   if (!remote.updatedAt || !Number.isFinite(Date.parse(remote.updatedAt))) throw new Error("Gist ownership snapshot has no trustworthy updatedAt timestamp");
   if (!matchedRemoteKeys.length) throw new Error("Gist ownership keys do not match the current v2 catalog; refusing an all-missing sync");
   const collection = { schema: "tcg.collection-snapshot/v2", namespace: "collection-tracker", products };
@@ -159,7 +172,7 @@ function buildSubscription(binder, remote, generatedAt = new Date().toISOString(
     buyAnywayMaxMarketRatio: BUY_ANYWAY_MAX_MARKET_RATIO,
     loosePackMaxMarketRatio: LOOSE_PACK_MAX_MARKET_RATIO,
     minimumConfidence: "medium",
-    sources: ["ebay", "tcgplayer", "heritage", "store"],
+    sources: ["ebay", "tcgplayer", ...AUCTION_MONITOR_SOURCES, "craigslist", "store"],
     includeOptional: false,
     instantFixedPriceEmail: true,
     // The always-on collector is capture-only unless a direct provider is
@@ -175,6 +188,79 @@ function buildSubscription(binder, remote, generatedAt = new Date().toISOString(
     subscription: { schema: "tcg.collection-monitor-subscription/v1", namespace: "collection-tracker", revision, generatedAt, preferences, collection },
     evidence: { source: remote.source || "gist", snapshotUpdatedAt: remote.updatedAt, activeRemoteKeyCount: activeRemoteKeys.length, matchedRemoteKeyCount: matchedRemoteKeys.length, lanes }
   };
+}
+
+function buildSubscriptionFromAuthority(response, generatedAt = new Date().toISOString()) {
+  if (!response || response.schema !== "tcg.collection-snapshot-response/v1" ||
+      !response.snapshot || response.snapshot.schema !== "tcg.collection-snapshot/v2") {
+    throw new Error("collection authority returned an unsupported snapshot contract");
+  }
+  if (Object.keys(response.snapshot.products || {}).length !== 688) {
+    throw new Error("collection authority snapshot is incomplete; refusing monitor update");
+  }
+  const authority = response.authority && typeof response.authority === "object" ? response.authority : {};
+  const cache = response.cache && typeof response.cache === "object" ? response.cache : {};
+  const authoritative = authority.state === "fresh" && authority.consumerStatus === "AUTHORITATIVE" &&
+    cache.mode === "snapshot-refresh" && cache.eligibleForMutation === true;
+  const ownershipPolicy = {
+    schema: "tcg.collection-ownership-policy/v1",
+    snapshotRevision: response.revision,
+    consumerStatus: authoritative ? "AUTHORITATIVE" : "CONDITIONAL",
+    reviewOnly: !authoritative,
+    mayInferOwnership: authoritative,
+    eligibleForAction: authoritative,
+    degradedReasonCodes: [...new Set(Array.isArray(authority.degradedReasonCodes)
+      ? authority.degradedReasonCodes.filter((code) => typeof code === "string" && code.length <= 80)
+      : [])].slice(0, 20),
+    verifiedAt: response.generatedAt,
+    oldestSourceAt: typeof authority.oldestSourceAt === "string" ? authority.oldestSourceAt : null,
+    maxAgeMs: Number.isInteger(authority.maxAgeMs) && authority.maxAgeMs >= 0 ? authority.maxAgeMs : null
+  };
+  const preferences = {
+    enabled: authoritative,
+    maxMarketRatio: COLLECTION_TARGET_MAX_MARKET_RATIO,
+    buyAnywayMaxMarketRatio: BUY_ANYWAY_MAX_MARKET_RATIO,
+    loosePackMaxMarketRatio: LOOSE_PACK_MAX_MARKET_RATIO,
+    minimumConfidence: "medium",
+    sources: ["ebay", "tcgplayer", ...AUCTION_MONITOR_SOURCES, "craigslist", "store"],
+    includeOptional: false,
+    instantFixedPriceEmail: authoritative,
+    dailyDigest: { enabled: authoritative && BACKGROUND_DAILY_DIGEST_ENABLED, time: "09:00", timezone: "America/Chicago" }
+  };
+  const collection = {
+    schema: response.snapshot.schema,
+    namespace: response.snapshot.namespace,
+    products: response.snapshot.products
+  };
+  const revisionPolicy = { ...ownershipPolicy };
+  delete revisionPolicy.verifiedAt;
+  delete revisionPolicy.oldestSourceAt;
+  const revision = `${authoritative ? "authoritative" : "conditional"}:${contentHash(stableValue({ preferences, collection, ownershipPolicy: revisionPolicy }))}`;
+  return {
+    subscription: { schema: "tcg.collection-monitor-subscription/v1", namespace: "collection-tracker", revision, generatedAt, preferences, collection, ownershipPolicy },
+    requestedPreferences: {
+      ...preferences,
+      enabled: true,
+      instantFixedPriceEmail: true,
+      dailyDigest: { ...preferences.dailyDigest, enabled: BACKGROUND_DAILY_DIGEST_ENABLED }
+    },
+    evidence: {
+      source: "collection-authority-api",
+      snapshotUpdatedAt: response.generatedAt,
+      snapshotRevision: response.revision,
+      ownershipStatus: ownershipPolicy.consumerStatus,
+      reviewOnly: ownershipPolicy.reviewOnly,
+      effectiveMonitorEnabled: preferences.enabled,
+      degradedReasonCodes: ownershipPolicy.degradedReasonCodes,
+      lanes: response.snapshot.lanes
+    }
+  };
+}
+
+function stableValue(value) {
+  return Array.isArray(value) ? `[${value.map(stableValue).join(",")}]`
+    : value && typeof value === "object" ? `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableValue(value[key])}`).join(",")}}`
+      : JSON.stringify(value);
 }
 
 if (process.argv.includes("--self-test")) {
@@ -195,38 +281,60 @@ if (process.argv.includes("--self-test")) {
   } finally {
     fs.unlinkSync(fixturePath);
   }
+  const expectedCount = expectedProductCount(JSON.parse(fs.readFileSync(path.join(NODE_APP, "data", "binder_data.json"), "utf8")));
+  if (expectedCount !== 688) throw new Error(`current Tracker ProductRef catalog regression: expected 688, found ${expectedCount}`);
+  const products = {};
+  for (let index = 0; index < 688; index += 1) products[`fixture:${index}`] = { product: { productId: `fixture:${index}` }, target: 1, owned: 0, missing: 1, requirement: "required", status: "missing" };
+  const conditionalSnapshotFixture = {
+    schema: "tcg.collection-snapshot-response/v1", generatedAt: new Date().toISOString(), revision: "a".repeat(64),
+    authority: { state: "stale", consumerStatus: "CONDITIONAL", degradedReasonCodes: ["COLLECTION_SNAPSHOT_STALE"], oldestSourceAt: "2026-07-19T16:47:29.183Z" },
+    cache: { mode: "snapshot-refresh", eligibleForMutation: true },
+    snapshot: { schema: "tcg.collection-snapshot/v2", revision: "a".repeat(64), products, lanes: {} }
+  };
+  const authorityFixture = buildSubscriptionFromAuthority(conditionalSnapshotFixture);
+  if (authorityFixture.evidence.ownershipStatus !== "CONDITIONAL" || authorityFixture.evidence.reviewOnly !== true ||
+      authorityFixture.subscription.preferences.enabled !== false || authorityFixture.subscription.ownershipPolicy.eligibleForAction !== false ||
+      !authorityFixture.subscription.revision.startsWith("conditional:") || Object.keys(authorityFixture.subscription.collection.products).length !== 688) {
+    throw new Error("collection authority monitor-consumer regression");
+  }
+  const laterAuthorityFixture = buildSubscriptionFromAuthority({
+    ...conditionalSnapshotFixture, generatedAt: "2026-09-04T04:00:00.000Z"
+  }, "2026-09-04T04:00:01.000Z");
+  if (laterAuthorityFixture.subscription.revision !== authorityFixture.subscription.revision ||
+      laterAuthorityFixture.subscription.ownershipPolicy.verifiedAt === authorityFixture.subscription.ownershipPolicy.verifiedAt) {
+    throw new Error("monitor revision must ignore observation time while retaining current verification evidence");
+  }
+  if (!["fanatics", "hakes", "goldin", "pristine", "hibid"].every((source) => authorityFixture.subscription.preferences.sources.includes(source)) ||
+      authorityFixture.subscription.preferences.sources.includes("pwcc")) {
+    throw new Error("auction-house monitor source subscription regression");
+  }
   console.log("Local monitor Gist sync self-test passed");
   process.exit(0);
 }
 
-const trackerExportPath = argumentValue("--export");
-let remote;
-if (trackerExportPath) {
-  remote = readTrackerExport(trackerExportPath);
-} else {
-  const nodeEnvPath = path.join(NODE_APP, ".env");
-  if (fs.existsSync(nodeEnvPath)) {
-    const localEnv = parseEnv(fs.readFileSync(nodeEnvPath, "utf8"));
-    for (const [key, value] of Object.entries(localEnv)) if (process.env[key] === undefined) process.env[key] = value;
-  }
-  if (!process.env.GITHUB_TOKEN) throw new Error("node-app/.env does not contain GITHUB_TOKEN; use --export <Tracker progress JSON> for a browser-authenticated snapshot");
-  const gist = require(path.join(NODE_APP, "lib", "gist.js"));
-  remote = await gist.read();
-}
-const binder = JSON.parse(fs.readFileSync(path.join(NODE_APP, "data", "binder_data.json"), "utf8"));
-const result = buildSubscription(binder, remote);
+if (process.argv.includes("--export")) throw new Error("direct Tracker exports are no longer a monitor authority; use the authenticated collection authority API");
+const monitorEnvPath = argumentValue("--env") || DEFAULT_MONITOR_ENV;
+const monitorEnv = parseEnv(fs.readFileSync(monitorEnvPath, "utf8"));
+const authorityClient = new CollectionAuthorityClient({
+  baseUrl: monitorEnv.TCG_COLLECTION_AUTHORITY_URL || "http://127.0.0.1:3102",
+  token: monitorEnv.TCG_COLLECTION_AUTHORITY_TOKEN,
+  attempts: 6,
+  baseDelayMs: 500
+});
+const result = buildSubscriptionFromAuthority(await authorityClient.snapshot());
 if (process.argv.includes("--dry-run")) {
   console.log(JSON.stringify({ revision: result.subscription.revision, productCount: Object.keys(result.subscription.collection.products).length, ...result.evidence }, null, 2));
   process.exit(0);
 }
-const monitorEnv = parseEnv(fs.readFileSync(MONITOR_ENV, "utf8"));
-const response = await fetch("http://127.0.0.1:3099/v1/collection-subscription", {
-  method: "PUT",
-  headers: { Authorization: `Bearer ${monitorEnv.TCG_MONITOR_TOKEN}`, "Content-Type": "application/json" },
-  body: JSON.stringify(result.subscription)
-});
-const reply = await response.json().catch(() => ({}));
-if (!response.ok || reply.accepted !== true || reply.revision !== result.subscription.revision) {
-  throw new Error(`monitor rejected collection subscription (HTTP ${response.status})`);
-}
-console.log(JSON.stringify({ accepted: true, revision: result.subscription.revision, productCount: Object.keys(result.subscription.collection.products).length, activeTargetCount: reply.activeTargetCount, ...result.evidence }, null, 2));
+const reply = await authorityClient.syncMonitor(result.requestedPreferences);
+console.log(JSON.stringify({
+  accepted: true,
+  revision: reply.revision,
+  productCount: reply.productCount,
+  activeTargetCount: reply.activeTargetCount,
+  requestedMonitorEnabled: reply.requestedMonitorEnabled,
+  effectiveMonitorEnabled: reply.effectiveMonitorEnabled,
+  ownershipPolicy: reply.ownershipPolicy,
+  authorityCache: reply.authorityCache,
+  ...result.evidence
+}, null, 2));
