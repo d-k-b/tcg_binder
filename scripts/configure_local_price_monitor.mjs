@@ -8,6 +8,8 @@ import process from "node:process";
 const DEFAULT_ENV_PATH = "/Users/dkb/.config/tcg-price-monitor/monitor.env";
 const INTERNAL_DEFAULTS = {
   TCG_PROVIDER_AUTHORITY_URL: "http://127.0.0.1:3100/v1/resolve",
+  TCG_COLLECTION_AUTHORITY_URL: "http://127.0.0.1:3102",
+  TCG_COLLECTION_AUTHORITY_DATA_DIR: "/Users/dkb/.config/tcg-price-monitor/collection-authority",
   TCG_MONITOR_INTERVAL_MINUTES: "30",
   TCG_STORE_CATALOGS_JSON: '[{"adapterId":"openboosters","url":"https://openboosters.myshopify.com/collections/mtg-sealed/products.json?limit=250"}]',
   EBAY_BROWSE_DAILY_CALL_BUDGET: "4500",
@@ -16,7 +18,8 @@ const INTERNAL_DEFAULTS = {
   HERITAGE_FEED_FILE: "/Users/dkb/.config/tcg-price-monitor/data/heritage-lots.json",
   HERITAGE_BUYER_PREMIUM_RATE: "0.25",
   HERITAGE_BUYER_PREMIUM_MINIMUM: "49",
-  HERITAGE_FEED_MAX_AGE_MINUTES: "45"
+  HERITAGE_FEED_MAX_AGE_MINUTES: "45",
+  TCG_AUCTION_FEEDS_JSON: '[{"id":"fanatics","file":"/Users/dkb/.config/tcg-price-monitor/data/fanatics-lots.json"},{"id":"hakes","file":"/Users/dkb/.config/tcg-price-monitor/data/hakes-lots.json","buyerPremiumRate":0.18},{"id":"goldin","file":"/Users/dkb/.config/tcg-price-monitor/data/goldin-lots.json"},{"id":"pristine","file":"/Users/dkb/.config/tcg-price-monitor/data/pristine-lots.json"},{"id":"hibid","file":"/Users/dkb/.config/tcg-price-monitor/data/hibid-texas-lots.json"}]'
 };
 
 function replaceEnvValue(contents, key, value) {
@@ -34,13 +37,30 @@ function readEnvValue(contents, key) {
   return line ? line.slice(prefix.length).trim().replace(/^(['"])(.*)\1$/, "$2") : "";
 }
 
+function mergeAuctionFeedConfiguration(value) {
+  const defaults = JSON.parse(INTERNAL_DEFAULTS.TCG_AUCTION_FEEDS_JSON);
+  if (!String(value || "").trim()) return JSON.stringify(defaults);
+  let existing;
+  try { existing = JSON.parse(value); }
+  catch (_error) { throw new Error("TCG_AUCTION_FEEDS_JSON is not valid JSON; refusing to overwrite it"); }
+  if (!Array.isArray(existing) || existing.some((item) => !item || typeof item !== "object" || !String(item.id || "").trim())) {
+    throw new Error("TCG_AUCTION_FEEDS_JSON is not a valid auction-feed array; refusing to overwrite it");
+  }
+  const seen = new Set(existing.map((item) => String(item.id).trim()));
+  return JSON.stringify([...existing, ...defaults.filter((item) => !seen.has(item.id))]);
+}
+
 function updateInternalConfiguration(contents, tokenFactory = () => randomBytes(48).toString("base64url")) {
   let updated = contents;
-  for (const key of ["TCG_MONITOR_TOKEN", "TCG_PROVIDER_AUTHORITY_TOKEN"]) {
+  for (const key of ["TCG_MONITOR_TOKEN", "TCG_PROVIDER_AUTHORITY_TOKEN", "TCG_COLLECTION_AUTHORITY_TOKEN"]) {
     if (!readEnvValue(updated, key)) updated = replaceEnvValue(updated, key, tokenFactory());
   }
   for (const [key, value] of Object.entries(INTERNAL_DEFAULTS)) {
     if (!readEnvValue(updated, key)) updated = replaceEnvValue(updated, key, value);
+  }
+  updated = replaceEnvValue(updated, "TCG_AUCTION_FEEDS_JSON", mergeAuctionFeedConfiguration(readEnvValue(updated, "TCG_AUCTION_FEEDS_JSON")));
+  if (readEnvValue(updated, "TCG_COLLECTION_AUTHORITY_URL") === "http://127.0.0.1:3101") {
+    updated = replaceEnvValue(updated, "TCG_COLLECTION_AUTHORITY_URL", INTERNAL_DEFAULTS.TCG_COLLECTION_AUTHORITY_URL);
   }
   return updated;
 }
@@ -63,12 +83,20 @@ if (process.argv.includes("--self-test")) {
   const updated = updateInternalConfiguration("A=1\nTCG_MONITOR_TOKEN=\n", () => `secret-${++counter}`);
   if (readEnvValue(updated, "TCG_MONITOR_TOKEN") !== "secret-1") throw new Error("monitor token generation regression");
   if (readEnvValue(updated, "TCG_PROVIDER_AUTHORITY_TOKEN") !== "secret-2") throw new Error("authority token generation regression");
+  if (readEnvValue(updated, "TCG_COLLECTION_AUTHORITY_TOKEN") !== "secret-3") throw new Error("collection authority token generation regression");
   if (readEnvValue(updated, "TCG_PROVIDER_AUTHORITY_URL") !== INTERNAL_DEFAULTS.TCG_PROVIDER_AUTHORITY_URL) throw new Error("authority URL regression");
+  if (readEnvValue(updated, "TCG_COLLECTION_AUTHORITY_DATA_DIR") !== INTERNAL_DEFAULTS.TCG_COLLECTION_AUTHORITY_DATA_DIR) throw new Error("collection authority data directory regression");
+  const migrated = updateInternalConfiguration("TCG_MONITOR_TOKEN=set\nTCG_PROVIDER_AUTHORITY_TOKEN=set\nTCG_COLLECTION_AUTHORITY_TOKEN=set\nTCG_COLLECTION_AUTHORITY_URL=http://127.0.0.1:3101\n");
+  if (readEnvValue(migrated, "TCG_COLLECTION_AUTHORITY_URL") !== "http://127.0.0.1:3102") throw new Error("collection authority port migration regression");
   if (readEnvValue(updated, "TCG_STORE_CATALOGS_JSON") !== INTERNAL_DEFAULTS.TCG_STORE_CATALOGS_JSON) throw new Error("OpenBoosters catalog regression");
   if (readEnvValue(updated, "EBAY_BROWSE_DAILY_CALL_BUDGET") !== "4500") throw new Error("eBay Browse budget regression");
   if (readEnvValue(updated, "HERITAGE_BUYER_PREMIUM_MINIMUM") !== "49") throw new Error("Heritage premium minimum regression");
   if (readEnvValue(updated, "HERITAGE_FEED_FILE") !== INTERNAL_DEFAULTS.HERITAGE_FEED_FILE) throw new Error("Heritage feed path regression");
-  if (updated.includes("secret-3")) throw new Error("unexpected token generation");
+  const auctionFeeds = JSON.parse(readEnvValue(updated, "TCG_AUCTION_FEEDS_JSON"));
+  if (!Array.isArray(auctionFeeds) || auctionFeeds.map((item) => item.id).join(",") !== "fanatics,hakes,goldin,pristine,hibid") throw new Error("auction source configuration regression");
+  const migratedFeeds = JSON.parse(readEnvValue(updateInternalConfiguration("TCG_AUCTION_FEEDS_JSON=[{\"id\":\"fanatics\",\"file\":\"/tmp/fanatics.json\"}]\nTCG_MONITOR_TOKEN=set\nTCG_PROVIDER_AUTHORITY_TOKEN=set\nTCG_COLLECTION_AUTHORITY_TOKEN=set\n"), "TCG_AUCTION_FEEDS_JSON"));
+  if (migratedFeeds.map((item) => item.id).join(",") !== "fanatics,hakes,goldin,pristine,hibid") throw new Error("HiBid auction-feed migration regression");
+  if (updated.includes("secret-4")) throw new Error("unexpected token generation");
   console.log("Local monitor configuration self-test passed");
   process.exit(0);
 }

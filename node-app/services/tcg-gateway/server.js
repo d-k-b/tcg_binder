@@ -2,7 +2,8 @@
 'use strict';
 
 const http = require('http');
-const VERSION = '1.0.1';
+const fs = require('fs');
+const VERSION = '1.0.2';
 const DEFAULT_ROUTES = Object.freeze({ pricing: { host: '127.0.0.1', port: 3101 }, collection: { host: '127.0.0.1', port: 3102 }, monitor: { host: '127.0.0.1', port: 3099 } });
 const MAX_BODY_BYTES = 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -28,6 +29,24 @@ function send(res, status, body) {
   const encoded = Buffer.from(JSON.stringify(body));
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Length': encoded.length, 'Cache-Control': 'no-store' });
   res.end(encoded);
+}
+
+function collectionAuthoritySupervisorStatus(filename) {
+  const fallback = { state: 'unknown', attempts: 0, retryAt: null, lastErrorCode: null, message: 'Collection Authority supervisor status is unavailable.', updatedAt: null };
+  if (!filename) return fallback;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filename, 'utf8'));
+    const value = parsed && parsed.schema === 'tcg.local-supervisor-status/v1' && parsed.collectionAuthority;
+    if (!value || !['starting', 'ready', 'degraded', 'external', 'stopped'].includes(value.state)) return fallback;
+    return {
+      state: value.state,
+      attempts: Number.isInteger(value.attempts) && value.attempts >= 0 ? value.attempts : 0,
+      retryAt: typeof value.retryAt === 'string' ? value.retryAt : null,
+      lastErrorCode: typeof value.lastErrorCode === 'string' && /^[A-Z0-9_]{1,64}$/.test(value.lastErrorCode) ? value.lastErrorCode : null,
+      message: typeof value.message === 'string' ? value.message.slice(0, 240) : null,
+      updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : null,
+    };
+  } catch (_error) { return fallback; }
 }
 
 function targetFor(pathname, routes = DEFAULT_ROUTES) {
@@ -83,9 +102,13 @@ function proxyRequest(req, res, target) {
 
 function createHandler(options = {}) {
   const routes = options.routes || DEFAULT_ROUTES;
+  const supervisorStatusFile = options.supervisorStatusFile || '';
   return (req, res) => {
     const url = new URL(req.url, 'http://gateway');
-    if (req.method === 'GET' && url.pathname === '/gateway/healthz') return send(res, 200, { schema: 'tcg.gateway-health/v1', ok: true, version: VERSION, routes: ['collection', 'monitor', 'pricing'] });
+    if (req.method === 'GET' && url.pathname === '/gateway/healthz') {
+      const collectionAuthority = collectionAuthoritySupervisorStatus(supervisorStatusFile);
+      return send(res, 200, { schema: 'tcg.gateway-health/v1', ok: true, degraded: ['degraded', 'stopped'].includes(collectionAuthority.state), version: VERSION, routes: ['collection', 'monitor', 'pricing'], collectionAuthority });
+    }
     const target = targetFor(url.pathname, routes);
     if (!target) return send(res, 404, { schema: 'tcg.gateway-error/v1', error: { code: 'ROUTE_NOT_FOUND', message: 'Gateway route was not found' } });
     return proxyRequest(req, res, target);
@@ -100,7 +123,7 @@ if (require.main === module) {
   const host = process.env.TCG_GATEWAY_HOST || '127.0.0.1';
   const port = Number(process.env.TCG_GATEWAY_PORT || 3180);
   assertLoopbackHost(host);
-  http.createServer(createHandler()).listen(port, host, () => console.log('TCG gateway listening on loopback port ' + port));
+  http.createServer(createHandler({ supervisorStatusFile: process.env.TCG_SUPERVISOR_STATUS_FILE || '' })).listen(port, host, () => console.log('TCG gateway listening on loopback port ' + port));
 }
 
-module.exports = { VERSION, DEFAULT_ROUTES, MAX_BODY_BYTES, FORWARDED_REQUEST_HEADERS, FORWARDED_RESPONSE_HEADERS, targetFor, createHandler, assertLoopbackHost };
+module.exports = { VERSION, DEFAULT_ROUTES, MAX_BODY_BYTES, FORWARDED_REQUEST_HEADERS, FORWARDED_RESPONSE_HEADERS, targetFor, createHandler, assertLoopbackHost, collectionAuthoritySupervisorStatus };

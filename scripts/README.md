@@ -11,7 +11,8 @@ Git.
   stores only the refresh token in the protected environment file.
 - `run_local_price_monitor.command` validates all alert prerequisites, mints and
   renews the short-lived eBay Browse application token, and runs the canonical
-  TCG Comps monitor on `127.0.0.1:3099` with state under
+  TCG Comps monitor on `127.0.0.1:3099`, Collection Authority on `3102`, and the
+  Tailscale-facing path router on `3180`, with state under
   `/Users/dkb/.config/tcg-price-monitor/data`.
 - `configure_local_price_monitor.mjs` generates internal bearer tokens and adds
   safe local defaults, including the official OpenBoosters sealed catalog, a
@@ -19,10 +20,26 @@ Git.
 - `update_heritage_feed.mjs` validates a trusted Heritage MyWantlist/session JSON
   export, rejects credential-like fields, canonicalizes lot URLs, applies the exact
   premium or 25%/$49 minimum, and atomically updates the protected monitor feed.
-- `sync_local_monitor_from_gist.mjs` builds the complete 686-ProductRef
-  subscription from Gist state or a current authenticated Tracker export.
+- `update_hibid_texas_feed.mjs` validates a structured public/browser capture of
+  canonical HiBid Texas lots, rejects credentials, preserves each auctioneer's
+  explicit shipping, buyer-premium rate/minimum, and current-premium evidence,
+  and atomically updates the protected feed.
+- `sync_local_monitor_from_gist.mjs` builds the complete 688-ProductRef
+  subscription only from the authenticated loopback Collection Authority API;
+  the legacy filename is retained for operator compatibility. Conditional
+  snapshots are synchronized through `POST /v1/monitor/sync`, where Authority
+  adds explicit review-only ownership policy and an effective disabled monitor
+  preference; acknowledgement must retain all 688 products and report zero
+  active targets. The helper never posts directly to the Pricing Analyzer monitor.
+- `repair_collection_authority_gists.mjs` performs a safe dry-run diagnostic by
+  default and an explicit, source-hash-gated legacy/missing-lane repair only with
+  `--apply`.
 - `install_local_price_monitor_launch_agent.mjs` installs the per-user macOS
   RunAtLoad/KeepAlive service.
+- `refresh_monitored_markets.py` slowly refreshes exact Markets for the current
+  monitor scope through the provider-owned Python Pricing REST client. It is
+  sequential, resumable, and writes only a private sidecar checkpoint; it never
+  edits monitor state, collection state, watches, or alerts.
 
 The scripts expect `/Users/dkb/.config/tcg-price-monitor/monitor.env` to be mode
 `0600`. They never print secret values. The runner locates the canonical provider
@@ -66,35 +83,56 @@ installed feed expires after 45 minutes by default, so stale session capture deg
 to review-only instead of generating a ceiling. Never add cookies, session values,
 passwords, or OAuth material to this file.
 
+## HiBid Texas feed
+
+HiBid Texas has active MTG, Lorcana, Pokémon, and other TCG catalogs, but it is a
+multi-auctioneer platform: premium, shipping, soft-close rules, and condition vary
+by catalog and lot. Capture only current, exact, sealed lot facts from a normal
+public or signed-in browser view; never store browser state or raw HTML. Then
+validate and install the sanitized feed:
+
+```bash
+node scripts/update_hibid_texas_feed.mjs --input /path/to/hibid-texas-lots.json --check
+node scripts/update_hibid_texas_feed.mjs --input /path/to/hibid-texas-lots.json
+```
+
+Each row needs a stable lot ID, canonical `https://hibid.com/texas/lot/...` URL,
+exact title, current bid, next valid bid, end time, shipping, and the catalog's
+`buyerPremiumRate` (plus `buyerPremiumMinimum` when applicable). An observed
+current-dollar `buyerPremium` is useful evidence but cannot by itself support a
+maximum bid: the monitor deducts shipping and the premium at the *maximum hammer*
+before recommending one. Missing components remain REVIEW ONLY.
+
 After the service is healthy, synchronize the newest trustworthy ownership state
-from the existing authenticated Gist backend:
+from the local authenticated Collection Authority:
 
 ```bash
 node scripts/sync_local_monitor_from_gist.mjs --dry-run
 node scripts/sync_local_monitor_from_gist.mjs
 ```
 
-The sync reconstructs all 686 canonical ProductRefs locally, sends only ProductRefs
-and ownership counts to the loopback monitor, and refuses an all-missing snapshot
-when no active Gist keys match the current v2 catalog. It never prints or forwards
-the GitHub token.
+The authority returns all 688 canonical ProductRefs atomically across seven lanes.
+The sync sends only requested monitor preferences to the authenticated Authority,
+which rebuilds and validates the collection before calling the loopback monitor. A
+partial or stale ownership result is never converted into an all-missing claim;
+neither the Gist token nor monitor token is read by this sync helper or forwarded.
+The supervisor also runs this sync once after every service generation starts, so
+an authenticated Gist repair or browser-closed collection change cannot leave an
+obsolete partial subscription indefinitely. Failure retains the prior state and is
+logged; it never starts marketplace work.
 
-When an authenticated Tracker is already open but no headless Gist token is
-configured, export progress from the dashboard and sync that current file instead:
-
-```bash
-node scripts/sync_local_monitor_from_gist.mjs --export /path/to/mtg-binder-progress.json --dry-run
-node scripts/sync_local_monitor_from_gist.mjs --export /path/to/mtg-binder-progress.json
-```
-
-The export path uses the file modification time as its snapshot evidence timestamp
-and still requires current v2 ownership keys to match the full catalog.
+Direct Tracker exports and direct Gist reads are no longer monitor-authority paths.
+Use `docs/COLLECTION_AUTHORITY_API.md` for the source-hash-gated missing-Gist
+repair flow.
 
 Every secret is reported only as `SET` or `EMPTY`. A ready capture configuration
 requires eBay application credentials plus long monitor and authority bearer
-tokens. The runner starts the canonical local provider authority on loopback by
-default. Resend key/from/to values are optional for capture and required for
-email delivery. OpenAI is optional: exact TCGplayer identity and Market do not
+tokens. The runner starts the canonical local provider authority and public-path
+gateway on loopback by default. Tailscale serves the gateway; Provider Authority
+itself is never exposed. Monitor email is delivered only through the authenticated
+Google Workspace adapter when its account and recipient both equal
+`dustyn@blasig.us`; otherwise delivery must fail closed. Resend values are not a
+fallback for this workflow. OpenAI is optional: exact TCGplayer identity and Market do not
 need it, while eBay asks remain unverified/review-only until AI verification is
 configured.
 
@@ -125,12 +163,26 @@ for preliminary exact matches. A persisted daily safety budget and HTTP 429 circ
 breaker protect coverage from request storms. When `EBAY_USER_REFRESH_TOKEN` is set,
 the runner also refreshes a short-lived user token and makes one read-only official
 My eBay buying-state request per run for bid/watch/max-bid status. A refresh failure
-degrades only those account fields; public discovery continues. Verify both loopback
-services with:
+degrades only those account fields; public discovery continues.
+
+Collection Authority is supervised independently from Provider Authority, Pricing
+REST, the monitor, and the gateway. The runner recognizes Node's transient iCloud
+module-read `EAGAIN`/`Unknown system error -11` failure and treats an Authority that
+does not reach its health endpoint as a bounded startup failure. A failed start uses
+capped 1/2/5/10/30-second retry backoff and does not tear down the healthy provider
+pricing socket or interrupt an active browser-pricing job. The gateway remains
+available and reports the allowlisted `collectionAuthority` state as `starting`,
+`ready`, `degraded`, `external`, or `stopped` at `/gateway/healthz`; no credentials,
+paths, or collection data enter that status. The initial seven-lane collection sync
+runs only after Authority is healthy. Keep this repository downloaded locally when
+possible; the retry is a resilience boundary, not a substitute for durable files.
+
+Verify the loopback services with:
 
 ```bash
 curl -sS http://127.0.0.1:3099/healthz
 curl -sS http://127.0.0.1:3100/healthz
+curl -sS http://127.0.0.1:3180/gateway/healthz
 ```
 
 Then configure TCG Comps with `http://127.0.0.1:3099` and the same
