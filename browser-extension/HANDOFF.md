@@ -23,16 +23,18 @@ adding a pricing-message API, or changing which origin owns progress storage.
 
 ## Current state
 
-- Extension version: **1.5.0**.
+- Extension version: **1.6.5**.
 - Manifest: Chrome/Edge Manifest V3.
 - Primary surface: persistent browser side panel/sidebar.
 - Toolbar action and default shortcut: open the panel.
 - Dashboard source: `https://d-k-b.github.io/tcg_binder/`.
 - Local development source: an optional `http://127.0.0.1:<port>/` or
   `http://localhost:<port>/` URL selected from the extension gear.
-- Extension permissions: `sidePanel` and `storage`; the only host permission is
-  `https://api.openai.com/*` for direct user-requested photo identification and
-  collection authoring.
+- Extension permissions: `sidePanel` and `storage`. Host permissions are limited to
+  `https://api.openai.com/*`, the exact Tailscale gateway
+  `https://gogo.tail903ec0.ts.net/*`, and the direct loopback Collection Authority
+  on `127.0.0.1:3102` for local development. Port `3180` is the separate path router,
+  not the wrapper's direct local Authority base.
 - Regression coverage: `node-app/tools/test-browser-extension.js` and
   `node-app/tools/test-browser-extension-monitor.js`, run by `npm test` from
   `node-app/`.
@@ -107,6 +109,35 @@ The same device-remembered OpenAI key serves photo identification and collection
 authoring. It remains exclusively in trusted `chrome.storage.local` and is never
 included in either iframe message channel.
 
+Version 1.6.4 adds a bounded provider-owned marketplace source-health projection to
+the existing exact monitor status bridge. It also retains the 1.6.3 reconciliation
+of the protected Collection Authority wrapper with the live
+production and direct-loopback endpoints. It retains the conditional
+monitor response policy. Its base URL and
+bearer live only in extension-private `chrome.storage.local`. When configured,
+dashboard `priceProduct` requests pass through Authority and retain Pricing
+Analyzer cache provenance unchanged; page decoration reads Authority's complete
+689-product snapshot; and monitor sync sends preferences only so Authority rebuilds
+collection state from its seven source lanes. The TCG Comps pairing remains
+responsible for marketplace decoration, extension watches, monitor status, and
+explicit monitor runs.
+
+Authority snapshot provenance is validated independently of the provider's canonical
+ProductRef projection. `AUTHORITATIVE` live snapshots may drive page decoration.
+`CONDITIONAL`, stale, `complete-snapshot-fallback`, or
+`eligibleForMutation:false` snapshots are retained only long enough to render a
+review-only warning and sanitized diagnostics; they never produce NEED/OWNED badges,
+receipt mutations, or monitor subscriptions. The page-decoration provider receives
+only the canonical snapshot fields after this policy gate. Authority monitor sync
+also accepts only its versioned monitor-subscription cache modes and rejects any
+snapshot-fallback provenance.
+
+Version 1.6.5 raises every extension-owned complete-catalog guard from 688 to 689
+for the required Commander Legends Collector Booster Display ProductRef
+`mtg:cmr:commander-legends:collector-booster:display:en`. The extension does not
+create or infer an ownership record for the new product; ownership remains unknown
+until the dashboard or Collection Authority supplies it explicitly.
+
 The user-supplied OpenAI key is a deliberate BYOK compromise. **Remember on this
 device** is enabled by default and stores the key only in the Tracker extension's
 `chrome.storage.local`, restricted to trusted extension contexts. The key never
@@ -124,7 +155,7 @@ canonical GitHub Pages dashboard in `sidepanel.html`:
 Chrome / Edge side panel
   extension toolbar (local extension HTML/CSS/JS)
     mark page | monitor sync/status/run | refresh latest | open full tab | settings
-    chrome.storage.local: provider extension ID + capability token
+    chrome.storage.local: provider ID/token + Collection Authority URL/bearer
   iframe
     https://d-k-b.github.io/tcg_binder/
       generated dashboard UI
@@ -140,6 +171,7 @@ Chrome / Edge side panel
       monitor subscription + payload-free change hints + sync status
         ↕ exact-origin + exact-frame postMessage
       extension → TCG Comps-owned collection monitor
+      configured Authority → exact pricing + complete collection snapshot + monitor sync
 ```
 
 This separation is intentional:
@@ -228,13 +260,21 @@ Pairing order is documented in `README.md`: trust the tracker's displayed extens
 ID in TCG Comps, copy TCG Comps' connection JSON, save/test its ID and token in the
 tracker, then reload both unpacked extensions after either changes.
 
+When Collection Authority is configured, the pricing bridge replaces only
+`priceProduct` with `authorityClient.priceProduct`. It returns the complete Pricing
+Analyzer valuation unchanged, including provider-owned `cache` and evidence-cache
+provenance. Other extension-only pricing operations stay on the packaged TCG Comps
+client. The Authority bearer must never enter iframe messages, page storage, Gists,
+diagnostics, URLs, or provider requests.
+
 ## Marketplace collection-decoration contract
 
-The side-panel button requests `tcg.collection-snapshot/v2` from the exact embedded
-dashboard frame. Each product map key equals its included full
+Without Authority, the side-panel button requests `tcg.collection-snapshot/v2` from
+the exact embedded dashboard frame. With Authority configured, it requests the
+complete seven-lane/689-product snapshot from Authority instead. Each product map key equals its included full
 `tcg.product/v1.productId`; every entry contains only `product`, `status`, `target`,
 `owned`, `missing`, and `requirement`. The snapshot is recomputed from current
-in-memory ownership and includes all 686 products atomically under the provider's
+in-memory ownership and includes all 689 products atomically under the provider's
 1,200-product ceiling. It must never contain checkbox/legacy keys, extras keys, Gist
 metadata, GitHub credentials, pricing credentials, values, watches, or cached
 provider identities.
@@ -252,6 +292,15 @@ authenticated caller namespace, and owns all page adapters, matching, mutation
 observation, and DOM rendering. The Tracker must not vendor `listing-surface.js`,
 scrape marketplace DOM, duplicate matching, persist a provider-ID map, bulk-price
 the collection, create watches, or enable 130point through this route.
+
+Authority returns safe `authority` and `tcg.collection-derived-cache-status/v1`
+metadata around the canonical snapshot. The wrapper preserves and allowlists that
+metadata for its own policy/UI decision, then passes only `schema`, `namespace`, and
+`products` to TCG Comps. Any non-`AUTHORITATIVE` state, stale state,
+`complete-snapshot-fallback`, or `eligibleForMutation:false` is review-only: the
+extension does not call page decoration and explicitly says that no NEED or OWNED
+marks were applied. A fallback snapshot is never treated as proof that a product is
+missing.
 
 ## Collection deal and auction monitor contract
 
@@ -280,6 +329,40 @@ contains only revision, counts, configuration state, timestamp, message, and err
 code. Provider credentials remain only in extension `chrome.storage.local`; neither
 the subscription nor diagnostics may contain them.
 
+With Authority configured, the extension uses the dashboard subscription only for
+validated monitor preferences and calls `authorityClient.syncMonitor(preferences)`.
+Authority performs a live complete collection read and owns the versioned monitor
+subscription. The wrapper never sends a dashboard or cached Authority snapshot to
+this method and accepts only `monitor-subscription-hit` or
+`monitor-subscription-refresh` provenance. A `complete-snapshot-fallback` response
+fails closed and is never synchronized. An additive
+`tcg.collection-ownership-policy/v1` response is accepted as conditional only when
+all 689 products are retained, zero targets remain active, review-only is true,
+ownership inference and action eligibility are false, and effective monitoring is
+disabled. The UI reports **Complete collection retained; monitoring paused because
+ownership data is stale.** as a warning rather than a generic success or failure.
+Authoritative responses retain their enabled behavior.
+
+`pricing.monitor.status` from TCG Comps 2.43.72 may include up to nine exact source
+IDs. The wrapper accepts only each source's versioned
+`tcg.marketplace-source-health/v1` `capture`, copies its provider-authored status
+verbatim into `tcg.collection-monitor-source-health/v1`, and sends the fixed-order
+array as additive `monitorSyncStatus.sourceStatus`. Each entry contains only bounded
+timestamps, candidate/cache counts, actionability, candidate origin, blocker, and
+age. Invalid entries are omitted without invalidating the compact status. Stale,
+unavailable, and verified-empty captures must be non-actionable; generic candidate
+counts never become active-target counts. No URLs, listings, ProductRefs, arbitrary
+provider fields, credentials, or headers cross the iframe bridge.
+
+The historical conditional state verified on Pricing Analyzer 2.43.69 retained 688
+products at monitor revision
+`sha256:6f8b585b06de4a8e2606cd9500abea1da43a2fb8170e7347efc6489eaed36394`
+and snapshot revision
+`d6c29e907232dc2e595b0432d249383d9f0b66531d7232d8203ea9eefed5bc32`,
+with zero active targets. That revision predates the 689-product catalog and now
+fails the complete-catalog guard; it is retained here only as historical evidence.
+The wrapper must never reinterpret that stale snapshot as missing inventory.
+
 ## Verification checklist
 
 For an extension change:
@@ -305,7 +388,7 @@ Then load or reload `browser-extension/` as an unpacked extension and verify:
   and do not expose watch controls.
 - A successful exact-product response shows value, verified ask, confidence,
   timestamp, and provider engine version in test/debug evidence.
-- The page-check button sends all 686 full canonical ProductRefs in one v2 snapshot,
+- The page-check button sends all 689 full canonical ProductRefs in one v2 snapshot,
   only with `userInitiated:true`, and retains the existing minimal permissions.
 - Wrong-origin/wrong-frame collection responses are ignored; a stale dashboard,
   unauthorized provider, unavailable content script, and incompatible result schema
@@ -313,6 +396,20 @@ Then load or reload `browser-extension/` as an unpacked extension and verify:
 - A supported marketplace page receives namespaced NEED/OWNED/TARGET/CHECK badges;
   ambiguous and mixed listings remain CHECK, and rescanning updates only the
   Tracker namespace.
+- A live `AUTHORITATIVE` Authority snapshot preserves its safe cache provenance
+  through validation and may drive page decoration; a conditional/stale/complete
+  snapshot fallback shows review-only status and makes zero decoration calls.
+- Authority pricing preserves Pricing Analyzer cache provenance through the exact
+  dashboard bridge, while the Authority bearer remains absent from iframe messages
+  and copied diagnostics.
+- Authority monitor sync sends preferences only and rejects snapshot-fallback cache
+  modes.
+- A conditional Authority monitor response is accepted only with the exact
+  fail-closed ownership policy, 689 products, zero active targets, and effective
+  monitoring disabled; malformed or contradictory policy fails closed.
+- Source health preserves the provider's exact capture state, rejects malformed or
+  contradictory entries independently, and never labels stale retained candidates
+  as active.
 - Every page-check error exposes the copy icon; its pasted report names the failure
   stage and error code, copies successfully in the side panel, and contains no
   capability token.
@@ -335,6 +432,7 @@ browser-extension/
   sidepanel.css          side-panel layout and responsive shell
   sidepanel.js           source selection, refresh, validation, full-tab action
   monitor-bridge.js      strict monitor iframe bridge, validation, revision gate
+  collection-authority-client.js  protected Authority transport and snapshot provenance policy
   vendor/tcg-comps-2.42.0/ unmodified API v1 monitor/snapshot consumer scripts and provenance
   icons/                 generated PNG extension icons
   tools/build_icons.py   deterministic icon generator

@@ -66,8 +66,14 @@ For local work, open the extension's gear and use
 
 When the extension's own files change, increment `version` in `manifest.json`, then
 select **Reload** for the unpacked extension on the browser's extensions page.
-Version `1.5.0` adds AI-assisted local collection drafts, reuses the remembered BYOK
-OpenAI key, and retains photo identification plus the privileged
+Version `1.6.5` updates every extension-owned completeness guard for the 689-product
+canonical catalog, including the required Commander Legends Collector Booster
+Display. It retains the bounded marketplace source health added in `1.6.4` while
+retaining protected Collection Authority routing, the direct local
+Authority endpoint, and fail-closed
+conditional monitor status while retaining
+AI-assisted local collection drafts, the remembered BYOK OpenAI key, photo
+identification, and the privileged
 collection deal/auction monitor bridge, explicit
 monitor sync/status/manual-run controls, active-panel debounced resync, and
 credential-safe monitor diagnostics. It also blocks monitor messages until the
@@ -76,6 +82,44 @@ Provider release differences remain
 informational when the negotiated API stays v1. The dashboard remains pinned to the
 side panel's flexible grid row, so hiding Settings or the page-check summary cannot
 collapse it to 150px tall.
+
+## Connect Collection Authority
+
+Collection Authority is the preferred protected path for exact pricing, complete
+collection snapshots, and monitor synchronization. The production URL is
+`https://gogo.tail903ec0.ts.net/collection`; the device must be connected to the
+same tailnet.
+
+1. Reload the unpacked Tracker extension in `chrome://extensions` or
+   `edge://extensions`.
+2. Open the Tracker gear and find **Collection Authority API**.
+3. Keep the production URL (or use `http://127.0.0.1:3102` for the direct local
+   Authority service), paste the Collection Authority bearer, and select **Save & test**.
+4. A green result requires complete collection readiness and the Pricing Analyzer
+   dependency. An amber result explains degraded lanes or pricing without exposing
+   credentials.
+
+The bearer is stored only in the Tracker extension's private
+`chrome.storage.local`. It never enters the dashboard iframe, page localStorage,
+Gists, exports, URLs, or copied diagnostics. **Remove API** deletes the stored URL
+and bearer without changing the separate TCG Comps pairing.
+
+When Authority is configured, ordinary dashboard price checks route through it and
+retain Pricing Analyzer cache provenance. Marketplace decoration still runs in TCG
+Comps, using Authority's complete collection snapshot. A live authoritative snapshot
+can mark NEED/OWNED/TARGET/CHECK. A stale or cached conditional snapshot is
+review-only: the extension applies no page badges, infers nothing missing, and does
+not use it for monitor sync or collection mutations. Monitor sync sends preferences
+only; Authority performs a new complete source read itself. If that read retains all
+689 products but the ownership evidence is stale, the wrapper accepts only a
+fail-closed response with monitoring disabled and zero active targets, then shows
+**Complete collection retained; monitoring paused because ownership data is stale.**
+
+Monitor status may also show provider-classified source health for eBay, TCGplayer,
+Heritage, Fanatics, Hake's, Goldin, Pristine, HiBid, and stores. Freshness labels
+come directly from TCG Comps; the Tracker does not infer them from candidate age.
+Stale or unavailable sources remain non-actionable, and their retained candidate
+counts never become collection targets.
 
 Dashboard features and responsive UI changes belong in the dashboard workstream.
 Extension controls, browser integration, packaging, and the pricing-app bridge belong
@@ -149,9 +193,9 @@ After pairing TCG Comps, open an eBay seller/search page, Heritage auction surfa
 or supported storefront such as Game Nerdz or Flipside Gaming. Open the Tracker side
 panel and select **Mark collection needs on this page** (the first toolbar button).
 
-The button is intentionally a direct action: the extension asks the dashboard for
-one current, memory-only snapshot of all 686 canonical ProductRefs, then asks TCG
-Comps to discover, match, and decorate the active page. TCG Comps watches supported
+The button is intentionally a direct action: the extension obtains one complete
+snapshot (689 canonical ProductRefs from configured Collection Authority, otherwise
+the dashboard's current snapshot), then asks TCG Comps to discover, match, and decorate the active page. TCG Comps watches supported
 infinite-scroll results for up to 30 minutes. Run the button again after changing
 collection quantities or after either extension reloads.
 
@@ -183,7 +227,7 @@ dashboard is still missing the snapshot bridge.
 Open the extension gear and use **Collection deal monitor** after pairing TCG
 Comps 2.42.0. **Sync monitor** requests the current
 `tcg.collection-monitor-subscription/v1` bundle from the exact dashboard frame,
-validates it, and forwards all 686 canonical ProductRefs atomically through the
+validates it, and forwards all 689 canonical ProductRefs atomically through the
 authenticated TCG Comps client. **Refresh status** retrieves the provider's current
 non-secret revision/counts plus configured/online state. **Run now** is the only browser path that requests an
 immediate monitor run and is never called automatically.

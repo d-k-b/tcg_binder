@@ -10,7 +10,12 @@
   const COLLECTION_SCHEMA = 'tcg.collection-snapshot/v2';
   const SYNC_STATUS_SCHEMA = 'tcg.collection-monitor-sync-status/v1';
   const SYNC_STATUS_ACK_SCHEMA = 'tcg.collection-monitor-sync-status-ack/v1';
-  const SOURCES = new Set(['ebay', 'tcgplayer', 'heritage', 'store']);
+  const SOURCE_HEALTH_SCHEMA = 'tcg.collection-monitor-source-health/v1';
+  const PROVIDER_SOURCE_HEALTH_SCHEMA = 'tcg.marketplace-source-health/v1';
+  const SOURCE_ORDER = ['ebay', 'tcgplayer', 'heritage', 'fanatics', 'hakes', 'goldin', 'pristine', 'hibid', 'craigslist', 'store'];
+  const SOURCE_STATES = new Set(['fresh', 'verified-empty', 'stale', 'unavailable']);
+  const CANDIDATE_ORIGINS = new Set(['current-capture', 'retained-last-success']);
+  const SOURCES = new Set(['ebay', 'tcgplayer', 'heritage', 'fanatics', 'hakes', 'goldin', 'pristine', 'hibid', 'craigslist', 'store']);
   const CONFIDENCE = new Set(['low', 'medium', 'high']);
 
   function validationError(path, message) {
@@ -26,6 +31,67 @@
     Object.keys(value).forEach((key) => {
       if (!allowed.has(key)) errors.push(validationError(path + '.' + key, 'unexpected field'));
     });
+  }
+
+  function nullableIso(value) {
+    return value == null || isIsoTimestamp(value);
+  }
+
+  function boundedCount(value) {
+    return Number.isInteger(value) && value >= 0 && value <= 1000000000;
+  }
+
+  function normalizeSourceBlocker(value) {
+    if (value == null) return null;
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        Object.keys(value).some((key) => !['code', 'message'].includes(key))) return undefined;
+    const code = String(value.code || '').trim();
+    const message = String(value.message || '').trim();
+    if (!/^[A-Z][A-Z0-9_]{0,79}$/.test(code) || !message || message.length > 300) return undefined;
+    return { code, message };
+  }
+
+  function projectSourceStatus(input, observedAt = new Date().toISOString()) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+    const projectionTime = isIsoTimestamp(observedAt) ? new Date(observedAt).toISOString() : new Date().toISOString();
+    const sources = [];
+    for (const source of SOURCE_ORDER) {
+      const capture = input[source] && input[source].capture;
+      if (!capture || typeof capture !== 'object' || Array.isArray(capture) ||
+          capture.schema !== PROVIDER_SOURCE_HEALTH_SCHEMA || !SOURCE_STATES.has(capture.status) ||
+          !nullableIso(capture.checkedAt) || !nullableIso(capture.observedAt) || !nullableIso(capture.lastSuccessAt) ||
+          !boundedCount(capture.candidateCount) || !boundedCount(capture.retainedCandidateCount) ||
+          !boundedCount(capture.cacheHitCount) || !boundedCount(capture.newCount) ||
+          !boundedCount(capture.changedCount) || !boundedCount(capture.aiSkippedCount) ||
+          typeof capture.actionable !== 'boolean' ||
+          (capture.candidateOrigin != null && !CANDIDATE_ORIGINS.has(capture.candidateOrigin)) ||
+          !(capture.ageMs == null || (Number.isFinite(capture.ageMs) && capture.ageMs >= 0 && capture.ageMs <= 315576000000))) continue;
+      if (['stale', 'unavailable', 'verified-empty'].includes(capture.status) && capture.actionable !== false) continue;
+      if (capture.status === 'verified-empty' && capture.candidateCount !== 0) continue;
+      if (capture.status === 'fresh' && capture.candidateCount === 0) continue;
+      const blocker = normalizeSourceBlocker(capture.blocker);
+      if (blocker === undefined) continue;
+      sources.push({
+        source,
+        state: capture.status,
+        checkedAt: capture.checkedAt == null ? null : new Date(capture.checkedAt).toISOString(),
+        observedAt: capture.observedAt == null ? null : new Date(capture.observedAt).toISOString(),
+        lastSuccessAt: capture.lastSuccessAt == null ? null : new Date(capture.lastSuccessAt).toISOString(),
+        candidateCount: capture.candidateCount,
+        retainedCandidateCount: capture.retainedCandidateCount,
+        cache: {
+          hit: capture.cacheHitCount,
+          new: capture.newCount,
+          changed: capture.changedCount,
+          aiSkipped: capture.aiSkippedCount
+        },
+        actionable: capture.actionable,
+        candidateOrigin: capture.candidateOrigin == null ? null : capture.candidateOrigin,
+        blocker,
+        ageMs: capture.ageMs == null ? null : capture.ageMs
+      });
+    }
+    return sources.length ? { schema: SOURCE_HEALTH_SCHEMA, observedAt: projectionTime, sources } : null;
   }
 
   function validateSubscription(input, validateCollectionSnapshot) {
@@ -241,7 +307,9 @@
     COLLECTION_SCHEMA,
     SYNC_STATUS_SCHEMA,
     SYNC_STATUS_ACK_SCHEMA,
+    SOURCE_HEALTH_SCHEMA,
     validateSubscription,
+    projectSourceStatus,
     createRevisionGate,
     createBridge
   };

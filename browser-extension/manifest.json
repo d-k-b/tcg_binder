@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "TCG Collection Tracker",
-  "version": "1.5.0",
-  "description": "Open the TCG collection dashboard, create AI-assisted collection drafts, identify sealed products, and bridge TCG Comps pricing.",
+  "version": "1.6.5",
+  "description": "Open the TCG collection dashboard and securely bridge Collection Authority, TCG Comps pricing, monitoring, and AI tools.",
   "permissions": ["sidePanel", "storage"],
-  "host_permissions": ["https://api.openai.com/*"],
+  "host_permissions": ["https://api.openai.com/*", "https://gogo.tail903ec0.ts.net/*", "http://127.0.0.1:3102/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -34,6 +34,6 @@
     "128": "icons/icon-128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://api.openai.com; frame-src https://d-k-b.github.io http://127.0.0.1:* http://localhost:*"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://api.openai.com https://gogo.tail903ec0.ts.net http://127.0.0.1:3102; frame-src https://d-k-b.github.io http://127.0.0.1:* http://localhost:*"
   }
 }

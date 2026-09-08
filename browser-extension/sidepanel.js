@@ -3,6 +3,9 @@ const ALLOWED_LIVE_ORIGIN = 'https://d-k-b.github.io';
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
 const PRICING_EXTENSION_KEY = 'tcgCompsExtensionId';
 const PRICING_TOKEN_KEY = 'tcgCompsApiToken';
+const AUTHORITY_URL_KEY = 'collectionAuthorityUrl';
+const AUTHORITY_TOKEN_KEY = 'collectionAuthorityToken';
+const DEFAULT_AUTHORITY_URL = 'https://gogo.tail903ec0.ts.net/collection';
 const VISION_KEY = 'openaiVisionApiKey';
 const VISION_SAFETY_KEY = 'openaiVisionSafetyId';
 const EXPECTED_PRICING_API_VERSION = 1;
@@ -10,6 +13,7 @@ const VENDORED_PROVIDER_VERSION = '2.42.0';
 const COLLECTION_CHANNEL = 'tcg-collection/v1';
 const COLLECTION_SNAPSHOT_SCHEMA = 'tcg.collection-snapshot/v2';
 const COLLECTION_RESULT_SCHEMA = 'tcg.collection-decoration-result/v2';
+const AUTHORITY_PRODUCT_COUNT = 689;
 const COLLECTION_REQUEST_TIMEOUT_MS = 10000;
 const MONITOR_REQUEST_TIMEOUT_MS = 10000;
 const MONITOR_DEBOUNCE_MS = 900;
@@ -28,6 +32,10 @@ const pricingForm = document.getElementById('pricingForm');
 const pricingExtensionId = document.getElementById('tcgCompsExtensionId');
 const pricingToken = document.getElementById('tcgCompsApiToken');
 const pricingStatus = document.getElementById('pricingStatus');
+const authorityForm = document.getElementById('authorityForm');
+const authorityUrlInput = document.getElementById('collectionAuthorityUrl');
+const authorityTokenInput = document.getElementById('collectionAuthorityToken');
+const authorityStatus = document.getElementById('authorityStatus');
 const visionForm = document.getElementById('visionForm');
 const visionKeyInput = document.getElementById('openaiVisionApiKey');
 const rememberVisionKey = document.getElementById('rememberOpenaiKey');
@@ -57,6 +65,8 @@ let loadTimer = null;
 let pricingBridge = null;
 let pricingClient = null;
 let pricingSettings = { extensionId: '', apiToken: '' };
+let authoritySettings = { baseUrl: DEFAULT_AUTHORITY_URL, token: '' };
+let authorityClient = null;
 let visionSettings = { apiKey: '', remembered: false, safetyIdentifier: '' };
 let identifyRunning = false;
 let authorRunning = false;
@@ -125,6 +135,49 @@ async function writePricingSettings(settings) {
 async function clearPricingSettings() {
   if (!globalThis.chrome?.storage?.local) return;
   await chrome.storage.local.remove([PRICING_EXTENSION_KEY, PRICING_TOKEN_KEY]);
+}
+
+async function readAuthoritySettings() {
+  if (!globalThis.chrome?.storage?.local) return { baseUrl: DEFAULT_AUTHORITY_URL, token: '' };
+  const saved = await chrome.storage.local.get([AUTHORITY_URL_KEY, AUTHORITY_TOKEN_KEY]);
+  return { baseUrl: String(saved[AUTHORITY_URL_KEY] || DEFAULT_AUTHORITY_URL).trim(), token: String(saved[AUTHORITY_TOKEN_KEY] || '').trim() };
+}
+
+async function writeAuthoritySettings(settings) {
+  if (!globalThis.chrome?.storage?.local) throw new Error('Collection Authority settings require the installed extension.');
+  await chrome.storage.local.set({ [AUTHORITY_URL_KEY]: settings.baseUrl, [AUTHORITY_TOKEN_KEY]: settings.token });
+}
+
+async function clearAuthoritySettings() {
+  if (globalThis.chrome?.storage?.local) await chrome.storage.local.remove([AUTHORITY_URL_KEY, AUTHORITY_TOKEN_KEY]);
+}
+
+function setAuthorityStatus(message, kind = '') {
+  authorityStatus.textContent = message;
+  authorityStatus.classList.toggle('ok', kind === 'ok');
+  authorityStatus.classList.toggle('error', kind === 'error');
+  authorityStatus.classList.toggle('warning', kind === 'warning');
+}
+
+function createAuthorityClient() {
+  if (!authoritySettings.token) return null;
+  if (!globalThis.TCGCollectionAuthorityClient?.createClient) throw new Error('Reload the updated Tracker extension to use Collection Authority.');
+  return globalThis.TCGCollectionAuthorityClient.createClient({ baseUrl: authoritySettings.baseUrl, token: authoritySettings.token });
+}
+
+async function testAuthorityConnection() {
+  try {
+    authorityClient = createAuthorityClient();
+    if (!authorityClient) throw new Error('Paste the Collection Authority bearer token.');
+    const result = await authorityClient.readiness();
+    const collection = result.ready ? 'collection ready' : `${Number(result.validChecklistCount || 0)}/${Number(result.checklistCount || 7)} lanes ready`;
+    const pricing = result.dependencies?.pricing?.ready ? 'pricing ready' : 'pricing degraded';
+    setAuthorityStatus(`Connected: ${collection}; ${pricing}.`, result.ready && result.dependencies?.pricing?.ready ? 'ok' : 'warning');
+    return true;
+  } catch (error) {
+    setAuthorityStatus('Collection Authority connection failed: ' + String(error?.message || error), 'error');
+    return false;
+  }
 }
 
 function newSafetyIdentifier() {
@@ -254,7 +307,7 @@ function renderMonitorDetails(result = {}) {
 
 function monitorSyncStatusPayload(state, details = {}) {
   const allowedStates = new Set(['idle', 'syncing', 'synced', 'error', 'unavailable']);
-  return {
+  const payload = {
     schema: 'tcg.collection-monitor-sync-status/v1',
     state: allowedStates.has(state) ? state : 'error',
     revision: details.revision == null ? null : diagnosticText(details.revision, 160),
@@ -265,6 +318,12 @@ function monitorSyncStatusPayload(state, details = {}) {
     message: details.message == null ? null : diagnosticText(details.message, 300),
     errorCode: details.errorCode == null ? null : diagnosticText(details.errorCode, 80)
   };
+  const sourceStatus = globalThis.TCGCollectionMonitorBridge?.projectSourceStatus?.(
+    details.sourceStatus,
+    details.sourceStatusObservedAt
+  );
+  if (sourceStatus) payload.sourceStatus = sourceStatus;
+  return payload;
 }
 
 function publishMonitorSyncStatus(state, details = {}) {
@@ -389,6 +448,17 @@ function validateMonitorSyncResponse(response, subscription) {
   return response;
 }
 
+function validateAuthorityMonitorSyncResponse(response) {
+  if (response?.error) throw collectionError(String(response.error.code || 'MONITOR_SYNC_FAILED'), String(response.error.message || response.error.code || 'Monitor sync failed.'));
+  const cache = response?.authorityCache;
+  if (cache?.mode === 'complete-snapshot-fallback') {
+    throw collectionError('COLLECTION_SNAPSHOT_CONDITIONAL', 'A cached conditional collection snapshot cannot be used for monitor sync.');
+  }
+  const validator = globalThis.TCGCollectionAuthorityClient?.validateMonitorSyncResponse;
+  if (typeof validator !== 'function') throw collectionError('MONITOR_CLIENT_UNAVAILABLE', 'Reload the updated Tracker extension before using Collection Authority monitoring.');
+  return validator(response, { productCount: AUTHORITY_PRODUCT_COUNT });
+}
+
 function validateMonitorStatusResponse(response) {
   if (response?.error) throw collectionError(String(response.error.code || 'MONITOR_STATUS_FAILED'), String(response.error.message || response.error.code || 'Monitor status failed.'));
   if (Number(response?.apiVersion) !== EXPECTED_PRICING_API_VERSION) throw collectionError('UNSUPPORTED_VERSION', 'TCG Comps returned an incompatible API version.');
@@ -424,7 +494,8 @@ async function syncCollectionMonitor({ userInitiated = false, reason = 'automati
     if (!dashboardMonitorBridge) throw collectionError('MONITOR_BRIDGE_UNAVAILABLE', 'The dashboard monitor bridge is not ready yet.');
     subscription = validateMonitorSubscription(await dashboardMonitorBridge.requestSubscription());
     lastMonitorSubscriptionProductCount = Object.keys(subscription.collection.products).length;
-    if (!monitorRevisionGate.shouldForward(subscription.revision, userInitiated)) {
+    authorityClient = createAuthorityClient();
+    if (!authorityClient && !monitorRevisionGate.shouldForward(subscription.revision, userInitiated)) {
       renderMonitorDetails({ revision: subscription.revision, productCount: lastMonitorSubscriptionProductCount });
       setMonitorStatus('Monitor already has this collection revision.', 'ok');
       publishMonitorSyncStatusQuietly('synced', {
@@ -434,24 +505,34 @@ async function syncCollectionMonitor({ userInitiated = false, reason = 'automati
       });
       return;
     }
-    stage = 'calling-tcg-comps-sync';
-    pricingClient = createPricingClient();
-    response = await providerMonitorMethod(pricingClient, 'syncMonitorCollection')(subscription);
-    stage = 'validating-tcg-comps-sync';
-    validateMonitorSyncResponse(response, subscription);
-    lastForwardedMonitorRevision = subscription.revision;
-    monitorRevisionGate.accept(subscription.revision);
+    stage = authorityClient ? 'calling-collection-authority-sync' : 'calling-tcg-comps-sync';
+    if (authorityClient) response = await authorityClient.syncMonitor(subscription.preferences);
+    else {
+      pricingClient = createPricingClient();
+      response = await providerMonitorMethod(pricingClient, 'syncMonitorCollection')(subscription);
+    }
+    stage = 'validating-monitor-sync';
+    const authorityValidation = authorityClient ? validateAuthorityMonitorSyncResponse(response) : null;
+    if (!authorityClient) validateMonitorSyncResponse(response, subscription);
+    const conditionalAuthoritySync = authorityValidation?.conditional === true;
+    lastForwardedMonitorRevision = response.revision;
+    monitorRevisionGate.accept(response.revision);
     renderMonitorDetails(response);
-    setMonitorStatus(response.monitorConfigured === false
-      ? 'Collection synced, but the always-on monitor service is not configured.'
-      : 'Collection monitor synced.', response.monitorConfigured === false ? 'warning' : 'ok');
+    const monitorMessage = conditionalAuthoritySync
+      ? 'Complete collection retained; monitoring paused because ownership data is stale.'
+      : (response.monitorConfigured === false
+        ? 'Collection synced, but the always-on monitor service is not configured.'
+        : 'Collection monitor synced.');
+    setMonitorStatus(monitorMessage, conditionalAuthoritySync || response.monitorConfigured === false ? 'warning' : 'ok');
     publishMonitorSyncStatusQuietly('synced', {
       revision: response.revision,
       productCount: response.productCount,
       activeTargetCount: response.activeTargetCount,
       monitorConfigured: response.monitorConfigured,
       syncedAt: response.syncedAt,
-      message: response.monitorConfigured === false ? 'Collection synced; monitor service is not configured.' : 'Collection monitor synced.'
+      message: conditionalAuthoritySync
+        ? 'Complete collection retained; monitoring paused for stale ownership.'
+        : (response.monitorConfigured === false ? 'Collection synced; monitor service is not configured.' : 'Collection monitor synced.')
     });
   } catch (error) {
     showMonitorError(error, { stage, reason, startedAt, subscription, response });
@@ -500,7 +581,9 @@ async function refreshCollectionMonitorStatus({ quiet = false } = {}) {
       monitorConfigured: response.configured,
       syncedAt: lastSync.syncedAt || null,
       message,
-      errorCode: response.warning?.code || (!response.configured ? 'MONITOR_NOT_CONFIGURED' : (!response.online ? 'MONITOR_UNAVAILABLE' : null))
+      errorCode: response.warning?.code || (!response.configured ? 'MONITOR_NOT_CONFIGURED' : (!response.online ? 'MONITOR_UNAVAILABLE' : null)),
+      sourceStatus: response.sourceStatus,
+      sourceStatusObservedAt: new Date().toISOString()
     });
   } catch (error) {
     const code = String(error?.code || error?.error?.code || 'MONITOR_STATUS_FAILED');
@@ -567,6 +650,8 @@ function diagnosticText(value, maxLength = 4000) {
   let text = String(value == null ? '' : value);
   const capabilityToken = String(pricingSettings.apiToken || '');
   if (capabilityToken) text = text.split(capabilityToken).join('[REDACTED]');
+  const collectionToken = String(authoritySettings.token || '');
+  if (collectionToken) text = text.split(collectionToken).join('[REDACTED]');
   const visionKey = String(visionSettings.apiKey || '');
   if (visionKey) text = text.split(visionKey).join('[REDACTED]');
   text = text.replace(/sk-[A-Za-z0-9_-]{8,}/g, '[REDACTED]');
@@ -602,6 +687,11 @@ function buildPageScanDiagnostics({ error, stage, startedAt, snapshot, response 
     'Collection request timeout: ' + COLLECTION_REQUEST_TIMEOUT_MS + ' ms',
     'Collection snapshot schema: ' + String(snapshot?.schema || 'not received'),
     'Collection product count: ' + productCount,
+    'Collection authority status: ' + String(snapshot?.authority?.consumerStatus || 'not supplied'),
+    'Collection authority state: ' + String(snapshot?.authority?.state || 'not supplied'),
+    'Collection cache mode: ' + String(snapshot?.cache?.mode || 'not supplied'),
+    'Collection cache age: ' + (Number.isFinite(Number(snapshot?.cache?.ageMs)) ? String(Number(snapshot.cache.ageMs)) + ' ms' : 'not supplied'),
+    'Collection eligible for mutation: ' + (typeof snapshot?.cache?.eligibleForMutation === 'boolean' ? String(snapshot.cache.eligibleForMutation) : 'not supplied'),
     'Pricing paired: ' + (pricingSettings.extensionId && pricingSettings.apiToken ? 'yes' : 'no'),
     'TCG Comps extension ID: ' + String(pricingSettings.extensionId || 'not configured'),
     'Expected pricing API version: ' + EXPECTED_PRICING_API_VERSION,
@@ -665,6 +755,8 @@ function cancelCollectionRequest(message = 'The dashboard was reloaded before it
 }
 
 function requestCollectionSnapshot() {
+  authorityClient = createAuthorityClient();
+  if (authorityClient) return authorityClient.snapshot();
   if (!dashboard.contentWindow) return Promise.reject(collectionError('DASHBOARD_NOT_READY', 'The dashboard is not ready yet.'));
   cancelCollectionRequest('A newer page check replaced the previous request.');
   const requestId = 'collection-' + Date.now().toString(36) + '-' + (++collectionRequestSerial).toString(36);
@@ -776,7 +868,17 @@ function validateCollectionSnapshot(snapshot) {
   if (!checked?.ok) {
     throw new Error('The dashboard returned invalid collection status: ' + String(checked?.errors?.[0] || 'validation failed'));
   }
-  return checked.value;
+  const requireAuthority = Boolean(authorityClient);
+  const policy = globalThis.TCGCollectionAuthorityClient?.snapshotPolicy
+    ? globalThis.TCGCollectionAuthorityClient.snapshotPolicy(snapshot, { requireAuthority })
+    : { authority: null, cache: null, reviewOnly: false, mayInferOwnership: true };
+  if (requireAuthority && Object.keys(checked.value.products).length !== AUTHORITY_PRODUCT_COUNT) {
+    throw collectionError('COLLECTION_SNAPSHOT_INCOMPLETE', `Collection Authority did not return all ${AUTHORITY_PRODUCT_COUNT} canonical products.`);
+  }
+  const preserved = { ...checked.value };
+  if (policy.authority) preserved.authority = policy.authority;
+  if (policy.cache) preserved.cache = policy.cache;
+  return { snapshot: preserved, providerSnapshot: checked.value, policy };
 }
 
 function pageScanErrorMessage(error) {
@@ -786,6 +888,7 @@ function pageScanErrorMessage(error) {
   if (code === 'USER_ACTION_REQUIRED') return 'Select the page-check button again to start a user-requested scan.';
   if (code === 'TARGET_TAB_REQUIRED' || code === 'CONTENT_UNAVAILABLE') return 'Open or refresh a supported marketplace or storefront page, then try again.';
   if (code === 'INVALID_COLLECTION_SNAPSHOT') return 'Refresh the dashboard so it can provide the current collection catalog.';
+  if (code === 'COLLECTION_SNAPSHOT_CONDITIONAL') return 'Collection Authority returned a cached or stale snapshot. Ownership is review-only, so no NEED or OWNED marks were applied.';
   if (code === 'PAGE_DECORATION_UNAVAILABLE' || code === 'PAGE_DECORATION_FAILED') return 'Reload TCG Comps and the marketplace page, then try again.';
   if (/receiving end|could not establish connection|not exist/i.test(message)) return 'TCG Comps is unavailable. Reload it and the marketplace page, then try again.';
   return message;
@@ -827,10 +930,15 @@ async function decorateCollectionPage() {
     if (typeof pricingClient.decorateCollectionPage !== 'function') {
       throw new Error('Reload the updated Tracker and TCG Comps extensions before checking a page.');
     }
-    stage = 'requesting-dashboard-snapshot';
-    snapshot = validateCollectionSnapshot(await requestCollectionSnapshot());
+    authorityClient = createAuthorityClient();
+    stage = authorityClient ? 'requesting-collection-authority-snapshot' : 'requesting-dashboard-snapshot';
+    const validated = validateCollectionSnapshot(await requestCollectionSnapshot());
+    snapshot = validated.snapshot;
+    if (validated.policy.reviewOnly || validated.policy.mayInferOwnership === false) {
+      throw collectionError('COLLECTION_SNAPSHOT_CONDITIONAL', 'Collection Authority returned review-only ownership state.');
+    }
     stage = 'calling-tcg-comps';
-    response = await pricingClient.decorateCollectionPage(snapshot, { observe: true, userInitiated: true });
+    response = await pricingClient.decorateCollectionPage(validated.providerSnapshot, { observe: true, userInitiated: true });
     if (response?.error) {
       const error = new Error(String(response.error.message || response.error.code || 'Page check failed.'));
       error.code = response.error.code;
@@ -841,10 +949,13 @@ async function decorateCollectionPage() {
       throw new Error('TCG Comps returned an incompatible page-check response. Reload both extensions.');
     }
     const summary = summarizePageDecoration(response);
+    if (snapshot.authority?.consumerStatus === 'AUTHORITATIVE') summary.message += ' · Collection Authority live';
     setPageScanStatus(summary.title, summary.message, summary.kind);
   } catch (error) {
     const diagnostics = buildPageScanDiagnostics({ error, stage, startedAt, snapshot, response });
-    setPageScanStatus('Page check could not finish', pageScanErrorMessage(error), 'error', diagnostics);
+    if (error?.code === 'COLLECTION_SNAPSHOT_CONDITIONAL') {
+      setPageScanStatus('Page check not applied', pageScanErrorMessage(error), 'warning');
+    } else setPageScanStatus('Page check could not finish', pageScanErrorMessage(error), 'error', diagnostics);
   } finally {
     pageScanRunning = false;
     scanPageButton.disabled = false;
@@ -873,11 +984,13 @@ function createPricingClient() {
 function installPricingBridge() {
   if (pricingBridge) pricingBridge.dispose();
   pricingClient = createPricingClient();
+  authorityClient = createAuthorityClient();
+  const dashboardPricingClient = authorityClient ? { ...pricingClient, priceProduct: authorityClient.priceProduct } : pricingClient;
   const origin = new URL(currentUrl).origin;
   pricingBridge = TCGPricingBridge.createDashboardBridge({
     windowObject: window,
     frame: dashboard,
-    client: pricingClient,
+    client: dashboardPricingClient,
     allowedOrigins: [origin]
   });
 }
@@ -963,8 +1076,40 @@ settingsButton.addEventListener('click', () => {
     pricingExtensionId.value = pricingSettings.extensionId;
     pricingToken.value = '';
     pricingToken.placeholder = pricingSettings.apiToken ? 'Stored securely; paste to replace' : 'Paste capability token';
+    authorityUrlInput.value = authoritySettings.baseUrl;
+    authorityTokenInput.value = '';
+    authorityTokenInput.placeholder = authoritySettings.token ? 'Stored securely; paste to replace' : 'Paste authority bearer';
     dashboardUrl.focus();
   }
+});
+
+authorityForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const baseUrl = authorityUrlInput.value.trim().replace(/\/+$/, '');
+  const token = authorityTokenInput.value.trim() || authoritySettings.token;
+  try {
+    authoritySettings = { baseUrl, token };
+    authorityClient = createAuthorityClient();
+    await writeAuthoritySettings(authoritySettings);
+    authorityTokenInput.value = '';
+    authorityTokenInput.placeholder = 'Stored securely; paste to replace';
+    installPricingBridge();
+    await testAuthorityConnection();
+    dashboardMonitorBridge?.scheduleStateChanged();
+  } catch (error) {
+    setAuthorityStatus(String(error?.message || error), 'error');
+  }
+});
+
+document.getElementById('clearAuthority').addEventListener('click', async () => {
+  await clearAuthoritySettings();
+  authoritySettings = { baseUrl: DEFAULT_AUTHORITY_URL, token: '' };
+  authorityClient = null;
+  authorityUrlInput.value = DEFAULT_AUTHORITY_URL;
+  authorityTokenInput.value = '';
+  authorityTokenInput.placeholder = 'Paste authority bearer';
+  installPricingBridge();
+  setAuthorityStatus('Collection Authority configuration removed.');
 });
 
 visionForm.addEventListener('submit', async event => {
@@ -1055,9 +1200,10 @@ document.getElementById('clearPricing').addEventListener('click', async () => {
 });
 
 async function boot() {
-  const [savedDashboard, savedPricing, savedVision] = await Promise.all([readDashboardUrl(), readPricingSettings(), readVisionSettings()]);
+  const [savedDashboard, savedPricing, savedVision, savedAuthority] = await Promise.all([readDashboardUrl(), readPricingSettings(), readVisionSettings(), readAuthoritySettings()]);
   pricingSettings = savedPricing;
   visionSettings = savedVision;
+  authoritySettings = savedAuthority;
   try {
     currentUrl = normalizeDashboardUrl(savedDashboard.dashboardUrl);
   } catch (_error) {
@@ -1072,11 +1218,14 @@ async function boot() {
     ? 'API key is remembered on this device and ready for photo identification.'
     : 'Photo identification is not configured.', visionSettings.apiKey ? 'ok' : '');
   pricingToken.placeholder = pricingSettings.apiToken ? 'Stored securely; paste to replace' : 'Paste capability token';
+  authorityUrlInput.value = authoritySettings.baseUrl;
+  authorityTokenInput.placeholder = authoritySettings.token ? 'Stored securely; paste to replace' : 'Paste authority bearer';
   consumerExtensionId.textContent = globalThis.chrome?.runtime?.id || 'Unavailable outside the extension';
   setPricingStatus(pricingSettings.extensionId && pricingSettings.apiToken
     ? 'Pairing stored. Testing TCG Comps…'
     : 'Pricing is not paired.');
   startLoad(currentUrl);
+  if (authoritySettings.token) await testAuthorityConnection();
   if (pricingSettings.extensionId && pricingSettings.apiToken) {
     await testPricingConnection();
     await refreshCollectionMonitorStatus({ quiet: true });

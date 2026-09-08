@@ -41,7 +41,7 @@ function buildSubscription(revision = 'revision-a') {
       enabled: true,
       maxMarketRatio: 0.8,
       minimumConfidence: 'medium',
-      sources: ['ebay', 'tcgplayer', 'heritage', 'store'],
+      sources: ['ebay', 'tcgplayer', 'heritage', 'craigslist', 'store'],
       includeOptional: false,
       instantFixedPriceEmail: true,
       dailyDigest: { enabled: true, time: '07:00', timezone: 'America/Chicago' }
@@ -65,12 +65,44 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 async function main() {
   const subscription = buildSubscription();
-  assert.strictEqual(Object.keys(subscription.collection.products).length, 688, 'monitor sync must forward all 688 ProductRefs atomically');
+  assert.strictEqual(Object.keys(subscription.collection.products).length, 689, 'monitor sync must forward all 689 ProductRefs atomically');
   assert.ok(monitor.validateSubscription(subscription, contracts.validateCollectionSnapshot).ok, 'canonical monitor subscription must validate');
 
   const sidepanelSource = fs.readFileSync(path.join(EXT, 'sidepanel.js'), 'utf8');
   assert.match(sidepanelSource, /lastMonitorDetails\.activeTargetCount/, 'manual-run rendering must retain the last verified active-target count');
   assert.match(sidepanelSource, /lastMonitorDetails\.syncedAt/, 'manual-run rendering must retain the last verified sync timestamp');
+
+  const capture = (status, overrides = {}) => ({
+    schema: 'tcg.marketplace-source-health/v1', status,
+    checkedAt: '2026-09-04T12:00:00.000Z', observedAt: '2026-09-04T11:59:00.000Z',
+    lastSuccessAt: '2026-09-04T11:59:00.000Z', candidateCount: 4, retainedCandidateCount: 4,
+    cacheHitCount: 2, newCount: 1, changedCount: 1, aiSkippedCount: 2,
+    actionable: status === 'fresh', candidateOrigin: 'current-capture', blocker: null, ageMs: 60000,
+    ...overrides
+  });
+  const projectedSources = monitor.projectSourceStatus({
+    ebay: { capture: capture('fresh'), unexpectedSecret: 'discard-me' },
+    tcgplayer: { capture: capture('verified-empty', { candidateCount: 0, retainedCandidateCount: 0, cacheHitCount: 0,
+      newCount: 0, changedCount: 0, aiSkippedCount: 0, actionable: false }) },
+    heritage: { capture: capture('stale', { actionable: false, candidateOrigin: 'retained-last-success', ageMs: 172800000 }) },
+    craigslist: { capture: capture('fresh', { actionable: false, candidateOrigin: 'current-capture' }) },
+    fanatics: { capture: capture('unavailable', { checkedAt: '2026-09-04T12:00:00.000Z', observedAt: null,
+      candidateCount: 0, actionable: false, candidateOrigin: null,
+      blocker: { code: 'SOURCE_UNAVAILABLE', message: 'Source is unavailable.', secret: 'discard-me' } }) },
+    hakes: { capture: capture('stale', { actionable: true }) },
+    invented: { capture: capture('fresh') }
+  }, '2026-09-04T12:00:01.000Z');
+  assert.strictEqual(projectedSources.schema, 'tcg.collection-monitor-source-health/v1');
+  assert.strictEqual(projectedSources.observedAt, '2026-09-04T12:00:01.000Z');
+  assert.deepStrictEqual(projectedSources.sources.map((source) => source.source), ['ebay', 'tcgplayer', 'heritage', 'craigslist'],
+    'fixed source order must omit unknown and policy-invalid captures without breaking core status');
+  assert.deepStrictEqual(projectedSources.sources[0].cache, { hit: 2, new: 1, changed: 1, aiSkipped: 2 });
+  assert.strictEqual(projectedSources.sources[2].state, 'stale', 'provider capture status must pass through verbatim');
+  assert.strictEqual(projectedSources.sources[2].actionable, false, 'stale sources must remain non-actionable');
+  assert.strictEqual(projectedSources.sources[3].source, 'craigslist', 'Craiglist source health is projected in fixed order');
+  assert.strictEqual(JSON.stringify(projectedSources).includes('discard-me'), false, 'unexpected provider fields must not cross the dashboard bridge');
+  assert.strictEqual(monitor.projectSourceStatus({ ebay: { capture: capture('fresh', { candidateCount: 0 }) } }), null,
+    'semantically invalid capture entries must be omitted without breaking compact monitor status');
 
   const leakedTopLevel = JSON.parse(JSON.stringify(subscription));
   leakedTopLevel.apiToken = 'must-not-pass';
@@ -142,11 +174,13 @@ async function main() {
   assert.strictEqual(await request, subscription, 'exact response must resolve the pending request');
 
   const statusPromise = bridge.postSyncStatus({
-    schema: 'tcg.collection-monitor-sync-status/v1', state: 'synced', revision: 'revision-a', productCount: 688,
-    activeTargetCount: 123, monitorConfigured: true, syncedAt: '2026-08-09T12:00:01.000Z', message: null, errorCode: null
+    schema: 'tcg.collection-monitor-sync-status/v1', state: 'synced', revision: 'revision-a', productCount: 689,
+    activeTargetCount: 123, monitorConfigured: true, syncedAt: '2026-08-09T12:00:01.000Z', message: null, errorCode: null,
+    sourceStatus: projectedSources
   });
   const statusEnvelope = posted.at(-1).message;
   assert.strictEqual(statusEnvelope.type, 'monitorSyncStatus');
+  assert.deepStrictEqual(statusEnvelope.status.sourceStatus, projectedSources, 'bounded source health must stay inside the existing exact status envelope');
   assert.ok(!JSON.stringify(statusEnvelope).includes('apiToken'), 'dashboard status must contain no capability token');
   windowObject.dispatch({ origin: 'https://d-k-b.github.io', source: contentWindow, data: {
     channel: monitor.CHANNEL, type: 'monitorSyncStatusResult', requestId: statusEnvelope.requestId,
@@ -182,7 +216,7 @@ async function main() {
 
   bridge.dispose();
   assert.strictEqual(windowObject.listeners.has('message'), false, 'disposing the bridge must remove its message listener');
-  console.log('browser extension monitor tests: 688-product validation, exact bridge, status ack, revision gate, and debounce passing');
+  console.log('browser extension monitor tests: 689-product validation, exact bridge, status ack, revision gate, and debounce passing');
 }
 
 main().catch((error) => {

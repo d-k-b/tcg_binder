@@ -10,16 +10,20 @@ const EXT = path.join(ROOT, 'browser-extension');
 const manifest = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
 
 assert.strictEqual(manifest.manifest_version, 3, 'extension must use Manifest V3');
-assert.strictEqual(manifest.version, '1.5.0', 'AI-assisted local collection drafts must bump the tracker extension version');
+assert.strictEqual(manifest.version, '1.6.5', 'the 689-product Authority completeness contract must bump the tracker extension version');
 assert.strictEqual(manifest.side_panel.default_path, 'sidepanel.html');
 assert.deepStrictEqual(manifest.permissions.slice().sort(), ['sidePanel', 'storage']);
-assert.deepStrictEqual(manifest.host_permissions, ['https://api.openai.com/*'], 'photo identification may contact only the OpenAI API');
+assert.deepStrictEqual(manifest.host_permissions, ['https://api.openai.com/*', 'https://gogo.tail903ec0.ts.net/*', 'http://127.0.0.1:3102/*'],
+  'extension network access must stay limited to OpenAI and the explicit Collection Authority gateway');
 
 const csp = manifest.content_security_policy.extension_pages;
 assert.match(csp, /script-src 'self'/);
 assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval|https:\/\/.*script-src/);
 assert.match(csp, /frame-src https:\/\/d-k-b\.github\.io/);
 assert.match(csp, /connect-src https:\/\/api\.openai\.com/, 'extension pages may connect only to the configured vision API host');
+assert.match(csp, /https:\/\/gogo\.tail903ec0\.ts\.net/, 'extension pages may connect to the explicit Tailscale gateway');
+assert.match(csp, /http:\/\/127\.0\.0\.1:3102/, 'extension pages may connect directly to the loopback Collection Authority');
+assert.doesNotMatch(csp, /127\.0\.0\.1:3180|localhost:3180/, 'the wrapper must not confuse the path router with the direct loopback Authority base');
 
 const referenced = [
   manifest.background.service_worker,
@@ -53,8 +57,11 @@ assert.ok(html.indexOf('<script src="identify-bridge.js"></script>') > html.inde
   'the product-identification bridge must load before sidepanel.js');
 assert.ok(html.indexOf('<script src="collection-author-bridge.js"></script>') > html.indexOf('identify-bridge.js'),
   'the collection-authoring bridge must load before sidepanel.js');
+assert.ok(html.indexOf('<script src="collection-authority-client.js"></script>') > html.indexOf('pricing-bridge.js'),
+  'the Collection Authority client must load after the provider contracts and before sidepanel.js');
 
 const panelJs = fs.readFileSync(path.join(EXT, 'sidepanel.js'), 'utf8');
+const authorityClientJs = fs.readFileSync(path.join(EXT, 'collection-authority-client.js'), 'utf8');
 const workerJs = fs.readFileSync(path.join(EXT, 'background.js'), 'utf8');
 for (const source of [panelJs, workerJs]) {
   assert.match(source, /https:\/\/d-k-b\.github\.io\/tcg_binder\//);
@@ -69,6 +76,32 @@ assert.match(panelJs, /chrome\.storage\.local\.set\(\{[\s\S]*\[PRICING_TOKEN_KEY
   'pairing credentials must save to extension-local storage');
 assert.doesNotMatch(panelJs, /localStorage\.(?:getItem|setItem)\([^\n]*PRICING_TOKEN_KEY/,
   'the pricing capability token must never use page localStorage');
+assert.match(panelJs, /chrome\.storage\.local\.get\(\[AUTHORITY_URL_KEY, AUTHORITY_TOKEN_KEY\]\)/,
+  'Collection Authority settings must load from extension-local storage');
+assert.doesNotMatch(panelJs, /localStorage\.(?:getItem|setItem)\([^\n]*AUTHORITY_TOKEN_KEY/,
+  'the Collection Authority bearer must never use page localStorage');
+assert.match(panelJs, /priceProduct:\s*authorityClient\.priceProduct/,
+  'dashboard price requests must route through Collection Authority when configured');
+assert.match(panelJs, /authorityClient\.snapshot\(\)/,
+  'page decoration must use the authoritative collection snapshot when configured');
+assert.match(authorityClientJs, /snapshot:\s*\(\)\s*=>[\s\S]*attachSnapshotProvenance/,
+  'the wrapper must preserve validated Authority cache provenance on returned collection snapshots');
+assert.match(panelJs, /COLLECTION_SNAPSHOT_CONDITIONAL/,
+  'conditional Authority snapshots must be labeled review-only');
+assert.match(panelJs, /decorateCollectionPage\(validated\.providerSnapshot, \{ observe: true, userInitiated: true \}\)/,
+  'only the canonical snapshot body may reach provider-owned page decoration after Authority policy checks');
+assert.match(authorityClientJs, /!\['monitor-subscription-hit', 'monitor-subscription-refresh'\]\.includes\(cache\.mode\)/,
+  'the Authority validator must reject collection snapshot fallback cache modes');
+assert.match(panelJs, /authorityClient\.syncMonitor\(subscription\.preferences\)/,
+  'monitor sync must let Collection Authority rebuild canonical collection state');
+assert.match(panelJs, /Complete collection retained; monitoring paused because ownership data is stale\./,
+  'conditional monitor sync must render a distinct retained-but-paused warning');
+assert.match(panelJs, /return validator\(response, \{ productCount: AUTHORITY_PRODUCT_COUNT \}\)/,
+  'Authority monitor responses must pass the strict ownership-policy validator');
+assert.match(panelJs, /sourceStatus:\s*response\.sourceStatus/,
+  'provider source health must be projected only from monitorStatus responses');
+assert.match(panelJs, /TCGCollectionMonitorBridge\?\.projectSourceStatus/,
+  'monitor status must use the strict bridge-owned source-health projection');
 assert.match(html, /id="rememberOpenaiKey"[^>]*checked/, 'remember-on-this-device must default on');
 assert.match(panelJs, /chrome\.storage\.local\.set\(\{ \[VISION_KEY\]: apiKey \}\)/,
   'remembered OpenAI keys must use extension-local storage');
@@ -106,7 +139,11 @@ assert.match(panelJs, /COLLECTION_SNAPSHOT_SCHEMA\s*=\s*'tcg\.collection-snapsho
   'the Tracker must require the canonical ProductRef collection snapshot');
 assert.match(panelJs, /COLLECTION_RESULT_SCHEMA\s*=\s*'tcg\.collection-decoration-result\/v2'/,
   'the Tracker must require the corrected canonical result schema');
-assert.match(panelJs, /decorateCollectionPage\(snapshot, \{ observe: true, userInitiated: true \}\)/,
+assert.match(panelJs, /AUTHORITY_PRODUCT_COUNT\s*=\s*689/,
+  'the Tracker must reject Authority snapshots that omit the 689th canonical ProductRef');
+assert.match(authorityClientJs, /options\.productCount\) \? options\.productCount : 689/,
+  'the Collection Authority client default must require all 689 canonical products');
+assert.match(panelJs, /decorateCollectionPage\(validated\.providerSnapshot, \{ observe: true, userInitiated: true \}\)/,
   'page decoration must be a direct user-initiated provider call');
 assert.strictEqual((panelJs.match(/userInitiated:\s*true/g) || []).length, 2,
   'only direct page-decoration and monitor-sync buttons may assert a user action in the panel; packaged runMonitor adds its own direct-action flag');
@@ -127,6 +164,8 @@ assert.match(panelJs, /document\.execCommand\('copy'\)/,
   'clipboard copying must have a side-panel-compatible fallback');
 assert.match(panelJs, /text\.split\(capabilityToken\)\.join\('\[REDACTED\]'\)/,
   'diagnostic text must redact the stored capability token if an upstream error echoes it');
+assert.match(panelJs, /text\.split\(collectionToken\)\.join\('\[REDACTED\]'\)/,
+  'diagnostic text must redact the Collection Authority bearer if an upstream error echoes it');
 assert.match(panelJs, /The capability token is intentionally excluded\./,
   'copied diagnostics must explicitly confirm the credential boundary');
 assert.doesNotMatch(panelJs, /['"]Capability token:\s*['"]\s*\+/,
@@ -176,10 +215,12 @@ for (const checklist of binder.checklists || []) {
     }
   }
 }
-assert.strictEqual(Object.keys(catalogProducts).length, 688, 'all canonical Tracker ProductRefs must fit one page-decoration request');
+assert.strictEqual(Object.keys(catalogProducts).length, 689, 'all canonical Tracker ProductRefs must fit one page-decoration request');
+assert.ok(catalogProducts['mtg:cmr:commander-legends:collector-booster:display:en'],
+  'the complete extension snapshot must include the required Commander Legends Collector Booster Display ProductRef');
 assert.ok(contracts.validateCollectionSnapshot({
   schema: 'tcg.collection-snapshot/v2', namespace: 'collection-tracker', products: catalogProducts
-}).ok, 'the exact provider contract must accept all 688 full canonical ProductRefs atomically');
+}).ok, 'the exact provider contract must accept all 689 full canonical ProductRefs atomically');
 const firstProductId = Object.keys(catalogProducts)[0];
 const mismatched = JSON.parse(JSON.stringify(catalogProducts[firstProductId]));
 mismatched.product.productId = 'mtg:bad:mismatched-product:booster:pack:en';
@@ -191,5 +232,6 @@ assert.match(panelCss, /\.toolbar\s*\{\s*grid-row:\s*1;/, 'toolbar must own the 
 assert.match(panelCss, /\.page-scan-status\s*\{[\s\S]*grid-row:\s*2;/, 'page status must own the optional second grid row');
 assert.match(panelCss, /\.settings-panel\s*\{\s*grid-row:\s*3;/, 'settings must own the optional third grid row');
 assert.match(panelCss, /main\s*\{\s*grid-row:\s*4;/, 'dashboard must stay in the flexible fourth grid row');
+assert.match(panelCss, /#authorityForm input/, 'Collection Authority URL and bearer inputs must use the bounded settings layout');
 
 console.log('browser extension tests: pricing bridge and MV3 shell passing');

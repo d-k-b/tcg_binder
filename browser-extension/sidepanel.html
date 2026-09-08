@@ -83,6 +83,20 @@
       </div>
     </section>
     <div class="settings-divider" role="presentation"></div>
+    <form id="authorityForm">
+      <div class="settings-heading">Collection Authority API</div>
+      <p>The dashboard, pricing bridge, and monitor sync use the protected home API. Its bearer stays only in this extension.</p>
+      <label for="collectionAuthorityUrl">API URL</label>
+      <input id="collectionAuthorityUrl" name="collectionAuthorityUrl" type="url" spellcheck="false" autocomplete="off" required>
+      <label for="collectionAuthorityToken">Bearer token</label>
+      <input id="collectionAuthorityToken" name="collectionAuthorityToken" type="password" spellcheck="false" autocomplete="new-password" placeholder="Paste authority bearer">
+      <div class="settings-actions pricing-actions">
+        <button class="save" type="submit">Save &amp; test</button>
+        <button id="clearAuthority" class="text-button" type="button">Remove API</button>
+      </div>
+      <p id="authorityStatus" class="pairing-status" role="status">Collection Authority is not configured.</p>
+    </form>
+    <div class="settings-divider" role="presentation"></div>
     <form id="visionForm">
       <div class="settings-heading">OpenAI assistant</div>
       <p>Use your own OpenAI API key for photo identification and AI-assisted collection drafts. The key stays in this extension and is never sent to the dashboard, Gist, exports, URLs, or diagnostics.</p>
@@ -125,6 +139,7 @@
   <script src="vendor/tcg-comps-2.42.0/pricing-contracts.js"></script>
   <script src="vendor/tcg-comps-2.42.0/pricing-client.js"></script>
   <script src="vendor/tcg-comps-2.42.0/pricing-bridge.js"></script>
+  <script src="collection-authority-client.js"></script>
   <script src="monitor-bridge.js"></script>
   <script src="identify-bridge.js"></script>
   <script src="collection-author-bridge.js"></script>
