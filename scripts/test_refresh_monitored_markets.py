@@ -108,19 +108,19 @@ class RefreshMonitoredMarketsTests(unittest.TestCase):
         result["market"]["method"] = "venue-balanced-median"
         record = MODULE.latest_market_record(result, "browser")
         self.assertEqual(record["status"], "unavailable")  # browser provenance is still mandatory
-        result["browserExecution"] = {"mode": "interactive-extension"}
+        result["browserExecution"] = {"schema": "tcg.browser-comp-evidence/v1", "mode": "interactive-extension"}
         record = MODULE.latest_market_record(result, "browser")
         self.assertEqual(record["status"], "market")
         self.assertEqual(record["market"]["method"], "venue-balanced-median")
 
     def test_browser_no_verified_market_is_pending_not_a_generic_error(self):
         class BrowserMarketMissing(Exception):
-            job_id = "browser-job-no-market"
+            job_id = "browser-12345678-1234-1234-1234-123456789abc"
             body = {"error": {"code": "NO_VERIFIED_BROWSER_MARKET", "message": "no market"}}
         record = MODULE.safe_error(BrowserMarketMissing("no market"))
         self.assertEqual(record["status"], "pending")
         self.assertEqual(record["errorCode"], "NO_VERIFIED_BROWSER_MARKET")
-        self.assertEqual(record["jobId"], "browser-job-no-market")
+        self.assertEqual(record["jobId"], "browser-12345678-1234-1234-1234-123456789abc")
         self.assertNotIn("market", record)
 
     def test_stability_metadata_is_retained_without_promoting_trend_projection(self):
@@ -211,12 +211,32 @@ class RefreshMonitoredMarketsTests(unittest.TestCase):
     def test_rest_error_code_and_job_id_are_preserved_safely(self):
         class RestError(Exception):
             code = "BROWSER_AGENT_OFFLINE"
-            job_id = "browser-job-123"
+            job_id = "browser-12345678-1234-1234-1234-123456789abc"
             status = 503
         record = MODULE.safe_error(RestError("offline"), retry_base_seconds=60, retry_max_seconds=600)
         self.assertEqual(record["errorCode"], "BROWSER_AGENT_OFFLINE")
-        self.assertEqual(record["jobId"], "browser-job-123")
+        self.assertEqual(record["jobId"], "browser-12345678-1234-1234-1234-123456789abc")
         self.assertTrue(record["retryable"])
+
+    def test_malformed_browser_job_ids_and_incomplete_provenance_are_dropped(self):
+        result = FakeClient().price_product(PRODUCT)
+        result["browserExecution"] = {"mode": "interactive-extension"}
+        self.assertEqual(MODULE.latest_market_record(result, "browser")["status"], "unavailable")
+        result["browserExecution"] = {"schema": "wrong-schema", "mode": "interactive-extension"}
+        self.assertEqual(MODULE.latest_market_record(result, "browser")["status"], "unavailable")
+
+        class MalformedJobError(Exception):
+            job_id = "browser-job-123"
+            body = {"jobId": "not-a-browser-job", "error": {"code": "BROWSER_AGENT_OFFLINE", "jobId": "also-invalid"}}
+
+        record = MODULE.safe_error(MalformedJobError("offline"))
+        self.assertNotIn("jobId", record)
+
+        class MalformedUuidShapeError(Exception):
+            job_id = "browser-------------------------------------"
+
+        record = MODULE.safe_error(MalformedUuidShapeError("offline"))
+        self.assertNotIn("jobId", record)
 
 
 if __name__ == "__main__":

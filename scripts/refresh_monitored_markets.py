@@ -29,6 +29,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 import time
@@ -46,6 +47,9 @@ DEFAULT_MARKET_TTL_HOURS = 24 * 6
 DEFAULT_RETRY_BASE_SECONDS = 15 * 60
 DEFAULT_RETRY_MAX_SECONDS = 4 * 60 * 60
 NON_MARKET_RETRY_SECONDS = 24 * 60 * 60
+BROWSER_JOB_ID_PATTERN = re.compile(
+    r"browser-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+)
 STABILITY_KEYS = (
     "compSetHash", "consensus", "trendProjection", "trendUsed", "suppressionReasons",
     "venueMedians", "jackknife", "sourceSpreadPct", "trendDeltaPct",
@@ -57,6 +61,19 @@ SALE_DERIVED_METHODS = frozenset({
     # verified recent-sales ledger.  It is Market, unlike catalog fallbacks.
     "venue-balanced-median",
 })
+
+
+def valid_browser_job_id(*candidates: Any) -> str | None:
+    """Return only contract-valid browser-job identifiers for durable evidence.
+
+    Error payloads are untrusted transport evidence.  Keeping a malformed ID
+    would make later browser-job correlation ambiguous, so prefer the first
+    valid candidate and otherwise persist nothing.
+    """
+    for candidate in candidates:
+        if isinstance(candidate, str) and BROWSER_JOB_ID_PATTERN.fullmatch(candidate):
+            return candidate
+    return None
 
 
 def utc_now() -> str:
@@ -267,7 +284,10 @@ def latest_market_record(result: Mapping[str, Any], execution_mode: str, *, non_
     observed_at = result.get("observedAt")
     cache = result.get("cache") if isinstance(result.get("cache"), Mapping) else {}
     browser_execution = result.get("browserExecution") if isinstance(result.get("browserExecution"), Mapping) else {}
-    if execution_mode == "browser" and browser_execution.get("mode") != "interactive-extension":
+    if execution_mode == "browser" and (
+        browser_execution.get("schema") != "tcg.browser-comp-evidence/v1"
+        or browser_execution.get("mode") != "interactive-extension"
+    ):
         status, reason = "unavailable", "browser request did not return interactive-extension provenance"
     elif cache.get("mode") == "stale-fallback":
         status, reason = "stale", "provider marked the valuation as stale fallback"
@@ -340,8 +360,8 @@ def safe_error(
                 "refreshedAt": refreshed_at,
                 "nextRetryAt": add_seconds(refreshed_at, NON_MARKET_RETRY_SECONDS),
             }
-            job_id = getattr(error, "job_id", None) or job_error.get("jobId") or body.get("jobId")
-            if isinstance(job_id, str) and 0 < len(job_id) <= 160:
+            job_id = valid_browser_job_id(getattr(error, "job_id", None), job_error.get("jobId"), body.get("jobId"))
+            if job_id:
                 pending["jobId"] = job_id
             return pending
     attempts = 1
@@ -358,10 +378,14 @@ def safe_error(
         "retryable": retryable,
     }
     error_code = getattr(error, "code", None) or job_error.get("code")
-    job_id = getattr(error, "job_id", None) or job_error.get("jobId") or (body.get("jobId") if isinstance(body, Mapping) else None)
+    job_id = valid_browser_job_id(
+        getattr(error, "job_id", None),
+        job_error.get("jobId"),
+        body.get("jobId") if isinstance(body, Mapping) else None,
+    )
     if isinstance(error_code, str) and 0 < len(error_code) <= 100:
         record["errorCode"] = error_code
-    if isinstance(job_id, str) and 0 < len(job_id) <= 160:
+    if job_id:
         record["jobId"] = job_id
     if retryable:
         record["nextRetryAt"] = add_seconds(refreshed_at, retry_delay_seconds(attempts, retry_base_seconds, retry_max_seconds))
