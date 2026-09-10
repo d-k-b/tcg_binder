@@ -14,7 +14,7 @@ def snapshot_fixture():
         "collector", "boxes", "packs", "prerelease", "lorcana", "lorcana_pre", "lorcana_coll"
     )}
     products = {f"fixture:{index}": {"product": {"productId": f"fixture:{index}"}, "target": 1, "owned": 0, "missing": 1}
-                for index in range(688)}
+                for index in range(689)}
     revision = "a" * 64
     return {
         "schema": "tcg.collection-snapshot-response/v1",

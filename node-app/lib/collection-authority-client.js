@@ -1,6 +1,6 @@
 'use strict';
 
-const { validateSnapshotResponse } = require('./collection-snapshot');
+const { EXPECTED_PRODUCT_COUNT, validateSnapshotResponse } = require('./collection-snapshot');
 
 class CollectionAuthorityClientError extends Error {
   constructor(code, message, status = null, retryable = false) {
@@ -88,7 +88,7 @@ class CollectionAuthorityClient {
     });
     const policy = body && body.ownershipPolicy;
     if (!body || body.accepted !== true || typeof body.revision !== 'string' ||
-        body.productCount !== 688 || !Number.isInteger(body.activeTargetCount) ||
+        body.productCount !== EXPECTED_PRODUCT_COUNT || !Number.isInteger(body.activeTargetCount) ||
         !policy || policy.schema !== 'tcg.collection-ownership-policy/v1' ||
         typeof body.requestedMonitorEnabled !== 'boolean' ||
         typeof body.effectiveMonitorEnabled !== 'boolean') {

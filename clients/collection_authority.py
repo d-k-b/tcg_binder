@@ -11,7 +11,7 @@ from email.utils import parsedate_to_datetime
 from typing import Any, Callable, Dict, Optional
 
 
-EXPECTED_PRODUCT_COUNT = 688
+EXPECTED_PRODUCT_COUNT = 689
 EXPECTED_LANES = ("collector", "boxes", "packs", "prerelease", "lorcana", "lorcana_pre", "lorcana_coll")
 
 

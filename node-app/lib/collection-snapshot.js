@@ -8,7 +8,7 @@ const RESPONSE_SCHEMA = 'tcg.collection-snapshot-response/v1';
 const EXPECTED_LANES = Object.freeze([
   'collector', 'boxes', 'packs', 'prerelease', 'lorcana', 'lorcana_pre', 'lorcana_coll',
 ]);
-const EXPECTED_PRODUCT_COUNT = 688;
+const EXPECTED_PRODUCT_COUNT = 689;
 
 function stableJson(value) {
   if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';

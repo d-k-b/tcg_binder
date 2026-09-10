@@ -88,7 +88,7 @@
           "properties": {
             "schema": { "const": "tcg.collection-snapshot/v2" },
             "namespace": { "const": "collection-tracker" },
-            "products": { "type": "object", "minProperties": 688, "maxProperties": 688 },
+            "products": { "type": "object", "minProperties": 689, "maxProperties": 689 },
             "lanes": {
               "type": "object",
               "required": ["collector", "boxes", "packs", "prerelease", "lorcana", "lorcana_pre", "lorcana_coll"]
@@ -140,7 +140,7 @@
       "properties": {
         "accepted": { "const": true },
         "revision": { "type": "string", "pattern": "^[a-z0-9][a-z0-9:._-]{7,199}$" },
-        "productCount": { "const": 688 },
+        "productCount": { "const": 689 },
         "activeTargetCount": { "type": "integer", "minimum": 0 },
         "ownershipPolicy": { "$ref": "#/$defs/OwnershipPolicy" },
         "requestedMonitorEnabled": { "type": "boolean" },
