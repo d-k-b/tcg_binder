@@ -175,8 +175,27 @@ const product = {
   const snapshotEntries = Object.entries(snapshot.products);
   assert.strictEqual(snapshot.schema, 'tcg.collection-snapshot/v2');
   assert.strictEqual(snapshot.namespace, 'collection-tracker');
-  assert.strictEqual(snapshotEntries.length, 688, 'snapshot must atomically include all 688 Tracker products');
-  assert.strictEqual(new Set(snapshotEntries.map(([productId]) => productId)).size, 688, 'snapshot ProductRefs must be unique');
+  assert.strictEqual(snapshotEntries.length, 689, 'snapshot must atomically include all 689 Tracker products');
+  assert.strictEqual(new Set(snapshotEntries.map(([productId]) => productId)).size, 689, 'snapshot ProductRefs must be unique');
+  assert.deepStrictEqual(snapshot.products['mtg:cmr:commander-legends:collector-booster:display:en'], {
+    product: {
+      schema: 'tcg.product/v1',
+      productId: 'mtg:cmr:commander-legends:collector-booster:display:en',
+      game: 'mtg',
+      setCode: 'CMR',
+      setName: 'Commander Legends',
+      productName: 'Commander Legends Collector Booster Display',
+      productType: 'collector_booster',
+      unit: 'display',
+      language: 'en',
+      variant: null,
+    },
+    target: 1,
+    owned: 0,
+    missing: 1,
+    requirement: 'required',
+    status: 'missing',
+  }, 'new Commander Legends Collector display starts as an unowned required target without inferred ownership');
   snapshotEntries.forEach(([productId, entry]) => {
     assert.deepStrictEqual(Object.keys(entry).sort(), ['missing', 'owned', 'product', 'requirement', 'status', 'target']);
     assert.deepStrictEqual(Object.keys(entry.product).sort(),
@@ -208,8 +227,10 @@ const product = {
     'generatedAt alone must not change the deterministic monitor revision');
   assert.ok(/^[0-9a-f]{16}$/.test(firstSubscription.revision), 'monitor revision must be a stable content hash');
   assert.ok(!Number.isNaN(Date.parse(firstSubscription.generatedAt)), 'monitor bundle must carry a valid generatedAt timestamp');
-  assert.strictEqual(Object.keys(firstSubscription.collection.products).length, 688,
-    'monitor subscription must atomically carry all 688 collection ProductRefs');
+  assert.strictEqual(Object.keys(firstSubscription.collection.products).length, 689,
+    'monitor subscription must atomically carry all 689 collection ProductRefs');
+  assert.ok(firstSubscription.collection.products['mtg:cmr:commander-legends:collector-booster:display:en'],
+    'monitor subscription must include the exact Commander Legends Collector display ProductRef');
   assert.deepStrictEqual(firstSubscription.collection, snapshot,
     'monitor subscription must reuse the authoritative collection snapshot schema and ownership mapping');
   const monitorJson = JSON.stringify(firstSubscription);
@@ -320,7 +341,7 @@ const product = {
 
   const statusRequest = { channel: 'tcg-collection-monitor/v1', type: 'monitorSyncStatus', requestId: 'status-1', status: {
     schema: 'tcg.collection-monitor-sync-status/v1', state: 'synced', revision: preferenceChangedSubscription.revision,
-    productCount: 688, activeTargetCount: 321, monitorConfigured: true,
+    productCount: 689, activeTargetCount: 321, monitorConfigured: true,
     syncedAt: '2026-08-09T12:00:01.000Z', message: 'Monitor accepted the current collection.', errorCode: null,
   } };
   const postedBeforeStatus = snapshotBridge.posted.length;
@@ -830,6 +851,8 @@ const product = {
   assert.strictEqual(browserRest.restCalls[0].target.productId, product.productId);
   assert.deepStrictEqual({ includeActive: browserRest.restCalls[0].options.includeActive, includePackOut: browserRest.restCalls[0].options.includePackOut },
     { includeActive: true, includePackOut: true });
+  assert.strictEqual(browserRest.restCalls[0].options.browserTimeoutMs, 25 * 60 * 1000,
+    'manual browser comps must allow the provider queue its documented 25-minute completion window');
   assert.ok(browserRest.restCalls[0].options.requestId.startsWith('tracker-browser-'));
   const browserState = JSON.parse(JSON.stringify(vm.runInContext('pricingStates.get(testProduct.productId)', browserRest.context)));
   assert.strictEqual(browserState.status, 'success');
@@ -873,7 +896,7 @@ const product = {
   assert.strictEqual(extensionBrowserButton[0].disabled, true, 'extension-only transport must not invent a browser-pricing bridge');
   assert.ok(nodeText(extensionBrowserUi).includes('Configure Pricing REST to run full browser comps.'));
 
-  for (const errorCode of ['BROWSER_AGENT_OFFLINE', 'BROWSER_JOB_TIMEOUT', 'BROWSER_QUEUE_FULL', 'BROWSER_QUEUE_UNAVAILABLE',
+  for (const errorCode of ['BROWSER_AGENT_OFFLINE', 'BROWSER_AGENT_CLAIM_STALLED', 'BROWSER_JOB_TIMEOUT', 'BROWSER_QUEUE_FULL', 'BROWSER_QUEUE_UNAVAILABLE',
     'BROWSER_JOB_NOT_FOUND', 'BROWSER_ANALYSIS_FAILED']) {
     const failedBrowser = createContext('', { checklists: [] }, { restSettings,
       browserError: { code: errorCode, message: 'Bearer secret raw provider failure must not survive' } });
@@ -891,6 +914,9 @@ const product = {
     assert.deepStrictEqual(failedBrowser.restCalls.map(call => call.kind), ['browserPrice'],
       errorCode + ' must not fall back to headless priceProduct');
   }
+  const stalledFailureCopy = vm.runInContext("browserPricingFailure({code:'BROWSER_AGENT_CLAIM_STALLED'}).message", browserRest.context);
+  assert.strictEqual(stalledFailureCopy,
+    'Chrome Automation did not acknowledge the browser-comps handoff within 65 seconds. Reload TCG Comps in Chrome Automation and try again; your previous price is unchanged.');
 
   assert.doesNotMatch(vm.runInContext('refreshPrice.toString()', browserRest.context), /priceViaBrowser|browserPricingRequest/,
     'ordinary row refresh must remain on priceProduct');
@@ -976,7 +1002,7 @@ const product = {
   assert.match(html, /data-monitor-source="ebay"/, 'monitoring UI must expose the contract source choices');
   assert.match(html, /@media\(max-width:480px\)[\s\S]*\.monitor-grid\{grid-template-columns:1fr\}/,
     'monitoring preferences must collapse to one column at narrow side-panel widths');
-  console.log('pricing dashboard tests: exact bridges, deterministic 688-product subscription, fail-closed monitor source health, sanitized reload-safe device cache, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
+  console.log('pricing dashboard tests: exact bridges, deterministic 689-product subscription, fail-closed monitor source health, sanitized reload-safe device cache, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);

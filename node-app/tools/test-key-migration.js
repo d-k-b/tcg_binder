@@ -71,10 +71,10 @@ ok(JSON.stringify(result.state.monitorPreferences) === JSON.stringify({
   dailyDigest:{enabled:true,time:'07:00',timezone:'America/Chicago'}
 }) && result.state.monitorPreferencesUpdatedAt === null,
   'migrates older saved state to the exact non-secret monitoring defaults');
-ok(result.allKeys.length === 954 && new Set(result.allKeys).size === 954,
-  'all 954 required and bonus inventory keys are unique');
-ok(result.requiredKeys.length === 914 && new Set(result.requiredKeys).size === 914,
-  'keeps the collection goal at 914 required targets');
+ok(result.allKeys.length === 955 && new Set(result.allKeys).size === 955,
+  'all 955 required and bonus inventory keys are unique');
+ok(result.requiredKeys.length === 915 && new Set(result.requiredKeys).size === 915,
+  'keeps the collection goal at 915 required targets');
 ok(Object.keys(result.state.wrapperArts).length === 0,
   'loads older saved state into an empty, separate wrapper-art namespace');
 ok(Object.keys(result.state.ordered).length === 0 && Object.keys(result.state.orderedWrapperArts).length === 0,
@@ -89,8 +89,8 @@ ok(result.productImages.length === 33 &&
 ok(result.productImages.every(image => !image.url.includes('cards.scryfall.io/art_crop')),
   'never presents fallback card art as a sealed-product image');
 const pricingIds = result.pricingProducts.map(product => product.ref.productId);
-ok(result.pricingProducts.length === 688 && new Set(pricingIds).size === 688,
-  'generates one unique ProductRef identity for each of the 688 actual products and groups');
+ok(result.pricingProducts.length === 689 && new Set(pricingIds).size === 689,
+  'generates one unique ProductRef identity for each of the 689 actual products and groups');
 ok(result.pricingProducts.every(product => pricingContracts.validateProductRef(product.ref).ok),
   'validates every generated identity against the vendored ProductRef v1 contract');
 ok(result.pricingProducts.filter(product => product.checklist === 'prerelease').length === 148 &&
@@ -192,6 +192,7 @@ ok(prereleaseAudit.firstLegacy && prereleaseAudit.expandedSlotsUnmapped && prere
   'maps each old one-slot row only to its first named variant and never maps new slots');
 
 const productAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
+  const collector=DATA.checklists.find(cl=>cl.id==='collector');
   const boxes=DATA.checklists.find(cl=>cl.id==='boxes');
   const packs=DATA.checklists.find(cl=>cl.id==='packs');
   const boxItems=boxes.eras.flatMap(e=>e.items),packItems=packs.eras.flatMap(e=>e.items);
@@ -200,7 +201,12 @@ const productAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const boxGroups=name=>boxRows(name).flatMap(it=>it.slots.map(s=>s.g));
   const packGroups=name=>packItems.find(it=>it.name===name)?.slots.map(s=>s.g)||[];
   const packVariants=name=>packItems.find(it=>it.name===name)?.variants||[];
+  const collectorLaunch=collector.eras.find(e=>e.name==='Launch Era — 2019–2020');
+  const cmrCollector=collectorLaunch.items.find(it=>it.code==='CMR');
   return {
+    collectorLaunchCodes:collectorLaunch.items.map(it=>it.code),
+    cmrCollectorRef:cmrCollector.pricingProducts[0].ref,
+    cmrCollectorRequired:cmrCollector.slots.filter(slotRequired).length,
     packMode:packs.progressMode,
     clb:boxType("Commander Legends: Baldur's Gate"),
     cmm:boxType('Commander Masters'),
@@ -226,6 +232,14 @@ const productAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
     explicitPackLabels:packItems.every(it=>it.slots.every(slot=>/ Pack copy [12]$/.test(slot.l)))
   };
 })())`, context));
+ok(JSON.stringify(productAudit.collectorLaunchCodes.slice(-2)) === JSON.stringify(['ZNR','CMR']) &&
+   productAudit.cmrCollectorRequired === 1 &&
+   JSON.stringify(productAudit.cmrCollectorRef) === JSON.stringify({
+     schema:'tcg.product/v1',productId:'mtg:cmr:commander-legends:collector-booster:display:en',
+     game:'mtg',setCode:'CMR',setName:'Commander Legends',
+     productName:'Commander Legends Collector Booster Display',productType:'collector_booster',
+     unit:'display',language:'en',variant:null}),
+  'adds the required Commander Legends Collector Booster Display after Zendikar Rising with its exact ProductRef');
 ok(productAudit.clb === 'Set' && productAudit.cmm === 'Set',
   'tracks CLB and Commander Masters Set Booster displays');
 ok(productAudit.aftermath === 'Epilogue',

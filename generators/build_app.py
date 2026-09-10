@@ -1924,7 +1924,7 @@ function browserPricingRequest(product){
   try{
     const client=TCGPricingRestClient.createClient({baseUrl:dashboardPricing.baseUrl,accessToken:dashboardPricing.accessToken,timeoutMs:PRICING_TIMEOUT_MS});
     if(!client||typeof client.priceViaBrowser!=='function')return Promise.reject(pricingError('BROWSER_ROUTE_UNAVAILABLE','This dashboard build cannot run full browser comps.'));
-    return client.priceViaBrowser(product,{includeActive:true,includePackOut:true,userInitiated:true,requestId,browserTimeoutMs:5*60*1000,pollIntervalMs:1000});
+    return client.priceViaBrowser(product,{includeActive:true,includePackOut:true,userInitiated:true,requestId,browserTimeoutMs:25*60*1000,pollIntervalMs:1000});
   }catch(error){return Promise.reject(error);}
 }
 window.addEventListener('message',(event)=>{
@@ -2434,6 +2434,7 @@ function browserPricingFailure(error){
   const raw=String(error&&error.code||'BROWSER_COMPS_FAILED');
   const messages={
     BROWSER_AGENT_OFFLINE:'The installed TCG Comps browser agent is offline. Your previous price is unchanged.',
+    BROWSER_AGENT_CLAIM_STALLED:'Chrome Automation did not acknowledge the browser-comps handoff within 65 seconds. Reload TCG Comps in Chrome Automation and try again; your previous price is unchanged.',
     BROWSER_JOB_TIMEOUT:'Full browser comps timed out. Your previous price is unchanged.',
     BROWSER_QUEUE_FULL:'The full browser comps queue is busy. Try again later; your previous price is unchanged.',
     BROWSER_QUEUE_UNAVAILABLE:'The full browser comps queue is temporarily unavailable. Your previous price is unchanged.',

@@ -60,6 +60,7 @@ ERAS = [
  ("Core Set 2021","M21","Standard","$300",True,"Borderless planeswalkers"),
  ("Double Masters","2XM","Reprint","$430",True,"2 rares/pack; out of print"),
  ("Zendikar Rising","ZNR","Standard","$360",False,"Zendikar Expeditions"),
+ ("Commander Legends","CMR","Reprint","—",False,"Etched foils; first Commander Collector Boosters"),
 ]),
 ("Second Wave — 2021", [
  ("Kaldheim","KHM","Standard","$360",False,"Viking & Phyrexian showcases"),

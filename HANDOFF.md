@@ -54,8 +54,12 @@ dashboard refactor must bundle this pure core through `generators/build_app.py` 
 call a versioned API, never copy its semantics into another browser-only path. See
 `docs/COLLECTION_STATE_CLI.md`.
 
-**Current pricing boundary:** `gen_data.py` adds 688 unique, contract-valid pricing
-products outside ownership slots. `build_app.py` renders per-product refresh/value,
+**Current pricing boundary:** `gen_data.py` adds 689 unique, contract-valid pricing
+products outside ownership slots. The 2020 Commander Legends Collector Booster
+Display is a required Collector Boxes row after Zendikar Rising, with canonical
+ProductRef `mtg:cmr:commander-legends:collector-booster:display:en`; its additive
+slot starts unowned and never infers ownership from the existing CMR Draft display
+or loose Collector pack. `build_app.py` renders per-product refresh/value,
 verified Buy Now low, confidence, observation time, explicit unavailable/error, and
 static fallback states. Pricing prefers the configured read-only TCG Pricing REST
 transport and falls back to the extension bridge for backward compatibility.
@@ -99,7 +103,7 @@ for or retain the Authority bearer.
 
 Collection Authority preserves Pricing Analyzer cache provenance rather than
 reimplementing or flattening its sales ledger and cache policy. A complete but stale
-seven-lane snapshot retains all 688 ProductRefs with a bounded
+seven-lane snapshot retains all 689 ProductRefs with a bounded
 `tcg.collection-ownership-policy/v1`: `CONDITIONAL`, `reviewOnly:true`,
 `mayInferOwnership:false`, and `eligibleForAction:false`. It is not an empty or
 all-missing collection. Monitor sync must go through authenticated
@@ -200,7 +204,7 @@ camera/upload modal and an extension-owned BYOK OpenAI bridge on
 `tcg-product-identify/v1`. The generated dashboard also embeds the same validated
 OpenAI client so camera/upload identification works as a standalone web app in
 Safari, Chrome, and Edge. The dashboard re-encodes photos before sending them,
-supplies 688 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
+supplies 689 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
 accepts only returned IDs that exist in that in-memory catalog. Identification is
 suggestion-only. Collection quantities change only through the explicit −/+ controls
 shown beside a result.
@@ -264,7 +268,7 @@ and every Gist-sync partition so they cannot double-count or leak before publica
 **Photo-identification boundary:** extension 1.4 adds a generator-owned
 camera/upload modal and an extension-owned BYOK OpenAI bridge on
 `tcg-product-identify/v1`. The dashboard re-encodes photos before sending them,
-supplies 688 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
+supplies 689 canonical ProductRef candidates plus 378 reviewed wrapper-art IDs, and
 accepts only returned IDs that exist in that in-memory catalog. The extension
 remembers the user's key in private `chrome.storage.local` when **Remember on this
 device** is selected; the key never enters generated HTML, iframe messages,
@@ -375,6 +379,15 @@ reference amounts, and held-out trend projections. Reloaded cache entries cannot
 enable privileged watches until a new exact live response arrives. The full `npm
 test` suite passed, all generated/data copies match, and the HTTP-served build has no
 console warnings/errors or horizontal overflow at desktop, 390px, and 360px.
+Commander Legends Collector Booster Display coverage and the manual browser-comps
+handoff recovery were regenerated on build `2026-09-08 15:06`. The Collector Boxes
+checklist now includes the required CMR display after Zendikar Rising under exact
+ProductRef `mtg:cmr:commander-legends:collector-booster:display:en`; it starts as one
+new unowned slot and does not inherit CMR Draft-display or loose-pack ownership. The
+browser-comps action now allows the provider's bounded 25-minute job window and gives
+`BROWSER_AGENT_CLAIM_STALLED` a credential-safe recovery message while preserving the
+prior valuation. The full offline suite passed with 689 ProductRefs, and all three
+generated HTML copies plus both data copies matched.
 
 ---
 
@@ -385,15 +398,15 @@ change them without asking. Everything else is implementation detail.
 
 | Checklist (`id`) | Rule | Dashboard rows | Required targets | Inventory slots |
 |---|---|---|---|---|
-| **MTG Collector Boxes** (`collector`) | One of each Collector Booster display ever made, incl. premium/all-foil/VIP boxes | 54 | 54 | 54 |
+| **MTG Collector Boxes** (`collector`) | One of each Collector Booster display ever made, incl. premium/all-foil/VIP boxes | 55 | 55 | 55 |
 | **MTG Booster Boxes** (`boxes`) | One preferred non-Collector display per set/distinct edition; other display types are bonus inventory | 202 (180 goal + 22 bonus) | 180 | 220 |
-| **MTG Booster Packs** (`packs`) | **Two** of every booster pack, per pack type per set; optional wrapper-front inventory | 179 (176 ownership + 3 wrapper-only) | 488 | 488 |
+| **MTG Booster Packs** (`packs`) | **Two** of every booster pack, per pack type per set; optional wrapper-front inventory | 179 (176 ownership + 3 wrapper-only) | 492 | 492 |
 | **MTG Prerelease Packs** (`prerelease`) | One of every distinct sealed prerelease pack/kit **variant** | 69 | 148 | 148 |
 | **Lorcana Booster Boxes** (`lorcana`) | One booster box **per kid** (2 kids) | 15 | 30 | 30 |
 | **Lorcana Prerelease Boxes** (`lorcana_pre`) | One prerelease box per kid | 4 | 8 | 8 |
 | **Lorcana Collector Boxes** (`lorcana_coll`) | One collector box per kid | 1 | 2 | 2 |
 
-**910 required targets and 950 inventory slots total.** The 40 optional slots are
+**915 required targets and 955 inventory slots total.** The 40 optional slots are
 non-Collector Theme, Draft, set-attached Jumpstart, and LTR Jumpstart Vol. 2
 displays. They persist quantities but never affect progress or Hide completed.
 Sparse specialties no longer make the chronological eras excessively wide:
@@ -478,7 +491,7 @@ in `state.wrapperArts`; they never create ownership slots, change the two-per-ty
 pack goal, affect Hide completed, or enter pricing/monitor collection snapshots.
 Unhinged, Unstable, and Ultimate Masters were not in the 176-row pack ownership
 model, so the dashboard adds three zero-slot `Wrapper-Art Inventory Only` rows to
-expose their reviewed fronts without changing the 488 pack targets.
+expose their reviewed fronts without changing the 492 pack targets.
 
 When a previously generic row expands, its original v2 slot remains ordinal zero.
 Only that first named variant inherits the old v1 positional migration key; every
@@ -787,7 +800,7 @@ dashboard. `buildCollectionSnapshot()` rebuilds one atomic
 `window.parent` source, the exact channel/type, and a bounded nonempty request ID,
 and never posts to `*`.
 
-Every one of the 688 unique `pricingProducts` becomes a catalog entry keyed by its
+Every one of the 689 unique `pricingProducts` becomes a catalog entry keyed by its
 canonical `ProductRef.productId`. `collectionOwnership()` uses `slotOrdinal` for a
 named prerelease variant (including that variant's duplicate quantity); all other
 products match `slotGroup` to `groupedSlots(item).n`, which preserves pack targets,
@@ -1073,7 +1086,7 @@ generators/build_lorcana.py   Lorcana (all 3, combined) → PDF
 generators/gen_data.py        imports all 5 → binder_data.json (7 checklists)
 generators/import_cursor_product_images.py  trusted image-cache adapter
 generators/build_app.py       binder_data.json → all 3 dashboard HTML copies (UI lives here)
-data/binder_data.json         unified data model — 7 checklists, 910 required / 950 inventory slots
+data/binder_data.json         unified data model — 7 checklists, 915 required / 955 inventory slots
 data/product_images.json      reviewed image metadata (33 exact products initially)
 data/booster_wrapper_art_counts.csv  audited multi-art regular-booster counts
 data/booster_wrapper_art_catalog.json  96 sets / 378 optional wrapper fronts
