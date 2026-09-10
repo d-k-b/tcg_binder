@@ -195,7 +195,7 @@ function buildSubscriptionFromAuthority(response, generatedAt = new Date().toISO
       !response.snapshot || response.snapshot.schema !== "tcg.collection-snapshot/v2") {
     throw new Error("collection authority returned an unsupported snapshot contract");
   }
-  if (Object.keys(response.snapshot.products || {}).length !== 688) {
+  if (Object.keys(response.snapshot.products || {}).length !== 689) {
     throw new Error("collection authority snapshot is incomplete; refusing monitor update");
   }
   const authority = response.authority && typeof response.authority === "object" ? response.authority : {};
@@ -282,9 +282,9 @@ if (process.argv.includes("--self-test")) {
     fs.unlinkSync(fixturePath);
   }
   const expectedCount = expectedProductCount(JSON.parse(fs.readFileSync(path.join(NODE_APP, "data", "binder_data.json"), "utf8")));
-  if (expectedCount !== 688) throw new Error(`current Tracker ProductRef catalog regression: expected 688, found ${expectedCount}`);
+  if (expectedCount !== 689) throw new Error(`current Tracker ProductRef catalog regression: expected 689, found ${expectedCount}`);
   const products = {};
-  for (let index = 0; index < 688; index += 1) products[`fixture:${index}`] = { product: { productId: `fixture:${index}` }, target: 1, owned: 0, missing: 1, requirement: "required", status: "missing" };
+  for (let index = 0; index < 689; index += 1) products[`fixture:${index}`] = { product: { productId: `fixture:${index}` }, target: 1, owned: 0, missing: 1, requirement: "required", status: "missing" };
   const conditionalSnapshotFixture = {
     schema: "tcg.collection-snapshot-response/v1", generatedAt: new Date().toISOString(), revision: "a".repeat(64),
     authority: { state: "stale", consumerStatus: "CONDITIONAL", degradedReasonCodes: ["COLLECTION_SNAPSHOT_STALE"], oldestSourceAt: "2026-07-19T16:47:29.183Z" },
@@ -294,7 +294,7 @@ if (process.argv.includes("--self-test")) {
   const authorityFixture = buildSubscriptionFromAuthority(conditionalSnapshotFixture);
   if (authorityFixture.evidence.ownershipStatus !== "CONDITIONAL" || authorityFixture.evidence.reviewOnly !== true ||
       authorityFixture.subscription.preferences.enabled !== false || authorityFixture.subscription.ownershipPolicy.eligibleForAction !== false ||
-      !authorityFixture.subscription.revision.startsWith("conditional:") || Object.keys(authorityFixture.subscription.collection.products).length !== 688) {
+      !authorityFixture.subscription.revision.startsWith("conditional:") || Object.keys(authorityFixture.subscription.collection.products).length !== 689) {
     throw new Error("collection authority monitor-consumer regression");
   }
   const laterAuthorityFixture = buildSubscriptionFromAuthority({

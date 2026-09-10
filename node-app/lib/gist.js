@@ -90,6 +90,111 @@ async function ensureIds() {
   return idCache;
 }
 
+function retryAfterMs(response, fallbackMs) {
+  const raw = response && response.headers && typeof response.headers.get === 'function'
+    ? response.headers.get('retry-after') : null;
+  if (!raw) return fallbackMs;
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(Math.round(seconds * 1000), 30_000);
+  const at = Date.parse(raw);
+  return Number.isFinite(at) ? Math.max(0, Math.min(at - Date.now(), 30_000)) : fallbackMs;
+}
+
+function retryableStatus(status) {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Read-only GitHub request with bounded retries for transport and transient
+ * GitHub failures.  This is deliberately used only by the monitor's strict
+ * snapshot path: the dashboard's ordinary best-effort restore behavior is
+ * unchanged.
+ */
+async function fetchWithRetry(url, options, { attempts = 3, baseDelayMs = 500 } = {}) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok || !retryableStatus(response.status) || attempt === attempts) return response;
+      await sleep(retryAfterMs(response, Math.min(baseDelayMs * (2 ** (attempt - 1)), 5_000)));
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) break;
+      await sleep(Math.min(baseDelayMs * (2 ** (attempt - 1)), 5_000));
+    }
+  }
+  const failure = new Error('GitHub request failed after bounded retries');
+  failure.code = 'GIST_RETRY_EXHAUSTED';
+  failure.cause = lastError;
+  throw failure;
+}
+
+/**
+ * Read every expected checklist atomically for collection-monitor input.
+ * Unlike read(), this never silently drops a failed, malformed, or missing
+ * checklist: a partial ownership snapshot must not be sent to the monitor.
+ */
+async function readStrict(options = {}) {
+  const ids = await ensureIds();
+  const expected = checklists().map(({ id }) => id);
+  const merged = {};
+  const mergedExtras = {};
+  const mergedOrdered = {};
+  const mergedWrapperArts = {};
+  const mergedOrderedWrapperArts = {};
+  const mergedLegacy = {};
+  let newest = null;
+  const failures = [];
+  for (const clId of expected) {
+    const gistId = ids[clId];
+    if (!gistId) { failures.push(`${clId}: missing gist id`); continue; }
+    try {
+      const response = await fetchWithRetry(API + '/gists/' + gistId, { headers: headers() }, options);
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const gist = await response.json();
+      const file = (gist.files || {})[fileFor(clId)];
+      if (!file) throw new Error('expected gist file is missing');
+      let content = file.content;
+      if (file.truncated && file.raw_url) {
+        const raw = await fetchWithRetry(file.raw_url, { headers: headers() }, options);
+        if (!raw.ok) throw new Error('raw gist file HTTP ' + raw.status);
+        content = await raw.text();
+      }
+      const body = JSON.parse(content);
+      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('gist payload is not an object');
+      if (!body.checks || typeof body.checks !== 'object' || Array.isArray(body.checks)) throw new Error('gist payload has no checks object');
+      if (!body.extras || typeof body.extras !== 'object' || Array.isArray(body.extras)) throw new Error('gist payload has no extras object');
+      Object.assign(merged, body.checks);
+      Object.assign(mergedExtras, body.extras);
+      Object.assign(mergedOrdered, body.ordered || {});
+      Object.assign(mergedWrapperArts, body.wrapperArts || {});
+      Object.assign(mergedOrderedWrapperArts, body.orderedWrapperArts || {});
+      Object.assign(mergedLegacy, body.legacyChecksV1 || {});
+      if (body.updatedAt && (!newest || body.updatedAt > newest)) newest = body.updatedAt;
+    } catch (error) {
+      failures.push(`${clId}: ${error && error.message ? error.message : 'read failed'}`);
+    }
+  }
+  if (failures.length) {
+    const failure = new Error('Strict Gist snapshot rejected; no monitor update applied (' + failures.join('; ') + ')');
+    failure.code = 'GIST_SNAPSHOT_INCOMPLETE';
+    failure.failures = failures;
+    throw failure;
+  }
+  if (!newest) {
+    const failure = new Error('Strict Gist snapshot has no trustworthy updatedAt timestamp');
+    failure.code = 'GIST_SNAPSHOT_UNDATED';
+    throw failure;
+  }
+  return { checks: merged, extras: mergedExtras, ordered: mergedOrdered,
+    wrapperArts: mergedWrapperArts, orderedWrapperArts: mergedOrderedWrapperArts,
+    keyVersion: 2, legacyChecksV1: mergedLegacy, updatedAt: newest, source: 'gist-strict' };
+}
+
 /** Read every checklist gist and merge its stable checks and quantity extras. */
 async function read() {
   const ids = await ensureIds();
@@ -269,4 +374,4 @@ function links() {
     .map((c) => ({ id: c.id, title: c.title, url: 'https://gist.github.com/' + cache[c.id] }));
 }
 
-module.exports = { configured, read, write, whoami, links, ensureIds, readChecklist, updateChecklist };
+module.exports = { configured, read, readStrict, write, whoami, links, ensureIds, readChecklist, updateChecklist };

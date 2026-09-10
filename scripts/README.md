@@ -24,12 +24,12 @@ Git.
   canonical HiBid Texas lots, rejects credentials, preserves each auctioneer's
   explicit shipping, buyer-premium rate/minimum, and current-premium evidence,
   and atomically updates the protected feed.
-- `sync_local_monitor_from_gist.mjs` builds the complete 688-ProductRef
+- `sync_local_monitor_from_gist.mjs` builds the complete 689-ProductRef
   subscription only from the authenticated loopback Collection Authority API;
   the legacy filename is retained for operator compatibility. Conditional
   snapshots are synchronized through `POST /v1/monitor/sync`, where Authority
   adds explicit review-only ownership policy and an effective disabled monitor
-  preference; acknowledgement must retain all 688 products and report zero
+  preference; acknowledgement must retain all 689 products and report zero
   active targets. The helper never posts directly to the Pricing Analyzer monitor.
 - `repair_collection_authority_gists.mjs` performs a safe dry-run diagnostic by
   default and an explicit, source-hash-gated legacy/missing-lane repair only with
@@ -111,7 +111,7 @@ node scripts/sync_local_monitor_from_gist.mjs --dry-run
 node scripts/sync_local_monitor_from_gist.mjs
 ```
 
-The authority returns all 688 canonical ProductRefs atomically across seven lanes.
+The authority returns all 689 canonical ProductRefs atomically across seven lanes.
 The sync sends only requested monitor preferences to the authenticated Authority,
 which rebuilds and validates the collection before calling the loopback monitor. A
 partial or stale ownership result is never converted into an all-missing claim;
@@ -156,8 +156,9 @@ Its stdout and stderr logs are stored under
 runs while the Mac is awake and the user session is available.
 
 The runner refreshes eBay authorization before expiry by restarting the
-restart-safe authority and monitor against the same durable state. The default
-scan interval is 30 minutes. eBay discovery uses shared broad and rotating set-level
+restart-safe authority and monitor against the same durable state. Source cadence is
+provider-configured; the review/delivery layer wakes every two hours. Every source must consult
+its durable cache, cursor, next-due time, and rate budget before making a request. eBay discovery uses shared broad and rotating set-level
 Browse queries, refreshes active IDs in batches, and retrieves full item details only
 for preliminary exact matches. A persisted daily safety budget and HTTP 429 circuit
 breaker protect coverage from request storms. When `EBAY_USER_REFRESH_TOKEN` is set,
@@ -200,8 +201,9 @@ Use this optional worker when the current monitor scope needs a fresh provider
 Market pass outside its normal cadence. It reads active targets, active listings,
 and review rows from the durable monitor state, deduplicates their canonical
 ProductRefs, then invokes the Provider's documented Python
-`PricingRestClient.price_product()` method one at a time. Each request actively
-refreshes exact identity, recent sales, and live asks. It uses the dedicated
+`PricingRestClient.price_product()` method one at a time. The Provider remains responsible for
+serving unchanged evidence from its durable cache and fetching only source evidence that is due.
+It uses the dedicated
 Pricing REST token from the protected pricing config and never prints it.
 
 Only a fresh, sale-derived method such as `theil-sen-recent-sales`,
@@ -240,9 +242,11 @@ Run a small verification batch, with a twelve-second pause between calls:
 python3 scripts/refresh_monitored_markets.py --max-items 5 --force
 ```
 
-Resume the remaining unique ProductRefs later. A verified Market is reused only
-inside its six-day freshness TTL (configurable with `--market-ttl-hours`), then
-it is repriced. Transient failures persist a bounded `nextRetryAt` backoff;
+Resume the remaining unique ProductRefs later. The worker's six-day checkpoint interval
+(`--market-ttl-hours`) is only a conservative manual refresh throttle; it does not define Market
+staleness. The provider's trend/dispersion policy determines whether the returned Market remains
+usable, allowing stable products to age longer and volatile products to refresh sooner.
+Transient failures persist a bounded `nextRetryAt` backoff;
 they are not retried hot and they do not wait a full week:
 
 ```bash

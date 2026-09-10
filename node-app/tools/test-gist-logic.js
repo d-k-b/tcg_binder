@@ -46,12 +46,19 @@ const eq = (a, b, msg) => {
 let store = {};        // gistId -> {description, files}
 let calls = [];        // [method + path]
 let nextId = 1;
+let transientFailures = new Map(); // request -> remaining transient failures
 
 function fakeFetch(url, opts = {}) {
   const method = opts.method || 'GET';
   const u = String(url);
-  calls.push(method + ' ' + u.replace('https://api.github.com', ''));
+  const request = method + ' ' + u.replace('https://api.github.com', '');
+  calls.push(request);
   const json = (o, okFlag = true) => Promise.resolve({ ok: okFlag, status: okFlag ? 200 : 404, json: () => Promise.resolve(o), text: () => Promise.resolve('') });
+  const remaining = transientFailures.get(request) || 0;
+  if (remaining > 0) {
+    transientFailures.set(request, remaining - 1);
+    return Promise.resolve({ ok: false, status: 503, headers: { get: () => null }, json: () => Promise.resolve({ message: 'temporary outage' }), text: () => Promise.resolve('') });
+  }
 
   if (u.endsWith('/user')) return json({ login: 'testuser' });
   if (u.includes('/gists?per_page')) {
@@ -180,6 +187,26 @@ function freshGist() {
   const links = gist.links();
   eq(links.length, 4, 'links() returns one URL per checklist');
   eq(links.every((l) => l.url.startsWith('https://gist.github.com/')), true, 'links are real gist URLs');
+
+  // 8a. The monitor's strict reader retries a transient provider failure and
+  // never silently converts a partial Gist read into a collection snapshot.
+  for (const checklistId of ['packs', 'lorcana_pre', 'lorcana_coll']) {
+    const gistId = 'gist' + (nextId++);
+    store[gistId] = { description: 'MTG Binder · ' + checklistId, files: {
+      ['mtg-binder-' + checklistId + '.json']: { content: JSON.stringify({ checklist: checklistId, checks: {}, extras: {}, updatedAt: new Date().toISOString() }) }
+    } };
+  }
+  gist = freshGist();
+  const strictId = (await gist.ensureIds()).collector;
+  transientFailures.set('GET /gists/' + strictId, 1);
+  const strictBack = await gist.readStrict({ attempts: 2, baseDelayMs: 0 });
+  eq(strictBack.source, 'gist-strict', 'strict monitor reader reports strict provenance');
+  eq(strictBack.checks['collector|0|1|0'], true, 'strict monitor reader retries and retains collector ownership');
+
+  transientFailures.set('GET /gists/' + strictId, 2);
+  let strictFailure = null;
+  try { await gist.readStrict({ attempts: 2, baseDelayMs: 0 }); } catch (error) { strictFailure = error; }
+  eq(strictFailure && strictFailure.code, 'GIST_SNAPSHOT_INCOMPLETE', 'strict monitor reader rejects an incomplete snapshot instead of silently dropping a checklist');
 
   // 9. The CLI's checklist-scoped mutation preserves dashboard-owned fields
   // (ordered, wrapper art, and future fields) instead of reconstructing a gist.
