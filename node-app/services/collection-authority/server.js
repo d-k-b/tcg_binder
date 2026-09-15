@@ -68,6 +68,9 @@ function createHandler(options) {
       if (req.method === 'POST' && url.pathname === '/v1/collection/receipt-operations') {
         return send(res, 200, await authority.receiptOperation(await readJsonBody(req)));
       }
+      if (req.method === 'POST' && url.pathname === '/v1/collection/order-operations') {
+        return send(res, 200, await authority.orderOperation(await readJsonBody(req)));
+      }
       if (adminRoute) {
         if (!adminToken) throw new AuthorityError('ADMIN_AUTH_NOT_CONFIGURED', 'Gist repair API is not configured', 404);
         const body = await readJsonBody(req, 1024 * 1024);

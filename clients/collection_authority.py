@@ -125,5 +125,12 @@ class CollectionAuthorityClient:
         _validate_snapshot(response.get("snapshot", {}))
         return response
 
+    def order_operation(self, operation: Dict[str, Any]) -> Dict[str, Any]:
+        response = self._request("/v1/collection/order-operations", method="POST", body=operation)
+        if response.get("schema") != "tcg.collection-order-operation-response/v1":
+            raise CollectionAuthorityClientError("ORDER_RESPONSE_VERSION_UNSUPPORTED", "Unsupported order operation response schema")
+        _validate_snapshot(response.get("snapshot", {}))
+        return response
+
 
 __all__ = ["CollectionAuthorityClient", "CollectionAuthorityClientError"]

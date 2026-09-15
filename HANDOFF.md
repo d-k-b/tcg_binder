@@ -116,6 +116,13 @@ snapshot revision
 `d6c29e907232dc2e595b0432d249383d9f0b66531d7232d8203ea9eefed5bc32`,
 688 retained products, and zero active targets.
 
+Fresh Authority snapshots keep `owned` and `ordered` separate for every ProductRef;
+their `missing` count excludes both so pending shipments and pickups leave owned
+unchanged while suppressing duplicate monitor targets. Use authenticated, revision-
+checked `POST /v1/collection/order-operations` for absolute ordered-total
+reconciliation with stable evidence/idempotency identity. Use receipt operations only
+after delivery or pickup is confirmed.
+
 TCG Comps 2.43.45 deploys the standalone facade at the non-secret base URL
 `https://gogo.tail903ec0.ts.net`. New devices receive that URL as a prefilled value;
 the dedicated bearer token is still user-supplied and device-local. **Save & test**

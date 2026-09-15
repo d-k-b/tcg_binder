@@ -181,6 +181,39 @@
         "snapshot": { "$ref": "#/$defs/SnapshotResponse" }
       }
     },
+    "OrderOperationRequest": {
+      "type": "object",
+      "required": ["schema", "idempotencyKey", "expectedSnapshotRevision", "product", "ordered", "fulfillment", "evidence"],
+      "properties": {
+        "schema": { "const": "tcg.collection-order-operation/v1" },
+        "idempotencyKey": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+        "expectedSnapshotRevision": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "product": { "$ref": "#/$defs/ProductRef" },
+        "ordered": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "fulfillment": { "enum": ["shipping", "pending-pickup", "other"] },
+        "evidence": {
+          "type": "object",
+          "required": ["type", "referenceId"],
+          "properties": {
+            "type": { "enum": ["provider-message", "order", "manual-receipt"] },
+            "referenceId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,199}$" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "OrderOperationResponse": {
+      "type": "object",
+      "required": ["schema", "applied", "idempotentReplay", "operation", "snapshot"],
+      "properties": {
+        "schema": { "const": "tcg.collection-order-operation-response/v1" },
+        "applied": { "type": "boolean" },
+        "idempotentReplay": { "type": "boolean" },
+        "operation": { "type": "object" },
+        "snapshot": { "$ref": "#/$defs/SnapshotResponse" }
+      }
+    },
     "ErrorResponse": {
       "type": "object",
       "required": ["schema", "error"],

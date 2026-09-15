@@ -50,6 +50,8 @@ class CollectionAuthorityClientTests(unittest.TestCase):
                 return Response({"schema": "tcg.collection-authority-readiness/v1", "ready": True})
             if request.full_url.endswith("/receipt-operations"):
                 return Response({"schema": "tcg.collection-receipt-operation-response/v1", "snapshot": fixture})
+            if request.full_url.endswith("/order-operations"):
+                return Response({"schema": "tcg.collection-order-operation-response/v1", "snapshot": fixture})
             return Response(fixture)
 
         client = CollectionAuthorityClient(token="python-token", opener=opener)
@@ -57,7 +59,9 @@ class CollectionAuthorityClientTests(unittest.TestCase):
         self.assertEqual(client.snapshot()["revision"], fixture["revision"])
         self.assertEqual(client.receipt_operation({"schema": "tcg.collection-receipt-operation/v1"})["schema"],
                          "tcg.collection-receipt-operation-response/v1")
-        self.assertEqual([row[0] for row in seen], ["GET", "GET", "POST"])
+        self.assertEqual(client.order_operation({"schema": "tcg.collection-order-operation/v1"})["schema"],
+                         "tcg.collection-order-operation-response/v1")
+        self.assertEqual([row[0] for row in seen], ["GET", "GET", "POST", "POST"])
         self.assertTrue(all(row[2] == "Bearer python-token" for row in seen))
 
     def test_retry_after_and_fail_closed(self):

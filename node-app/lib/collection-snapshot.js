@@ -48,6 +48,11 @@ function slotQuantity(payload, lane, item, slotIndex) {
   return (payload.checks[checkKey] ? 1 : 0) + positiveQuantity(payload.extras[extraKey]);
 }
 
+function orderedSlotQuantity(payload, lane, item, slotIndex) {
+  const extraKey = stateKeys.slotExtraKeyFor(lane, item, slotIndex);
+  return positiveQuantity(payload.ordered[extraKey]);
+}
+
 function groupRecord(payload, checklist, item, record) {
   if (Object.prototype.hasOwnProperty.call(record, 'slotOrdinal')) {
     const slotIndex = record.slotOrdinal;
@@ -57,6 +62,7 @@ function groupRecord(payload, checklist, item, record) {
     return {
       target: item.slots[slotIndex].r === false ? 0 : 1,
       owned: slotQuantity(payload, checklist.id, item, slotIndex),
+      ordered: orderedSlotQuantity(payload, checklist.id, item, slotIndex),
       identitySemantics: 'exact-slot-variant',
     };
   }
@@ -67,15 +73,19 @@ function groupRecord(payload, checklist, item, record) {
   const group = matches[0];
   const target = group.slots.filter(({ slot }) => slot.r !== false).length;
   let owned;
+  let ordered;
   if (checklist.progressMode === 'distinct_variants') {
     owned = group.slots.reduce((total, member) => total + slotQuantity(payload, checklist.id, item, member.slotIndex), 0);
+    ordered = group.slots.reduce((total, member) => total + orderedSlotQuantity(payload, checklist.id, item, member.slotIndex), 0);
   } else {
     const checked = group.slots.filter((member) => payload.checks[stateKeys.keyFor(checklist.id, item, member.slotIndex)]).length;
     owned = checked + positiveQuantity(payload.extras[stateKeys.groupKeyFor(checklist.id, item, group.key)]);
+    ordered = positiveQuantity(payload.ordered[stateKeys.groupKeyFor(checklist.id, item, group.key)]);
   }
   return {
     target,
     owned,
+    ordered,
     identitySemantics: checklist.id === 'packs' ? 'loose-pack-group' : 'exact-product-group',
   };
 }
@@ -117,7 +127,7 @@ function buildSnapshot(catalog, laneRecords, options = {}) {
   }
   const products = {};
   const lanes = {};
-  for (const lane of EXPECTED_LANES) lanes[lane] = { required: 0, owned: 0, missing: 0, productCount: 0 };
+  for (const lane of EXPECTED_LANES) lanes[lane] = { required: 0, owned: 0, ordered: 0, missing: 0, productCount: 0 };
   for (const checklist of catalog.checklists) {
     if (!EXPECTED_LANES.includes(checklist.id)) continue;
     const payload = payloads[checklist.id];
@@ -129,13 +139,15 @@ function buildSnapshot(catalog, laneRecords, options = {}) {
           const counts = groupRecord(payload, checklist, item, record);
           const target = counts.target;
           const owned = counts.owned;
-          const missing = Math.max(target - owned, 0);
+          const ordered = counts.ordered;
+          const missing = Math.max(target - owned - ordered, 0);
           const requirement = target > 0 ? 'required' : 'optional';
           products[record.ref.productId] = {
             product: JSON.parse(JSON.stringify(record.ref)),
             lane: checklist.id,
             target,
             owned,
+            ordered,
             missing,
             requirement,
             status: missing > 0 ? 'missing' : (owned > 0 ? 'owned' : 'target'),
@@ -146,6 +158,7 @@ function buildSnapshot(catalog, laneRecords, options = {}) {
           if (requirement === 'required') {
             summary.required += target;
             summary.owned += Math.min(target, owned);
+            summary.ordered += ordered;
             summary.missing += missing;
           }
         }

@@ -10,6 +10,7 @@ const {
 } = require('../lib/collection-authority');
 const { CACHE_SCHEMA } = require('../lib/collection-derived-cache');
 const { buildSnapshot, EXPECTED_LANES } = require('../lib/collection-snapshot');
+const collectionState = require('../lib/collection-state');
 const { CollectionAuthorityClient } = require('../lib/collection-authority-client');
 const { createHandler } = require('../services/collection-authority/server');
 
@@ -103,6 +104,18 @@ async function testSnapshotAndAtomicFailure() {
   const box = Object.values(first.snapshot.products).find((row) => row.product.unit === 'display');
   const pack = Object.values(first.snapshot.products).find((row) => row.lane === 'packs' && row.product.unit === 'pack');
   assert(box && pack && box.product.productId !== pack.product.productId);
+
+  const pendingEntry = collectionState.createCatalog(catalog).byId.get(box.product.productId);
+  const pendingRecords = completeRecords();
+  const pendingLane = pendingRecords.find((record) => record.lane === pendingEntry.checklist.id);
+  pendingLane.payload = { ...pendingLane.payload,
+    ...collectionState.setQuantities(pendingLane.payload, pendingEntry, { ordered: 1 }) };
+  const pending = buildSnapshot(catalog, pendingRecords, { generatedAt: '2026-08-31T12:00:00.000Z', nowMs: NOW });
+  assert.strictEqual(pending.snapshot.products[box.product.productId].owned, 0);
+  assert.strictEqual(pending.snapshot.products[box.product.productId].ordered, 1);
+  assert.strictEqual(pending.snapshot.products[box.product.productId].missing, 0,
+    'an exact pending order must not remain an actionable missing target');
+  assert.notStrictEqual(pending.revision, first.revision, 'ordered quantities must participate in the snapshot revision');
 
   const freshlyVerifiedOldContent = records.map((record) => ({
     ...record,
@@ -223,6 +236,38 @@ async function testReceipts() {
     product: { ...operation.product, variant: 'ambiguous-change' } }), 'PRODUCTREF_EXACT_IDENTITY_REQUIRED');
   await expectCode(authority.receiptOperation({ ...operation, idempotencyKey: 'receipt:test:0004', expectedSnapshotRevision: first.snapshot.revision,
     quantity: 0 }), 'RECEIPT_QUANTITY_INVALID');
+}
+
+async function testOrders() {
+  const store = new MemoryStore(completeRecords());
+  const authority = new CollectionAuthority({ store, catalog, dataDir: tempDir(), now: () => NOW });
+  const before = await authority.snapshot();
+  const entry = collectionState.createCatalog(catalog).products.find((candidate) => candidate.checklist.id === 'boxes');
+  const operation = {
+    schema: 'tcg.collection-order-operation/v1', idempotencyKey: 'order:test:0001',
+    expectedSnapshotRevision: before.revision, product: entry.ref, ordered: 1,
+    fulfillment: 'pending-pickup', evidence: { type: 'provider-message', referenceId: 'facebook:thread-abc' },
+  };
+  const first = await authority.orderOperation(operation);
+  assert.strictEqual(first.applied, true);
+  assert.strictEqual(first.idempotentReplay, false);
+  assert.strictEqual(first.operation.priorOrdered, 0);
+  assert.strictEqual(first.snapshot.snapshot.products[entry.ref.productId].owned, 0);
+  assert.strictEqual(first.snapshot.snapshot.products[entry.ref.productId].ordered, 1);
+  assert.strictEqual(first.snapshot.snapshot.products[entry.ref.productId].missing, 0);
+  const writes = store.writes;
+  const replay = await authority.orderOperation(operation);
+  assert.strictEqual(replay.idempotentReplay, true);
+  assert.strictEqual(store.writes, writes, 'idempotent order replay must not write');
+  await expectCode(authority.orderOperation({ ...operation, ordered: 2 }), 'ORDER_IDEMPOTENCY_CONFLICT');
+  await expectCode(authority.orderOperation({ ...operation, idempotencyKey: 'order:test:0002' }), 'COLLECTION_REVISION_CONFLICT');
+  const noOp = await authority.orderOperation({ ...operation, idempotencyKey: 'order:test:0003',
+    expectedSnapshotRevision: first.snapshot.revision });
+  assert.strictEqual(noOp.applied, false);
+  assert.strictEqual(noOp.operation.priorOrdered, 1);
+  assert.strictEqual(store.writes, writes, 'an already-satisfied ordered total must be a no-op');
+  await expectCode(authority.orderOperation({ ...operation, idempotencyKey: 'order:test:0004',
+    expectedSnapshotRevision: first.snapshot.revision, fulfillment: 'unknown' }), 'ORDER_FULFILLMENT_INVALID');
 }
 
 async function testPricingAndMonitorDelegation() {
@@ -449,6 +494,7 @@ async function testNodeClientContract() {
   await testReadinessCache();
   await testLegacyRepair();
   await testReceipts();
+  await testOrders();
   await testPricingAndMonitorDelegation();
   await testRetriesAndMalformedGist();
   await testHttpAuthAndRedaction();

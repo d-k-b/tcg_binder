@@ -112,6 +112,18 @@ class CollectionAuthorityClient {
     catch { throw new CollectionAuthorityClientError('RECEIPT_SNAPSHOT_INVALID', 'Receipt response did not include a complete authoritative snapshot'); }
     return body;
   }
+
+  async orderOperation(operation) {
+    const body = await this.request('/v1/collection/order-operations', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(operation),
+    });
+    if (!body || body.schema !== 'tcg.collection-order-operation-response/v1') {
+      throw new CollectionAuthorityClientError('ORDER_RESPONSE_VERSION_UNSUPPORTED', 'Unsupported order operation response schema');
+    }
+    try { validateSnapshotResponse(body.snapshot); }
+    catch { throw new CollectionAuthorityClientError('ORDER_SNAPSHOT_INVALID', 'Order response did not include a complete authoritative snapshot'); }
+    return body;
+  }
 }
 
 module.exports = { CollectionAuthorityClient, CollectionAuthorityClientError, retryableStatus, retryAfterMs };

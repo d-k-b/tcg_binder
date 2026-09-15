@@ -7,7 +7,7 @@ const state = require('./collection-state');
 const snapshotContract = require('./collection-snapshot');
 const { CollectionDerivedCache } = require('./collection-derived-cache');
 
-const SERVICE_VERSION = '1.2.0';
+const SERVICE_VERSION = '1.3.0';
 const OPTIONAL_OBJECT_FIELDS = Object.freeze([
   'extras', 'ordered', 'wrapperArts', 'orderedWrapperArts', 'legacyChecksV1',
 ]);
@@ -76,6 +76,7 @@ function safeErrorBody(error) {
     'COLLECTION_SNAPSHOT_INCOMPLETE', 'PRODUCTREF_SNAPSHOT_INVALID', 'PRODUCTREF_EXACT_IDENTITY_REQUIRED',
     'RECEIPT_SCHEMA_INVALID', 'IDEMPOTENCY_KEY_INVALID', 'EXPECTED_REVISION_INVALID', 'RECEIPT_QUANTITY_INVALID',
     'DELIVERED_AT_INVALID', 'EVIDENCE_REFERENCE_INVALID', 'RECEIPT_IDEMPOTENCY_CONFLICT', 'COLLECTION_REVISION_CONFLICT',
+    'ORDER_SCHEMA_INVALID', 'ORDER_QUANTITY_INVALID', 'ORDER_FULFILLMENT_INVALID', 'ORDER_IDEMPOTENCY_CONFLICT',
     'REPAIR_SOURCE_REQUIRED', 'REPAIR_UNSAFE_SCHEMA', 'REPAIR_SOURCE_MISMATCH',
     'PRICING_REQUEST_INVALID', 'PRICING_PRODUCTREF_INVALID', 'MONITOR_PREFERENCES_INVALID',
     'PRICING_DEPENDENCY_NOT_CONFIGURED', 'MONITOR_DEPENDENCY_NOT_CONFIGURED',
@@ -352,8 +353,10 @@ class CollectionAuthority {
     this.now = options.now || (() => Date.now());
     this.metaPath = path.join(this.dataDir, 'collection-authority-state.json');
     this.ledgerPath = path.join(this.dataDir, 'collection-authority-receipts.json');
+    this.orderLedgerPath = path.join(this.dataDir, 'collection-authority-orders.json');
     this.meta = readJson(this.metaPath, { lastSuccessfulSnapshotAt: null, lastSuccessfulRevision: null });
     this.ledger = readJson(this.ledgerPath, { schema: 'tcg.collection-receipt-ledger/v1', operations: {} });
+    this.orderLedger = readJson(this.orderLedgerPath, { schema: 'tcg.collection-order-ledger/v1', operations: {} });
     this.operationLock = Promise.resolve();
     this.pricingClient = options.pricingClient || null;
     this.monitorClient = options.monitorClient || null;
@@ -616,6 +619,99 @@ class CollectionAuthority {
       throw new AuthorityError('PRODUCTREF_EXACT_IDENTITY_REQUIRED', 'Receipt ProductRef does not exactly match the Tracker catalog', 422);
     }
     return entry;
+  }
+
+  validateOrder(request) {
+    if (!isObject(request) || request.schema !== 'tcg.collection-order-operation/v1') {
+      throw new AuthorityError('ORDER_SCHEMA_INVALID', 'Order operation schema is invalid', 422);
+    }
+    const allowedRequestFields = ['schema', 'idempotencyKey', 'expectedSnapshotRevision', 'product', 'ordered', 'fulfillment', 'evidence'];
+    if (Object.keys(request).some((field) => !allowedRequestFields.includes(field))) {
+      throw new AuthorityError('ORDER_SCHEMA_INVALID', 'Order operation contains unsupported fields', 422);
+    }
+    if (typeof request.idempotencyKey !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(request.idempotencyKey)) {
+      throw new AuthorityError('IDEMPOTENCY_KEY_INVALID', 'Order idempotency key is invalid', 422);
+    }
+    if (typeof request.expectedSnapshotRevision !== 'string' || !/^[0-9a-f]{64}$/.test(request.expectedSnapshotRevision)) {
+      throw new AuthorityError('EXPECTED_REVISION_INVALID', 'Expected snapshot revision is invalid', 422);
+    }
+    if (!Number.isInteger(request.ordered) || request.ordered < 0 || request.ordered > 100) {
+      throw new AuthorityError('ORDER_QUANTITY_INVALID', 'Ordered total must be an integer from 0 through 100', 422);
+    }
+    if (!['shipping', 'pending-pickup', 'other'].includes(request.fulfillment)) {
+      throw new AuthorityError('ORDER_FULFILLMENT_INVALID', 'Order fulfillment is invalid', 422);
+    }
+    if (!isObject(request.evidence) || Object.keys(request.evidence).some((field) => !['type', 'referenceId'].includes(field)) ||
+        !['provider-message', 'order', 'manual-receipt'].includes(request.evidence.type) ||
+        typeof request.evidence.referenceId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,199}$/.test(request.evidence.referenceId)) {
+      throw new AuthorityError('EVIDENCE_REFERENCE_INVALID', 'Order evidence reference is invalid', 422);
+    }
+    if (!isObject(request.product) || typeof request.product.productId !== 'string') {
+      throw new AuthorityError('PRODUCTREF_EXACT_IDENTITY_REQUIRED', 'Order requires one exact ProductRef', 422);
+    }
+    const entry = this.catalogIndex.byId.get(request.product.productId);
+    if (!entry || snapshotContract.stableJson(entry.ref) !== snapshotContract.stableJson(request.product)) {
+      throw new AuthorityError('PRODUCTREF_EXACT_IDENTITY_REQUIRED', 'Order ProductRef does not exactly match the Tracker catalog', 422);
+    }
+    return entry;
+  }
+
+  async orderOperation(request) {
+    const run = async () => {
+      const entry = this.validateOrder(request);
+      const bodyHash = snapshotContract.revisionFor(request);
+      const prior = this.orderLedger.operations[request.idempotencyKey];
+      if (prior) {
+        if (prior.bodyHash !== bodyHash) throw new AuthorityError('ORDER_IDEMPOTENCY_CONFLICT', 'Idempotency key was already used for a different order update', 409);
+        return { ...clone(prior.result), idempotentReplay: true };
+      }
+      const before = await this.snapshot({ allowFallback: false });
+      if (before.revision !== request.expectedSnapshotRevision) {
+        throw new AuthorityError('COLLECTION_REVISION_CONFLICT', 'Collection snapshot revision is stale', 409, { currentRevision: before.revision });
+      }
+      const lane = entry.checklist.id;
+      const current = await this.store.readLane(lane);
+      const currentState = state.emptyState(current.payload);
+      const beforeCounts = state.describe(currentState, entry);
+      const nextState = state.setQuantities(currentState, entry, { ordered: request.ordered });
+      const applied = beforeCounts.ordered !== request.ordered;
+      let after = before;
+      const operation = {
+        schema: 'tcg.collection-order-applied/v1',
+        idempotencyKey: request.idempotencyKey,
+        productId: request.product.productId,
+        priorOrdered: beforeCounts.ordered,
+        ordered: request.ordered,
+        fulfillment: request.fulfillment,
+        evidence: clone(request.evidence),
+        recordedAt: new Date(this.now()).toISOString(),
+      };
+      if (applied) {
+        const nextPayload = {
+          ...current.payload,
+          ...nextState,
+          updatedAt: operation.recordedAt,
+          lastOrderOperation: operation,
+        };
+        await this.store.writeLane(lane, nextPayload, current.upstreamRevision);
+        after = await this.snapshot({ allowFallback: false });
+      }
+      const result = {
+        schema: 'tcg.collection-order-operation-response/v1',
+        applied,
+        idempotentReplay: false,
+        operation,
+        snapshot: after,
+      };
+      this.orderLedger.operations[request.idempotencyKey] = { bodyHash, result };
+      const keys = Object.keys(this.orderLedger.operations);
+      for (const key of keys.slice(0, Math.max(0, keys.length - 128))) delete this.orderLedger.operations[key];
+      atomicJsonWrite(this.orderLedgerPath, this.orderLedger);
+      return clone(result);
+    };
+    const resultPromise = this.operationLock.then(run, run);
+    this.operationLock = resultPromise.then(() => undefined, () => undefined);
+    return resultPromise;
   }
 
   applyExactReceipt(payload, entry, quantity) {
