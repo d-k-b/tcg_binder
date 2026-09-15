@@ -23,7 +23,7 @@ adding a pricing-message API, or changing which origin owns progress storage.
 
 ## Current state
 
-- Extension version: **1.6.5**.
+- Extension version: **1.6.6**.
 - Manifest: Chrome/Edge Manifest V3.
 - Primary surface: persistent browser side panel/sidebar.
 - Toolbar action and default shortcut: open the panel.
@@ -137,6 +137,25 @@ for the required Commander Legends Collector Booster Display ProductRef
 `mtg:cmr:commander-legends:collector-booster:display:en`. The extension does not
 create or infer an ownership record for the new product; ownership remains unknown
 until the dashboard or Collection Authority supplies it explicitly.
+
+Version 1.6.6 adopts Collection Authority v1.3.0's additive ordered-inventory
+contract. Authority snapshots must keep `owned` and `ordered` as separate integer
+counts and report `missing = max(target - owned - ordered, 0)`. The wrapper retains
+`ordered` in its private validated snapshot while continuing to pass the older TCG
+Comps decoration contract only `product`, `status`, `target`, `owned`, `missing`,
+and `requirement`. Pending orders therefore suppress a false NEED badge without
+being presented as owned inventory.
+
+The protected client also exposes authenticated `orderOperation(operation)` for the
+exact revision-checked `tcg.collection-order-operation/v1` contract. It rejects
+extra fields, noncanonical ProductRefs, invalid absolute quantities,
+fulfillment/evidence mismatches, stale-format revisions, incomplete response
+snapshots, and inconsistent ordered counts before returning a sanitized result.
+This mutation is not exposed to the cross-origin dashboard bridge or called by any
+automatic extension path. A future trusted extension UI must require a direct user
+action and explicit evidence reference before invoking it. The Authority bearer
+continues to exist only in `chrome.storage.local` and the authenticated request
+header.
 
 The user-supplied OpenAI key is a deliberate BYOK compromise. **Remember on this
 device** is enabled by default and stores the key only in the Tracker extension's
@@ -272,8 +291,11 @@ diagnostics, URLs, or provider requests.
 Without Authority, the side-panel button requests `tcg.collection-snapshot/v2` from
 the exact embedded dashboard frame. With Authority configured, it requests the
 complete seven-lane/689-product snapshot from Authority instead. Each product map key equals its included full
-`tcg.product/v1.productId`; every entry contains only `product`, `status`, `target`,
-`owned`, `missing`, and `requirement`. The snapshot is recomputed from current
+`tcg.product/v1.productId`. The Authority response additionally contains `ordered`,
+kept separate from `owned`, and its `missing` count is net of both. Before page
+decoration, the extension strips `ordered` and passes only `product`, `status`,
+`target`, `owned`, `missing`, and `requirement` to the older TCG Comps collection
+contract. The snapshot is recomputed from current
 in-memory ownership and includes all 689 products atomically under the provider's
 1,200-product ceiling. It must never contain checkbox/legacy keys, extras keys, Gist
 metadata, GitHub credentials, pricing credentials, values, watches, or cached
@@ -397,8 +419,15 @@ Then load or reload `browser-extension/` as an unpacked extension and verify:
   ambiguous and mixed listings remain CHECK, and rescanning updates only the
   Tracker namespace.
 - A live `AUTHORITATIVE` Authority snapshot preserves its safe cache provenance
-  through validation and may drive page decoration; a conditional/stale/complete
+  and separate ordered counts through validation, proves missing is net of owned
+  plus ordered, and may drive page decoration; the provider-facing projection omits
+  ordered. A conditional/stale/complete
   snapshot fallback shows review-only status and makes zero decoration calls.
+- The extension-private Authority client accepts only an exact
+  `tcg.collection-order-operation/v1`, sends it to
+  `/v1/collection/order-operations`, validates the complete revision-bearing
+  response, and preserves the returned ordered count without exposing the method to
+  dashboard messages or automatic paths.
 - Authority pricing preserves Pricing Analyzer cache provenance through the exact
   dashboard bridge, while the Authority bearer remains absent from iframe messages
   and copied diagnostics.

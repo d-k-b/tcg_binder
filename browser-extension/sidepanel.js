@@ -875,7 +875,12 @@ function validateCollectionSnapshot(snapshot) {
   if (requireAuthority && Object.keys(checked.value.products).length !== AUTHORITY_PRODUCT_COUNT) {
     throw collectionError('COLLECTION_SNAPSHOT_INCOMPLETE', `Collection Authority did not return all ${AUTHORITY_PRODUCT_COUNT} canonical products.`);
   }
-  const preserved = { ...checked.value };
+  const preserved = globalThis.TCGCollectionAuthorityClient?.preserveOrderedSnapshot
+    ? globalThis.TCGCollectionAuthorityClient.preserveOrderedSnapshot(snapshot, checked.value, {
+      requireOrdered: requireAuthority,
+      productCount: requireAuthority ? AUTHORITY_PRODUCT_COUNT : undefined
+    })
+    : { ...checked.value };
   if (policy.authority) preserved.authority = policy.authority;
   if (policy.cache) preserved.cache = policy.cache;
   return { snapshot: preserved, providerSnapshot: checked.value, policy };

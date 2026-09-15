@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TCG Collection Tracker",
-  "version": "1.6.5",
+  "version": "1.6.6",
   "description": "Open the TCG collection dashboard and securely bridge Collection Authority, TCG Comps pricing, monitoring, and AI tools.",
   "permissions": ["sidePanel", "storage"],
   "host_permissions": ["https://api.openai.com/*", "https://gogo.tail903ec0.ts.net/*", "http://127.0.0.1:3102/*"],

@@ -10,7 +10,7 @@ const EXT = path.join(ROOT, 'browser-extension');
 const manifest = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
 
 assert.strictEqual(manifest.manifest_version, 3, 'extension must use Manifest V3');
-assert.strictEqual(manifest.version, '1.6.5', 'the 689-product Authority completeness contract must bump the tracker extension version');
+assert.strictEqual(manifest.version, '1.6.6', 'the ordered snapshot and order-operation contract must bump the tracker extension version');
 assert.strictEqual(manifest.side_panel.default_path, 'sidepanel.html');
 assert.deepStrictEqual(manifest.permissions.slice().sort(), ['sidePanel', 'storage']);
 assert.deepStrictEqual(manifest.host_permissions, ['https://api.openai.com/*', 'https://gogo.tail903ec0.ts.net/*', 'http://127.0.0.1:3102/*'],
@@ -86,6 +86,14 @@ assert.match(panelJs, /authorityClient\.snapshot\(\)/,
   'page decoration must use the authoritative collection snapshot when configured');
 assert.match(authorityClientJs, /snapshot:\s*\(\)\s*=>[\s\S]*attachSnapshotProvenance/,
   'the wrapper must preserve validated Authority cache provenance on returned collection snapshots');
+assert.match(authorityClientJs, /orderOperation:\s*operation\s*=>[\s\S]*\/v1\/collection\/order-operations/,
+  'the wrapper must expose the revision-checked Authority order operation');
+assert.doesNotMatch(panelJs, /authorityClient\.orderOperation\s*\(/,
+  'order mutation must not be exposed to dashboard messages or an automatic side-panel path');
+assert.match(panelJs, /preserveOrderedSnapshot\(snapshot, checked\.value/,
+  'the wrapper-local snapshot must preserve Authority ordered totals after canonical provider validation');
+assert.match(panelJs, /providerSnapshot:\s*checked\.value/,
+  'the additive ordered field must stay out of the older TCG Comps decoration payload');
 assert.match(panelJs, /COLLECTION_SNAPSHOT_CONDITIONAL/,
   'conditional Authority snapshots must be labeled review-only');
 assert.match(panelJs, /decorateCollectionPage\(validated\.providerSnapshot, \{ observe: true, userInitiated: true \}\)/,

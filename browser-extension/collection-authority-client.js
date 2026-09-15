@@ -11,6 +11,11 @@
   const CACHE_STATUS_SCHEMA = 'tcg.collection-derived-cache-status/v1';
   const OWNERSHIP_POLICY_SCHEMA = 'tcg.collection-ownership-policy/v1';
   const MONITOR_SYNC_RESULT_SCHEMA = 'tcg.collection-monitor-sync-result/v1';
+  const ORDER_OPERATION_SCHEMA = 'tcg.collection-order-operation/v1';
+  const ORDER_OPERATION_RESPONSE_SCHEMA = 'tcg.collection-order-operation-response/v1';
+  const ORDER_APPLIED_SCHEMA = 'tcg.collection-order-applied/v1';
+  const EXPECTED_PRODUCT_COUNT = 689;
+  const PRODUCT_FIELDS = ['schema', 'productId', 'game', 'setCode', 'setName', 'productName', 'productType', 'unit', 'language', 'variant'];
   const CACHE_MODES = new Set([
     'readiness-hit', 'readiness-refresh', 'snapshot-refresh', 'complete-snapshot-fallback',
     'monitor-subscription-hit', 'monitor-subscription-refresh'
@@ -28,6 +33,107 @@
 
   function validIso(value) {
     return typeof value === 'string' && value.length <= 80 && Number.isFinite(Date.parse(value));
+  }
+
+  function exactKeys(value, allowed) {
+    return isObject(value) && Object.keys(value).length === allowed.length && Object.keys(value).every((key) => allowed.includes(key));
+  }
+
+  function normalizeExactProductRef(value) {
+    if (!exactKeys(value, PRODUCT_FIELDS) || typeof value.setCode !== 'string' || !value.setCode.trim() ||
+        (value.variant !== null && (typeof value.variant !== 'string' || !value.variant.trim()))) {
+      throw clientError('ORDER_PRODUCTREF_INVALID', 'Order operation requires one exact canonical ProductRef.');
+    }
+    const validator = root.TCGPricingContracts && root.TCGPricingContracts.validateProductRef;
+    if (typeof validator !== 'function') {
+      throw clientError('ORDER_PRODUCTREF_VALIDATOR_UNAVAILABLE', 'Reload the updated Tracker extension before recording an order.');
+    }
+    const checked = validator(value);
+    if (!checked || !checked.ok || !checked.value || PRODUCT_FIELDS.some((field) => checked.value[field] !== value[field])) {
+      throw clientError('ORDER_PRODUCTREF_INVALID', 'Order operation requires one exact canonical ProductRef.');
+    }
+    return checked.value;
+  }
+
+  function normalizeEvidence(value) {
+    const allowed = ['type', 'referenceId'];
+    if (!exactKeys(value, allowed) || !['provider-message', 'order', 'manual-receipt'].includes(value.type) ||
+        typeof value.referenceId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,199}$/.test(value.referenceId)) {
+      throw clientError('ORDER_EVIDENCE_INVALID', 'Order evidence reference is invalid.');
+    }
+    return { type: value.type, referenceId: value.referenceId };
+  }
+
+  function normalizeOrderOperation(value) {
+    const allowed = ['schema', 'idempotencyKey', 'expectedSnapshotRevision', 'product', 'ordered', 'fulfillment', 'evidence'];
+    if (!exactKeys(value, allowed) || value.schema !== ORDER_OPERATION_SCHEMA) {
+      throw clientError('ORDER_OPERATION_INVALID', 'Order operation schema is invalid.');
+    }
+    if (typeof value.idempotencyKey !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(value.idempotencyKey)) {
+      throw clientError('ORDER_IDEMPOTENCY_KEY_INVALID', 'Order idempotency key is invalid.');
+    }
+    if (typeof value.expectedSnapshotRevision !== 'string' || !/^[0-9a-f]{64}$/.test(value.expectedSnapshotRevision)) {
+      throw clientError('ORDER_EXPECTED_REVISION_INVALID', 'Expected collection snapshot revision is invalid.');
+    }
+    if (!Number.isInteger(value.ordered) || value.ordered < 0 || value.ordered > 100) {
+      throw clientError('ORDER_QUANTITY_INVALID', 'Ordered total must be an integer from 0 through 100.');
+    }
+    if (!['shipping', 'pending-pickup', 'other'].includes(value.fulfillment)) {
+      throw clientError('ORDER_FULFILLMENT_INVALID', 'Order fulfillment is invalid.');
+    }
+    return {
+      schema: ORDER_OPERATION_SCHEMA,
+      idempotencyKey: value.idempotencyKey,
+      expectedSnapshotRevision: value.expectedSnapshotRevision,
+      product: normalizeExactProductRef(value.product),
+      ordered: value.ordered,
+      fulfillment: value.fulfillment,
+      evidence: normalizeEvidence(value.evidence)
+    };
+  }
+
+  function preserveOrderedSnapshot(snapshot, providerSnapshot, options = {}) {
+    if (!isObject(snapshot) || snapshot.schema !== SNAPSHOT_SCHEMA || !isObject(snapshot.products)) {
+      throw clientError('COLLECTION_SNAPSHOT_INVALID', 'Collection Authority did not return a collection snapshot v2.');
+    }
+    const base = providerSnapshot || snapshot;
+    if (!isObject(base) || base.schema !== SNAPSHOT_SCHEMA || !isObject(base.products)) {
+      throw clientError('COLLECTION_SNAPSHOT_INVALID', 'Collection snapshot projection is invalid.');
+    }
+    const sourceIds = Object.keys(snapshot.products);
+    const baseIds = Object.keys(base.products);
+    if (sourceIds.length !== baseIds.length || baseIds.some((productId) => !Object.prototype.hasOwnProperty.call(snapshot.products, productId))) {
+      throw clientError('COLLECTION_SNAPSHOT_INVALID', 'Collection snapshot products do not match the canonical projection.');
+    }
+    if (Number.isInteger(options.productCount) && baseIds.length !== options.productCount) {
+      throw clientError('COLLECTION_SNAPSHOT_INCOMPLETE', `Collection Authority did not return all ${options.productCount} canonical products.`);
+    }
+    const products = {};
+    for (const productId of baseIds) {
+      const raw = snapshot.products[productId];
+      const canonical = base.products[productId];
+      if (!isObject(raw) || !isObject(canonical) || !isObject(raw.product) || raw.product.productId !== productId) {
+        throw clientError('COLLECTION_SNAPSHOT_INVALID', 'Collection snapshot ProductRef identity is invalid.');
+      }
+      const ordered = raw.ordered;
+      if (ordered == null && options.requireOrdered !== true) {
+        products[productId] = { ...canonical };
+        continue;
+      }
+      if (!Number.isInteger(ordered) || ordered < 0 || ordered > 100000) {
+        throw clientError('COLLECTION_ORDERED_INVALID', 'Collection Authority returned an invalid ordered quantity.');
+      }
+      const target = raw.target;
+      const owned = raw.owned;
+      const missing = raw.missing;
+      if (![target, owned, missing].every((count) => Number.isInteger(count) && count >= 0 && count <= 100000) ||
+          target !== canonical.target || owned !== canonical.owned || missing !== canonical.missing ||
+          missing !== Math.max(target - owned - ordered, 0)) {
+        throw clientError('COLLECTION_ORDERED_INCONSISTENT', 'Collection Authority returned inconsistent owned, ordered, and missing quantities.');
+      }
+      products[productId] = { ...canonical, ordered };
+    }
+    return { ...base, products };
   }
 
   function normalizeAuthority(value, required = false) {
@@ -108,15 +214,97 @@
     };
   }
 
-  function attachSnapshotProvenance(result) {
+  function attachSnapshotProvenance(result, options = {}) {
     if (!isObject(result) || result.schema !== SNAPSHOT_RESPONSE_SCHEMA || !isObject(result.snapshot)) {
       throw clientError('COLLECTION_SNAPSHOT_RESPONSE_INVALID', 'Collection Authority returned an unsupported snapshot response.');
     }
+    if (!validIso(result.generatedAt) || !validIso(result.snapshot.generatedAt) ||
+        !/^[0-9a-f]{64}$/.test(String(result.revision || '')) || result.snapshot.revision !== result.revision) {
+      throw clientError('COLLECTION_SNAPSHOT_RESPONSE_INVALID', 'Collection Authority returned invalid snapshot revision metadata.');
+    }
     const authority = normalizeAuthority(result.authority || result.snapshot.authority, true);
     const cache = normalizeCache(result.cache, true);
-    const snapshot = { ...result.snapshot, authority, cache };
+    let projection = result.snapshot;
+    if (options.validateCanonical === true) {
+      const validator = root.TCGPricingContracts && root.TCGPricingContracts.validateCollectionSnapshot;
+      if (typeof validator !== 'function') {
+        throw clientError('COLLECTION_SNAPSHOT_VALIDATOR_UNAVAILABLE', 'Reload the updated Tracker extension before using Collection Authority.');
+      }
+      const checked = validator(result.snapshot);
+      if (!checked || !checked.ok || !checked.value) {
+        throw clientError('COLLECTION_SNAPSHOT_INVALID', 'Collection Authority returned an invalid canonical ProductRef snapshot.');
+      }
+      projection = checked.value;
+    }
+    const ordered = preserveOrderedSnapshot(result.snapshot, projection, {
+      requireOrdered: options.requireOrdered === true,
+      productCount: options.productCount
+    });
+    const snapshot = {
+      ...ordered,
+      generatedAt: new Date(result.snapshot.generatedAt).toISOString(),
+      revision: result.revision,
+      authority,
+      cache
+    };
     snapshotPolicy(snapshot, { requireAuthority: true });
     return snapshot;
+  }
+
+  function normalizeSnapshotResponseEnvelope(result, options = {}) {
+    const snapshot = attachSnapshotProvenance(result, options);
+    return {
+      schema: SNAPSHOT_RESPONSE_SCHEMA,
+      generatedAt: new Date(result.generatedAt).toISOString(),
+      revision: result.revision,
+      authority: snapshot.authority,
+      cache: snapshot.cache,
+      snapshot
+    };
+  }
+
+  function normalizeAppliedOrder(value, request) {
+    const allowed = ['schema', 'idempotencyKey', 'productId', 'priorOrdered', 'ordered', 'fulfillment', 'evidence', 'recordedAt'];
+    if (!exactKeys(value, allowed) || value.schema !== ORDER_APPLIED_SCHEMA ||
+        value.idempotencyKey !== request.idempotencyKey || value.productId !== request.product.productId ||
+        !Number.isInteger(value.priorOrdered) || value.priorOrdered < 0 || value.priorOrdered > 100 ||
+        value.ordered !== request.ordered || value.fulfillment !== request.fulfillment || !validIso(value.recordedAt)) {
+      throw clientError('ORDER_RESPONSE_INVALID', 'Collection Authority returned invalid order operation details.');
+    }
+    const evidence = normalizeEvidence(value.evidence);
+    if (evidence.type !== request.evidence.type || evidence.referenceId !== request.evidence.referenceId) {
+      throw clientError('ORDER_RESPONSE_INVALID', 'Collection Authority returned mismatched order evidence.');
+    }
+    return {
+      schema: ORDER_APPLIED_SCHEMA,
+      idempotencyKey: value.idempotencyKey,
+      productId: value.productId,
+      priorOrdered: value.priorOrdered,
+      ordered: value.ordered,
+      fulfillment: value.fulfillment,
+      evidence,
+      recordedAt: new Date(value.recordedAt).toISOString()
+    };
+  }
+
+  function validateOrderOperationResponse(response, request) {
+    if (!isObject(response) || response.schema !== ORDER_OPERATION_RESPONSE_SCHEMA ||
+        typeof response.applied !== 'boolean' || typeof response.idempotentReplay !== 'boolean') {
+      throw clientError('ORDER_RESPONSE_INVALID', 'Collection Authority returned an unsupported order operation response.');
+    }
+    const operation = normalizeAppliedOrder(response.operation, request);
+    const snapshot = normalizeSnapshotResponseEnvelope(response.snapshot, {
+      requireOrdered: true,
+      validateCanonical: true,
+      productCount: EXPECTED_PRODUCT_COUNT
+    });
+    return {
+      schema: ORDER_OPERATION_RESPONSE_SCHEMA,
+      applied: response.applied,
+      idempotentReplay: response.idempotentReplay,
+      operation,
+      snapshot
+    };
   }
 
   function normalizeOwnershipPolicy(value, required = false) {
@@ -208,14 +396,24 @@
     }
     return {
       readiness: () => request('GET', '/v1/readiness'),
-      snapshot: () => request('GET', '/v1/collection/snapshot').then(attachSnapshotProvenance),
+      snapshot: () => request('GET', '/v1/collection/snapshot')
+        .then(result => attachSnapshotProvenance(result, {
+          requireOrdered: true,
+          validateCanonical: true,
+          productCount: EXPECTED_PRODUCT_COUNT
+        })),
       priceProduct: (product, requestOptions) => request('POST', '/v1/pricing/price', {
         schema: 'tcg.collection-pricing-request/v1',
         requestId: 'tracker-' + Date.now().toString(36),
         product,
         options: requestOptions || {}
       }),
-      syncMonitor: preferences => request('POST', '/v1/monitor/sync', { schema: 'tcg.collection-monitor-sync-request/v1', preferences: preferences || {} })
+      syncMonitor: preferences => request('POST', '/v1/monitor/sync', { schema: 'tcg.collection-monitor-sync-request/v1', preferences: preferences || {} }),
+      orderOperation: operation => {
+        const normalized = normalizeOrderOperation(operation);
+        return request('POST', '/v1/collection/order-operations', normalized)
+          .then(response => validateOrderOperationResponse(response, normalized));
+      }
     };
   }
 
@@ -225,8 +423,14 @@
     CACHE_STATUS_SCHEMA,
     OWNERSHIP_POLICY_SCHEMA,
     MONITOR_SYNC_RESULT_SCHEMA,
+    ORDER_OPERATION_SCHEMA,
+    ORDER_OPERATION_RESPONSE_SCHEMA,
     createClient,
     attachSnapshotProvenance,
+    normalizeSnapshotResponseEnvelope,
+    preserveOrderedSnapshot,
+    normalizeOrderOperation,
+    validateOrderOperationResponse,
     snapshotPolicy,
     normalizeOwnershipPolicy,
     validateMonitorSyncResponse

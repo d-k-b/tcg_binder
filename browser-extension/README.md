@@ -66,10 +66,14 @@ For local work, open the extension's gear and use
 
 When the extension's own files change, increment `version` in `manifest.json`, then
 select **Reload** for the unpacked extension on the browser's extensions page.
-Version `1.6.5` updates every extension-owned completeness guard for the 689-product
-canonical catalog, including the required Commander Legends Collector Booster
-Display. It retains the bounded marketplace source health added in `1.6.4` while
-retaining protected Collection Authority routing, the direct local
+Version `1.6.6` retains the `1.6.5` 689-product completeness guards and adds
+Collection Authority v1.3.0 ordered-inventory support. Authority snapshots keep
+`owned` and `ordered` separate, validate `missing` net of both, and strip the
+additive `ordered` field before invoking the older TCG Comps page-decoration
+contract. The protected client includes the exact revision-checked order-operation
+method for a future trusted, direct-action extension UI; it is not exposed to the
+dashboard iframe or any automatic path. It also retains the bounded marketplace
+source health added in `1.6.4`, protected Collection Authority routing, the direct local
 Authority endpoint, and fail-closed
 conditional monitor status while retaining
 AI-assisted local collection drafts, the remembered BYOK OpenAI key, photo
@@ -106,7 +110,10 @@ and bearer without changing the separate TCG Comps pairing.
 
 When Authority is configured, ordinary dashboard price checks route through it and
 retain Pricing Analyzer cache provenance. Marketplace decoration still runs in TCG
-Comps, using Authority's complete collection snapshot. A live authoritative snapshot
+Comps, using Authority's complete collection snapshot. Authority keeps pending
+orders separate from owned inventory and reduces `missing` by both; the extension
+retains that distinction locally while sending TCG Comps only its supported
+collection fields. A live authoritative snapshot
 can mark NEED/OWNED/TARGET/CHECK. A stale or cached conditional snapshot is
 review-only: the extension applies no page badges, infers nothing missing, and does
 not use it for monitor sync or collection mutations. Monitor sync sends preferences
@@ -114,6 +121,13 @@ only; Authority performs a new complete source read itself. If that read retains
 689 products but the ownership evidence is stale, the wrapper accepts only a
 fail-closed response with monitoring disabled and zero active targets, then shows
 **Complete collection retained; monitoring paused because ownership data is stale.**
+
+The client supports Authority's authenticated
+`POST /v1/collection/order-operations` contract for an exact ProductRef, absolute
+ordered total, expected snapshot revision, fulfillment state, and bounded evidence
+reference. No current dashboard or automatic extension path invokes it. This keeps
+the mutation behind a future explicit trusted extension control while making the
+wrapper contract ready without moving the bearer out of extension-private storage.
 
 Monitor status may also show provider-classified source health for eBay, TCGplayer,
 Heritage, Fanatics, Hake's, Goldin, Pristine, HiBid, and stores. Freshness labels
@@ -209,8 +223,10 @@ Page badges are fail-closed:
 
 The Tracker does not scrape marketplace pages or request marketplace, scripting, or
 tab permissions. TCG Comps owns discovery, matching, and its namespaced overlay. The
-collection snapshot contains only full ProductRefs and target/owned/missing counts;
-it contains no progress keys, Gist data, GitHub credential, or pricing credential,
+provider-facing collection snapshot contains only full ProductRefs and
+target/owned/missing counts; Authority's additive ordered count is validated and
+retained only on the wrapper side before that projection.
+It contains no progress keys, Gist data, GitHub credential, or pricing credential,
 and TCG Comps keeps it only in memory for the overlay session.
 
 If a page check fails, select the copy icon beside the error and paste the report

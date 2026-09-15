@@ -3,6 +3,8 @@
 const assert = require('assert');
 const path = require('path');
 
+const contracts = require(path.resolve(__dirname, '..', '..', 'browser-extension', 'vendor', 'tcg-comps-2.42.0', 'pricing-contracts.js'));
+globalThis.TCGPricingContracts = contracts;
 const authorityApi = require(path.resolve(__dirname, '..', '..', 'browser-extension', 'collection-authority-client.js'));
 const HASH = 'a'.repeat(64);
 const VERIFIED_MONITOR_REVISION = 'sha256:6f8b585b06de4a8e2606cd9500abea1da43a2fb8170e7347efc6489eaed36394';
@@ -15,7 +17,7 @@ const freshCache = {
 const snapshotBody = {
   schema: 'tcg.collection-snapshot-response/v1', generatedAt: '2026-09-03T12:00:00.000Z', revision: HASH,
   authority: { ...authority, unexpected: 'discard me' }, cache: { ...freshCache, unexpected: 'discard me' },
-  snapshot: { schema: 'tcg.collection-snapshot/v2', namespace: 'collection-tracker', products: {},
+  snapshot: { schema: 'tcg.collection-snapshot/v2', namespace: 'collection-tracker', generatedAt: '2026-09-03T12:00:00.000Z', revision: HASH, products: {},
     authority: { state: 'stale', consumerStatus: 'CONDITIONAL', degradedReasonCodes: ['OLD_INNER_VALUE'] } }
 };
 
@@ -109,14 +111,71 @@ assert.strictEqual(authorityApi.validateMonitorSyncResponse({
     setCode: 'FIX', setName: 'Fixture Exact', productName: 'Fixture Exact Booster Display',
     productType: 'booster', unit: 'display', language: 'en', variant: null
   };
+  const completeProducts = {
+    [product.productId]: {
+      product, status: 'target', target: 1, owned: 0, ordered: 1, missing: 0, requirement: 'required'
+    }
+  };
+  for (let index = 1; index < 689; index += 1) {
+    const productId = `mtg:fix:fixture-${index}:booster:display:en`;
+    completeProducts[productId] = {
+      product: {
+        schema: 'tcg.product/v1', productId, game: 'mtg', setCode: 'FIX', setName: `Fixture ${index}`,
+        productName: `Fixture ${index} Booster Display`, productType: 'booster', unit: 'display',
+        language: 'en', variant: null
+      },
+      status: 'missing', target: 1, owned: 0, ordered: 0, missing: 1, requirement: 'required'
+    };
+  }
+  const completeSnapshotBody = {
+    ...snapshotBody,
+    snapshot: { ...snapshotBody.snapshot, products: completeProducts }
+  };
+  const canonicalOne = contracts.validateCollectionSnapshot({
+    schema: 'tcg.collection-snapshot/v2', namespace: 'collection-tracker',
+    products: { [product.productId]: completeProducts[product.productId] }
+  });
+  assert.strictEqual(canonicalOne.ok, true);
+  const preservedOne = authorityApi.preserveOrderedSnapshot({
+    schema: 'tcg.collection-snapshot/v2', namespace: 'collection-tracker',
+    products: { [product.productId]: completeProducts[product.productId] }
+  }, canonicalOne.value, { requireOrdered: true });
+  assert.strictEqual(preservedOne.products[product.productId].ordered, 1,
+    'the wrapper-local snapshot must retain pending orders separately from owned inventory');
+  assert.strictEqual(canonicalOne.value.products[product.productId].ordered, undefined,
+    'the older TCG Comps decoration projection must not receive the additive ordered field');
+  assert.throws(() => authorityApi.preserveOrderedSnapshot({
+    schema: 'tcg.collection-snapshot/v2', namespace: 'collection-tracker',
+    products: { [product.productId]: { ...completeProducts[product.productId], missing: 1 } }
+  }, canonicalOne.value, { requireOrdered: true }), error => error.code === 'COLLECTION_ORDERED_INCONSISTENT');
+
+  const orderRequest = {
+    schema: 'tcg.collection-order-operation/v1',
+    idempotencyKey: 'order:extension:0001',
+    expectedSnapshotRevision: HASH,
+    product,
+    ordered: 1,
+    fulfillment: 'shipping',
+    evidence: { type: 'order', referenceId: 'shopify:order-1234' }
+  };
+  const orderResponse = {
+    schema: 'tcg.collection-order-operation-response/v1', applied: true, idempotentReplay: false,
+    operation: {
+      schema: 'tcg.collection-order-applied/v1', idempotencyKey: orderRequest.idempotencyKey,
+      productId: product.productId, priorOrdered: 0, ordered: 1, fulfillment: 'shipping',
+      evidence: orderRequest.evidence, recordedAt: '2026-09-03T12:00:00.000Z'
+    },
+    snapshot: completeSnapshotBody
+  };
   const pricingCache = { mode: 'incremental', evidenceCache: { schema: 'provider-owned/v1', reused: true } };
   const valuation = { apiVersion: 1, schema: 'tcg.valuation/v1', product, market: { value: 100 }, cache: pricingCache };
   const client = authorityApi.createClient({
     baseUrl: 'https://gogo.tail903ec0.ts.net/collection', token: 'authority-test-secret',
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
-      const body = url.endsWith('/v1/collection/snapshot') ? snapshotBody
+      const body = url.endsWith('/v1/collection/snapshot') ? completeSnapshotBody
         : url.endsWith('/v1/pricing/price') ? valuation
+          : url.endsWith('/v1/collection/order-operations') ? orderResponse
           : { apiVersion: 1, schema: 'tcg.collection-monitor-sync-result/v1', accepted: true };
       return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(body)) };
     }
@@ -124,17 +183,43 @@ assert.strictEqual(authorityApi.validateMonitorSyncResponse({
 
   const fetchedSnapshot = await client.snapshot();
   assert.deepStrictEqual(fetchedSnapshot.cache, freshCache);
+  assert.strictEqual(fetchedSnapshot.products[product.productId].ordered, 1);
   const fetchedValuation = await client.priceProduct(product, { includeActive: true });
   assert.deepStrictEqual(fetchedValuation, valuation, 'Pricing Analyzer cache provenance must pass through Authority unchanged');
   await client.syncMonitor({ enabled: true });
-  assert.strictEqual(calls.length, 3);
+  const appliedOrder = await client.orderOperation(orderRequest);
+  assert.strictEqual(appliedOrder.schema, 'tcg.collection-order-operation-response/v1');
+  assert.strictEqual(appliedOrder.snapshot.revision, HASH);
+  assert.strictEqual(appliedOrder.snapshot.snapshot.products[product.productId].owned, 0);
+  assert.strictEqual(appliedOrder.snapshot.snapshot.products[product.productId].ordered, 1);
+  assert.strictEqual(appliedOrder.snapshot.snapshot.products[product.productId].missing, 0);
+  assert.strictEqual(calls.length, 4);
   assert(calls.every(call => call.options.headers.Authorization === 'Bearer authority-test-secret'));
   assert.deepStrictEqual(JSON.parse(calls[2].options.body), {
     schema: 'tcg.collection-monitor-sync-request/v1', preferences: { enabled: true }
   }, 'Authority monitor sync must receive preferences only, never a cached collection snapshot');
   assert(!calls[2].options.body.includes('complete-snapshot-fallback'));
+  assert.strictEqual(calls[3].url, 'https://gogo.tail903ec0.ts.net/collection/v1/collection/order-operations');
+  assert.deepStrictEqual(JSON.parse(calls[3].options.body), orderRequest,
+    'the order endpoint must receive only the exact revision-checked Authority operation');
+  assert(!calls[3].options.body.includes('authority-test-secret'),
+    'the Authority bearer must remain in the request header and out of the order body');
+  const missingOrderedResponse = JSON.parse(JSON.stringify(orderResponse));
+  delete missingOrderedResponse.snapshot.snapshot.products[product.productId].ordered;
+  assert.throws(() => authorityApi.validateOrderOperationResponse(missingOrderedResponse, orderRequest),
+    error => error.code === 'COLLECTION_ORDERED_INVALID',
+    'an order response without separate ordered inventory must fail closed');
+  assert.throws(() => authorityApi.validateOrderOperationResponse({
+    ...orderResponse, operation: { ...orderResponse.operation, rawProviderDetail: 'must not pass through' }
+  }, orderRequest), error => error.code === 'ORDER_RESPONSE_INVALID',
+  'unexpected order-operation response fields must not cross the wrapper boundary');
+  const callsBeforeRejectedOrder = calls.length;
+  assert.throws(() => client.orderOperation({ ...orderRequest, leakedToken: 'do-not-send' }),
+    error => error.code === 'ORDER_OPERATION_INVALID');
+  assert.throws(() => client.orderOperation({ ...orderRequest, product: { ...product, unexpected: true } }),
+    error => error.code === 'ORDER_PRODUCTREF_INVALID');
+  assert.strictEqual(calls.length, callsBeforeRejectedOrder, 'invalid order operations must fail before authenticated transport');
 
-  const contracts = require(path.resolve(__dirname, '..', '..', 'browser-extension', 'vendor', 'tcg-comps-2.42.0', 'pricing-contracts.js'));
   const pricingBridgeApi = require(path.resolve(__dirname, '..', '..', 'browser-extension', 'vendor', 'tcg-comps-2.42.0', 'pricing-bridge.js'));
   const posted = [];
   const frame = { contentWindow: { postMessage: (message, origin) => posted.push({ message, origin }) } };
@@ -157,7 +242,7 @@ assert.strictEqual(authorityApi.validateMonitorSyncResponse({
     'the exact-origin dashboard pricing bridge must not strip Pricing Analyzer cache provenance');
   assert.strictEqual(posted[0].origin, 'https://d-k-b.github.io');
   assert.strictEqual(contracts.validateProductRef(product).ok, true);
-  console.log('browser extension Authority tests: cache provenance and conditional safety passing');
+  console.log('browser extension Authority tests: ordered snapshot, order operation, cache provenance, and conditional safety passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);
