@@ -12,6 +12,7 @@ const end = html.indexOf('const pct=', start);
 assert.ok(start >= 0 && end > start, 'generated ownership helpers must exist');
 const source = html.slice(start, end);
 const store = new Map();
+const monitorNotices = [];
 const context = vm.createContext({
   console,
   setTimeout: () => 1,
@@ -23,6 +24,8 @@ const context = vm.createContext({
   },
   driveTouch: () => {},
   updateAll: () => {},
+  scheduleMonitorStateChanged: () => monitorNotices.push('changed'),
+  monitorNotices,
 });
 vm.runInContext(source, context);
 
@@ -31,7 +34,9 @@ const audit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const box=boxes.eras.flatMap(era=>era.items).find(item=>groupedSlots(item).some(group=>groupTarget(group)===1));
   const boxGroup=groupedSlots(box).find(group=>groupTarget(group)===1);
   const before=clProgress(boxes);
+  const groupMonitorBefore=monitorNotices.length;
   changeOrderedQuantity(boxes.id,box,boxGroup,1);
+  const groupOrderMonitorHints=monitorNotices.length-groupMonitorBefore;
   const orderedOnly={owned:ownedForGroup(boxes.id,box,boxGroup),ordered:orderedForGroup(boxes.id,box,boxGroup),
     complete:itemComplete(boxes.id,box),covered:itemCovered(boxes.id,box),progress:clProgress(boxes)};
   changeQuantity(boxes.id,box,boxGroup,1);
@@ -42,8 +47,10 @@ const audit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
 
   const prerelease=DATA.checklists.find(cl=>cl.id==='prerelease');
   const variantItem=prerelease.eras.flatMap(era=>era.items).find(item=>item.name==='Magic 2015');
+  const slotMonitorBefore=monitorNotices.length;
   changeSlotOrderedQuantity(prerelease.id,variantItem,1,1);
   changeSlotOrderedQuantity(prerelease.id,variantItem,1,1);
+  const slotOrderMonitorHints=monitorNotices.length-slotMonitorBefore;
   receiveSlotQuantity(prerelease.id,variantItem,1);
   const variant={name:variantItem.variants[1],owned:slotQuantity(prerelease.id,variantItem,1),
     ordered:orderedForSlot(prerelease.id,variantItem,1),complete:itemComplete(prerelease.id,variantItem)};
@@ -69,7 +76,9 @@ const audit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const wrapperItem=packs.eras.flatMap(era=>era.items).find(item=>item.code==='4ED');
   const art=wrapperArtSetFor(packs.id,wrapperItem).artworks[0];
   const wrapperProgressBefore=clProgress(packs);
+  const wrapperMonitorBefore=monitorNotices.length;
   changeOrderedWrapperArtQuantity(art.id,2);
+  const wrapperOrderMonitorHints=monitorNotices.length-wrapperMonitorBefore;
   receiveWrapperArt(art.id);
   const wrapper={key:wrapperArtKey(art.id),owned:wrapperArtQuantity(art.id),ordered:orderedWrapperArtQuantity(art.id),
     progressBefore:wrapperProgressBefore,progress:clProgress(packs)};
@@ -79,6 +88,7 @@ const audit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const sanitized=migrateState({checks:{},extras:{},ordered:{bad:9,'boxes|extra|0123456789abcdef':true},
     wrapperArts:{},orderedWrapperArts:{bad:4,'packs|wrapper-art|4ED-2':true},ui:{}});
   return {before,orderedOnly,acquiredSeparately,received,variant,aggregateBeforeReceive,aggregateAfterReceive,packOrdered,packReceived,wrapper,
+    groupOrderMonitorHints,slotOrderMonitorHints,wrapperOrderMonitorHints,
     restoredOrdered:restored.ordered,restoredOrderedWrapperArts:restored.orderedWrapperArts,
     sanitizedOrdered:sanitized.ordered,sanitizedOrderedWrapperArts:sanitized.orderedWrapperArts};
 })())`, context));
@@ -86,6 +96,12 @@ const audit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
 assert.deepStrictEqual(audit.orderedOnly, {
   owned: 0, ordered: 1, complete: false, covered: true, progress: audit.before,
 }, 'ordered-only coverage must not count as physical completion or progress');
+assert.strictEqual(audit.groupOrderMonitorHints, 1,
+  'a grouped product order change must notify the monitor bridge to request a fresh subscription');
+assert.strictEqual(audit.slotOrderMonitorHints, 2,
+  'each exact named-variant order change must notify the monitor bridge');
+assert.strictEqual(audit.wrapperOrderMonitorHints, 0,
+  'wrapper-art orders stay outside the ProductRef snapshot and must not churn its monitor subscription');
 assert.deepStrictEqual(audit.acquiredSeparately, { owned: 1, ordered: 1 },
   'adding an in-hand copy must leave the incoming copy untouched');
 assert.strictEqual(audit.received.owned, 2, 'receiving must add exactly one physical copy');

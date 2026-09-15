@@ -30,7 +30,7 @@ function createContext(search, initialData = { checklists: [] }, options = {}) {
   const posted = [];
   const listeners = {};
   const notices = [];
-  const ownership = { slots: Object.create(null), groupExtras: Object.create(null), persistWrites: 0 };
+  const ownership = { slots: Object.create(null), groupExtras: Object.create(null), ordered: Object.create(null), persistWrites: 0 };
   const slotId = (checklistId, item, slotIndex) => [checklistId, item.code || item.name, slotIndex].join('|');
   const groupId = (checklistId, item, group) => [checklistId, item.code || item.name, group].join('|');
   const displayGroupFor = (item, slot) => item.slots.length > 1 && item.slots.every(candidate => /^Kid\s+\d+$/i.test(candidate.g || candidate.l || ''))
@@ -48,6 +48,14 @@ function createContext(search, initialData = { checklists: [] }, options = {}) {
   const slotQuantity = (checklistId, item, slotIndex) => Number(ownership.slots[slotId(checklistId, item, slotIndex)] || 0);
   const ownedForGroup = (checklistId, item, group) => group.items.reduce((total, entry) => total + slotQuantity(checklistId, item, entry.si), 0)
     + Number(ownership.groupExtras[groupId(checklistId, item, group.k || group.n)] || 0);
+  const orderedForSlot = (checklistId, item, slotIndex) => Number(ownership.ordered[slotId(checklistId, item, slotIndex)] || 0);
+  const orderedForGroup = (checklistId, item, group) => {
+    const checklist = (initialData.checklists || []).find(candidate => candidate.id === checklistId);
+    if (checklist && checklist.progressMode === 'distinct_variants') {
+      return group.items.reduce((total, entry) => total + orderedForSlot(checklistId, item, entry.si), 0);
+    }
+    return Number(ownership.ordered[groupId(checklistId, item, group.k || group.n)] || 0);
+  };
   const parent = { postMessage: (message, origin) => posted.push({ message, origin }) };
   const window = {
     parent,
@@ -115,6 +123,8 @@ function createContext(search, initialData = { checklists: [] }, options = {}) {
     groupTarget: group => group.items.filter(entry => entry.sl.r !== false).length,
     slotQuantity,
     ownedForGroup,
+    orderedForSlot,
+    orderedForGroup,
     itemComplete: (checklistId, item) => !!item.complete,
     DATA: initialData, WRAPPER_ART_CATALOG: { sets: [{ setCode: 'TST', setName: 'Test Set', artworks: [
       { id: 'TST-1', label: 'Art 1', imageUrl: '', imageStatus: 'pending' },
@@ -192,19 +202,20 @@ const product = {
     },
     target: 1,
     owned: 0,
+    ordered: 0,
     missing: 1,
     requirement: 'required',
     status: 'missing',
   }, 'new Commander Legends Collector display starts as an unowned required target without inferred ownership');
   snapshotEntries.forEach(([productId, entry]) => {
-    assert.deepStrictEqual(Object.keys(entry).sort(), ['missing', 'owned', 'product', 'requirement', 'status', 'target']);
+    assert.deepStrictEqual(Object.keys(entry).sort(), ['missing', 'ordered', 'owned', 'product', 'requirement', 'status', 'target']);
     assert.deepStrictEqual(Object.keys(entry.product).sort(),
       ['game', 'language', 'productId', 'productName', 'productType', 'schema', 'setCode', 'setName', 'unit', 'variant']);
     assert.strictEqual(entry.product.schema, 'tcg.product/v1');
     assert.strictEqual(entry.product.productId, productId);
     assert.ok(entry.product.game && entry.product.setName && entry.product.productName && entry.product.productType && entry.product.unit && entry.product.language,
       productId + ' must carry a full ProductRef');
-    assert.ok(Number.isInteger(entry.target) && Number.isInteger(entry.owned) && Number.isInteger(entry.missing));
+    assert.ok(Number.isInteger(entry.target) && Number.isInteger(entry.owned) && Number.isInteger(entry.ordered) && Number.isInteger(entry.missing));
   });
   assert.deepStrictEqual(Object.keys(snapshot).sort(), ['namespace', 'products', 'schema']);
   const snapshotJson = JSON.stringify(snapshot);
@@ -276,15 +287,50 @@ const product = {
   const prerelease = catalogRecords.find(candidate => candidate.checklist.id === 'prerelease' && Number.isInteger(candidate.record.slotOrdinal));
   assert.ok(required && optional && pack && lorcana && prerelease, 'catalog fixtures for every ownership mode must exist');
   const firstEntry = catalogRecord => snapshot.products[catalogRecord.record.ref.productId];
-  assert.deepStrictEqual({ target: firstEntry(required).target, owned: firstEntry(required).owned, missing: firstEntry(required).missing,
+  assert.deepStrictEqual({ target: firstEntry(required).target, owned: firstEntry(required).owned, ordered: firstEntry(required).ordered, missing: firstEntry(required).missing,
     requirement: firstEntry(required).requirement, status: firstEntry(required).status },
-  { target: 1, owned: 0, missing: 1, requirement: 'required', status: 'missing' }, 'required unowned products must be missing');
-  assert.deepStrictEqual({ target: firstEntry(optional).target, owned: firstEntry(optional).owned, missing: firstEntry(optional).missing,
+  { target: 1, owned: 0, ordered: 0, missing: 1, requirement: 'required', status: 'missing' }, 'required unowned products must be missing');
+  assert.deepStrictEqual({ target: firstEntry(optional).target, owned: firstEntry(optional).owned, ordered: firstEntry(optional).ordered, missing: firstEntry(optional).missing,
     requirement: firstEntry(optional).requirement, status: firstEntry(optional).status },
-  { target: 0, owned: 0, missing: 0, requirement: 'optional', status: 'target' }, 'optional unowned products must remain targets');
+  { target: 0, owned: 0, ordered: 0, missing: 0, requirement: 'optional', status: 'target' }, 'optional unowned products must remain targets');
   assert.strictEqual(firstEntry(pack).target, 2, 'MTG booster pack products must retain target two');
   assert.strictEqual(firstEntry(lorcana).target, 2, 'Lorcana Copies products must retain target two');
   assert.strictEqual(firstEntry(prerelease).target, 1, 'named prerelease variants must map to one exact required slot');
+
+  const setOrderedSlot = (catalogRecord, slotIndex, quantity) => {
+    snapshotBridge.ownership.ordered[snapshotBridge.slotId(catalogRecord.checklist.id, catalogRecord.item, slotIndex)] = quantity;
+  };
+  const setOrderedGroup = (catalogRecord, quantity) => {
+    const member = groupForRecord(catalogRecord)[0];
+    snapshotBridge.ownership.ordered[snapshotBridge.groupId(catalogRecord.checklist.id, catalogRecord.item,
+      member.slot.k || catalogRecord.record.slotGroup)] = quantity;
+  };
+  setOrderedGroup(required, 1);
+  setOrderedGroup(optional, 2);
+  setOrderedGroup(pack, 1);
+  setOrderedGroup(lorcana, 2);
+  setOrderedSlot(prerelease, prerelease.record.slotOrdinal, 3);
+  const orderedSnapshot = JSON.parse(JSON.stringify(vm.runInContext('buildCollectionSnapshot()', snapshotBridge.context)));
+  const orderedEntry = catalogRecord => orderedSnapshot.products[catalogRecord.record.ref.productId];
+  assert.deepStrictEqual({ target: orderedEntry(required).target, owned: orderedEntry(required).owned,
+    ordered: orderedEntry(required).ordered, missing: orderedEntry(required).missing, status: orderedEntry(required).status },
+  { target: 1, owned: 0, ordered: 1, missing: 0, status: 'target' },
+  'a pending required product must remain physically unowned while no longer being an acquisition need');
+  assert.deepStrictEqual({ target: orderedEntry(optional).target, owned: orderedEntry(optional).owned,
+    ordered: orderedEntry(optional).ordered, missing: orderedEntry(optional).missing, requirement: orderedEntry(optional).requirement },
+  { target: 0, owned: 0, ordered: 2, missing: 0, requirement: 'optional' },
+  'optional incoming inventory must remain separate from physical ownership');
+  assert.deepStrictEqual({ target: orderedEntry(pack).target, ordered: orderedEntry(pack).ordered, missing: orderedEntry(pack).missing },
+    { target: 2, ordered: 1, missing: 1 }, 'a grouped two-pack target must subtract one pending copy exactly once');
+  assert.deepStrictEqual({ target: orderedEntry(lorcana).target, ordered: orderedEntry(lorcana).ordered, missing: orderedEntry(lorcana).missing },
+    { target: 2, ordered: 2, missing: 0 }, 'a Lorcana Copies target must suppress duplicate acquisition when two copies are incoming');
+  assert.deepStrictEqual({ target: orderedEntry(prerelease).target, owned: orderedEntry(prerelease).owned,
+    ordered: orderedEntry(prerelease).ordered, missing: orderedEntry(prerelease).missing },
+  { target: 1, owned: 0, ordered: 3, missing: 0 }, 'named prerelease orders must remain on their exact variant and preserve duplicates');
+  const orderedSubscription = JSON.parse(JSON.stringify(vm.runInContext('buildMonitorSubscription()', snapshotBridge.context)));
+  assert.notStrictEqual(orderedSubscription.revision, firstSubscription.revision,
+    'ordered quantity changes must create a new authoritative monitor subscription revision');
+  snapshotBridge.ownership.ordered = Object.create(null);
 
   const setSlotQuantity = (catalogRecord, slotIndex, quantity) => {
     snapshotBridge.ownership.slots[snapshotBridge.slotId(catalogRecord.checklist.id, catalogRecord.item, slotIndex)] = quantity;
@@ -303,12 +349,12 @@ const product = {
   setSlotQuantity(prerelease, prerelease.record.slotOrdinal, 3);
   const changedSnapshot = JSON.parse(JSON.stringify(vm.runInContext('buildCollectionSnapshot()', snapshotBridge.context)));
   const changedEntry = catalogRecord => changedSnapshot.products[catalogRecord.record.ref.productId];
-  assert.deepStrictEqual({ target: changedEntry(required).target, owned: changedEntry(required).owned, missing: changedEntry(required).missing,
+  assert.deepStrictEqual({ target: changedEntry(required).target, owned: changedEntry(required).owned, ordered: changedEntry(required).ordered, missing: changedEntry(required).missing,
     requirement: changedEntry(required).requirement, status: changedEntry(required).status },
-  { target: 1, owned: 1, missing: 0, requirement: 'required', status: 'owned' }, 'required owned products must be owned');
-  assert.deepStrictEqual({ target: changedEntry(optional).target, owned: changedEntry(optional).owned, missing: changedEntry(optional).missing,
+  { target: 1, owned: 1, ordered: 0, missing: 0, requirement: 'required', status: 'owned' }, 'required owned products must be owned');
+  assert.deepStrictEqual({ target: changedEntry(optional).target, owned: changedEntry(optional).owned, ordered: changedEntry(optional).ordered, missing: changedEntry(optional).missing,
     requirement: changedEntry(optional).requirement, status: changedEntry(optional).status },
-  { target: 0, owned: 2, missing: 0, requirement: 'optional', status: 'owned' }, 'optional ownership must retain quantities above zero');
+  { target: 0, owned: 2, ordered: 0, missing: 0, requirement: 'optional', status: 'owned' }, 'optional ownership must retain quantities above zero');
   assert.strictEqual(changedEntry(pack).owned, 4, 'pack quantities above target must remain represented');
   assert.strictEqual(changedEntry(pack).missing, 0);
   assert.strictEqual(changedEntry(lorcana).owned, 2, 'Lorcana Copies must sum both child slots');
@@ -670,7 +716,11 @@ const product = {
   assert.doesNotMatch(JSON.stringify(malformedFreshness), /unknown-provider-text|secret|do-not-render/,
     'malformed or unknown stability data must be ignored rather than echoed');
 
-  vm.runInContext("pricingStates.set(testProduct.productId,Object.assign({},interpretPriceResponse(testProduct,stableTrend)))", bridge.context);
+  bridge.context.stableRender = Object.assign({}, bridge.context.stableTrend, {
+    observedAt: new Date().toISOString(),
+    market: Object.assign({}, bridge.context.stableTrend.market, { observedAt: new Date().toISOString() }),
+  });
+  vm.runInContext("pricingStates.set(testProduct.productId,Object.assign({},interpretPriceResponse(testProduct,stableRender)))", bridge.context);
   const stableCardText = nodeText(vm.runInContext("renderPricingList([{label:'Stable product',ref:testProduct}])", bridge.context));
   assert.ok(stableCardText.includes('Market basis: Stable recent-sales trend'));
   assert.ok(stableCardText.includes('Evidence: 12 verified sales'));

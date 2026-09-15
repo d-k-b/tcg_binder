@@ -122,6 +122,9 @@ unchanged while suppressing duplicate monitor targets. Use authenticated, revisi
 checked `POST /v1/collection/order-operations` for absolute ordered-total
 reconciliation with stable evidence/idempotency identity. Use receipt operations only
 after delivery or pickup is confirmed.
+The generator-owned on-demand dashboard snapshot and monitor subscription use the
+same additive counts, and every product-order change emits a debounced
+`monitorStateChanged` hint so the extension requests a newly revisioned bundle.
 
 TCG Comps 2.43.45 deploys the standalone facade at the non-secret base URL
 `https://gogo.tail903ec0.ts.net`. New devices receive that URL as a prefilled value;

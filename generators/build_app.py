@@ -1249,7 +1249,7 @@ function mutateOrderedGroup(cl,it,g,delta){
   if(next>0)state.ordered[key]=next;else delete state.ordered[key];
 }
 function changeOrderedQuantity(cl,it,g,delta,focusSide){
-  mutateOrderedGroup(cl,it,g,delta);save();driveTouch();updateAll();restoreQuantityFocus(cl,it,g,focusSide);
+  mutateOrderedGroup(cl,it,g,delta);save();driveTouch();noteMonitorCollectionChange();updateAll();restoreQuantityFocus(cl,it,g,focusSide);
 }
 function receiveQuantity(cl,it,g,focusSide){
   if(orderedForGroup(cl,it,g)<=0)return;
@@ -1280,7 +1280,7 @@ function changeSlotQuantity(cl,it,si,delta,focusSide){
 function changeSlotOrderedQuantity(cl,it,si,delta,focusSide){
   const key=slotExtraKeyFor(cl,it,si),next=Math.max(0,orderedQuantity(key)+delta);
   if(next>0)state.ordered[key]=next;else delete state.ordered[key];
-  openDetails.add(detailKey(cl,it));save();driveTouch();updateAll();restoreVariantFocus(key,focusSide);
+  openDetails.add(detailKey(cl,it));save();driveTouch();noteMonitorCollectionChange();updateAll();restoreVariantFocus(key,focusSide);
 }
 function receiveSlotQuantity(cl,it,si,focusSide){
   const key=slotExtraKeyFor(cl,it,si),quantity=orderedQuantity(key);if(quantity<=0)return;
@@ -2166,7 +2166,8 @@ function collectionOwnership(cl,it,record){
     if(!Number.isInteger(si)||si<0||si>=it.slots.length)
       throw new Error(record.ref.productId+': slotOrdinal does not identify an ownership slot');
     const target=slotRequired(it.slots[si])?1:0;
-    return {target,owned:collectionCount(slotQuantity(cl.id,it,si),record.ref.productId+' owned')};
+    return {target,owned:collectionCount(slotQuantity(cl.id,it,si),record.ref.productId+' owned'),
+      ordered:collectionCount(orderedForSlot(cl.id,it,si),record.ref.productId+' ordered')};
   }
   if(typeof record.slotGroup!=='string'||!record.slotGroup)
     throw new Error(record.ref.productId+': pricing product has no ownership slotGroup');
@@ -2174,7 +2175,8 @@ function collectionOwnership(cl,it,record){
   if(matches.length!==1)
     throw new Error(record.ref.productId+': slotGroup '+record.slotGroup+' maps to '+matches.length+' ownership groups');
   return {target:collectionCount(groupTarget(matches[0]),record.ref.productId+' target'),
-    owned:collectionCount(ownedForGroup(cl.id,it,matches[0]),record.ref.productId+' owned')};
+    owned:collectionCount(ownedForGroup(cl.id,it,matches[0]),record.ref.productId+' owned'),
+    ordered:collectionCount(orderedForGroup(cl.id,it,matches[0]),record.ref.productId+' ordered')};
 }
 function buildRecognitionCatalog(){
   const catalog=[];
@@ -2203,10 +2205,10 @@ function buildCollectionSnapshot(){
   DATA.checklists.forEach(cl=>cl.eras.forEach(era=>era.items.forEach(it=>(it.pricingProducts||[]).forEach(record=>{
     const product=collectionProductRef(record.ref),productId=product.productId;
     if(Object.prototype.hasOwnProperty.call(products,productId))throw new Error(productId+': duplicate pricing ProductRef');
-    const ownership=collectionOwnership(cl,it,record),target=ownership.target,owned=ownership.owned;
-    const missing=Math.max(target-owned,0),requirement=target>0?'required':'optional';
+    const ownership=collectionOwnership(cl,it,record),target=ownership.target,owned=ownership.owned,ordered=ownership.ordered;
+    const missing=Math.max(target-owned-ordered,0),requirement=target>0?'required':'optional';
     const status=missing>0?'missing':(owned>0?'owned':'target');
-    products[productId]={product,target,owned,missing,requirement,status};count++;
+    products[productId]={product,target,owned,ordered,missing,requirement,status};count++;
   }))));
   if(!count)throw new Error('Collection snapshot has no pricing products');
   if(count>COLLECTION_MAX_PRODUCTS)throw new Error('Collection snapshot exceeds '+COLLECTION_MAX_PRODUCTS+' products');
