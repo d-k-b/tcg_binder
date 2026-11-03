@@ -14,7 +14,7 @@
   const ORDER_OPERATION_SCHEMA = 'tcg.collection-order-operation/v1';
   const ORDER_OPERATION_RESPONSE_SCHEMA = 'tcg.collection-order-operation-response/v1';
   const ORDER_APPLIED_SCHEMA = 'tcg.collection-order-applied/v1';
-  const EXPECTED_PRODUCT_COUNT = 689;
+  const EXPECTED_PRODUCT_COUNT = 719;
   const PRODUCT_FIELDS = ['schema', 'productId', 'game', 'setCode', 'setName', 'productName', 'productType', 'unit', 'language', 'variant'];
   const CACHE_MODES = new Set([
     'readiness-hit', 'readiness-refresh', 'snapshot-refresh', 'complete-snapshot-fallback',
@@ -133,7 +133,13 @@
       }
       products[productId] = { ...canonical, ordered };
     }
-    return { ...base, products };
+    const result={ ...base, products };
+    if(snapshot.packArtRequirements){
+      if(snapshot.packArtRequirements.schema!=='tcg.pack-art-requirements/v1')
+        throw clientError('COLLECTION_ART_GOAL_INVALID','Unsupported artwork goal contract.');
+      result.packArtRequirements=JSON.parse(JSON.stringify(snapshot.packArtRequirements));
+    }
+    return result;
   }
 
   function normalizeAuthority(value, required = false) {
@@ -342,7 +348,7 @@
 
   function validateMonitorSyncResponse(response, options = {}) {
     if (!isObject(response)) throw clientError('INVALID_MONITOR_RESPONSE', 'Collection Authority returned an invalid monitor response.');
-    const expectedProductCount = Number.isInteger(options.productCount) ? options.productCount : 689;
+    const expectedProductCount = Number.isInteger(options.productCount) ? options.productCount : 719;
     const cache = normalizeCache(response.authorityCache, true);
     if (Number(response.apiVersion) !== 1 || response.schema !== MONITOR_SYNC_RESULT_SCHEMA || response.accepted !== true ||
         !/^sha256:[0-9a-f]{64}$/.test(String(response.revision || '')) || response.productCount !== expectedProductCount ||

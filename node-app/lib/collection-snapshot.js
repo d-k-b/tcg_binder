@@ -2,13 +2,14 @@
 
 const crypto = require('crypto');
 const stateKeys = require('./collection-state');
+const packArtGoal = require('./pack-art-goal');
 
 const SCHEMA = 'tcg.collection-snapshot/v2';
 const RESPONSE_SCHEMA = 'tcg.collection-snapshot-response/v1';
 const EXPECTED_LANES = Object.freeze([
   'collector', 'boxes', 'packs', 'prerelease', 'lorcana', 'lorcana_pre', 'lorcana_coll',
 ]);
-const EXPECTED_PRODUCT_COUNT = 689;
+const EXPECTED_PRODUCT_COUNT = 719;
 
 function stableJson(value) {
   if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
@@ -90,17 +91,19 @@ function groupRecord(payload, checklist, item, record) {
   };
 }
 
-function wrapperArtSummary(payloads) {
+function wrapperArtSummary(payloads,catalog) {
   const packs = payloads.packs;
   const owned = Object.values(packs.wrapperArts || {}).reduce((total, value) => total + positiveQuantity(value), 0);
   const ordered = Object.values(packs.orderedWrapperArts || {}).reduce((total, value) => total + positiveQuantity(value), 0);
   return {
-    requirement: 'optional',
-    affectsRequiredProgress: false,
+    requirement: catalog.packArtGoal ? 'required' : 'optional',
+    affectsRequiredProgress: Boolean(catalog.packArtGoal),
+    affectsPhysicalInventory: false,
     ownershipSource: 'packs.wrapperArts',
     owned,
     ordered,
-    note: 'Wrapper-art inventory is independent from loose-pack and sealed-display requirements.',
+    note: catalog.packArtGoal ? 'Two per exact front; see packArtRequirements. Product counts remain physical inventory baselines, not art completion.' :
+      'Wrapper-art inventory is independent from loose-pack and sealed-display requirements.',
   };
 }
 
@@ -177,7 +180,8 @@ function buildSnapshot(catalog, laneRecords, options = {}) {
       lanes: sourceLanes,
     },
     lanes,
-    wrapperArt: wrapperArtSummary(payloads),
+    wrapperArt: wrapperArtSummary(payloads,catalog),
+    packArtRequirements: packArtGoal.buildPackArtRequirements(catalog,payloads.packs),
     products,
   };
   // A new authenticated observation of unchanged source content must not churn

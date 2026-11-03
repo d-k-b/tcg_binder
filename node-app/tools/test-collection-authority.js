@@ -15,6 +15,9 @@ const { CollectionAuthorityClient } = require('../lib/collection-authority-clien
 const { createHandler } = require('../services/collection-authority/server');
 
 const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'binder_data.json'), 'utf8'));
+// This suite retains legacy-quantity client compatibility. The new artwork
+// projection and unsupported-consumer guard have their own end-to-end fixture.
+delete catalog.packArtGoal;
 const NOW = Date.parse('2026-08-31T12:00:00.000Z');
 
 function tempDir() { return fs.mkdtempSync(path.join(os.tmpdir(), 'tcg-collection-authority-')); }
@@ -95,7 +98,7 @@ async function testSnapshotAndAtomicFailure() {
   const records = completeRecords();
   const first = buildSnapshot(catalog, records, { generatedAt: '2026-08-31T12:00:00.000Z', nowMs: NOW });
   const second = buildSnapshot(catalog, records, { generatedAt: '2026-08-31T12:01:00.000Z', nowMs: NOW + 60_000 });
-  assert.strictEqual(Object.keys(first.snapshot.products).length, 689);
+  assert.strictEqual(Object.keys(first.snapshot.products).length, 719);
   assert.deepStrictEqual(Object.keys(first.snapshot.lanes), EXPECTED_LANES);
   assert.strictEqual(first.revision, second.revision, 'revision must be stable across observation time');
   assert.strictEqual(first.authority.consumerStatus, 'AUTHORITATIVE');
@@ -157,7 +160,7 @@ async function testDerivedCacheAndSafeFallback() {
   store.readAll = async () => { throw new AuthorityError('GIST_TRANSIENT_FAILURE', 'temporary', 503, { retryable: true }); };
   const fallback = await authority.snapshot();
   assert.strictEqual(fallback.revision, fresh.revision);
-  assert.strictEqual(Object.keys(fallback.snapshot.products).length, 689);
+  assert.strictEqual(Object.keys(fallback.snapshot.products).length, 719);
   assert.strictEqual(fallback.authority.consumerStatus, 'CONDITIONAL');
   assert(fallback.authority.degradedReasonCodes.includes('COLLECTION_SNAPSHOT_CACHE_FALLBACK'));
   assert.strictEqual(fallback.cache.mode, 'complete-snapshot-fallback');
@@ -333,7 +336,7 @@ async function testPricingAndMonitorDelegation() {
   const sync = await authority.monitorSync({ schema: 'tcg.collection-monitor-sync-request/v1', preferences: { enabled: true, sources: ['ebay'] } });
   assert.strictEqual(sync.accepted, true);
   assert.strictEqual(calls.monitor.length, 1);
-  assert.strictEqual(Object.keys(calls.monitor[0].collection.products).length, 689);
+  assert.strictEqual(Object.keys(calls.monitor[0].collection.products).length, 719);
   assert.match(calls.monitor[0].revision, /^sha256:[0-9a-f]{64}$/);
   assert.strictEqual(calls.monitor[0].preferences.sources[0], 'ebay');
   assert.strictEqual(sync.authorityCache.mode, 'monitor-subscription-refresh');
@@ -354,7 +357,7 @@ async function testPricingAndMonitorDelegation() {
     schema: 'tcg.collection-monitor-sync-request/v1', preferences: { enabled: true, sources: ['ebay'] }
   });
   assert.strictEqual(conditionalCalls.length, 1);
-  assert.strictEqual(Object.keys(conditionalCalls[0].collection.products).length, 689,
+  assert.strictEqual(Object.keys(conditionalCalls[0].collection.products).length, 719,
     'a complete conditional snapshot must replace an obsolete partial subscription');
   assert.strictEqual(conditionalCalls[0].ownershipPolicy.consumerStatus, 'CONDITIONAL');
   assert.strictEqual(conditionalCalls[0].ownershipPolicy.reviewOnly, true);
@@ -367,7 +370,7 @@ async function testPricingAndMonitorDelegation() {
   assert.strictEqual(conditionalSync.activeTargetCount, 0);
 
   const unsafeConditionalMonitor = { syncCollection: async (subscription) => ({
-    accepted: true, revision: subscription.revision, productCount: 689, activeTargetCount: 1
+    accepted: true, revision: subscription.revision, productCount: 719, activeTargetCount: 1
   }) };
   const unsafeConditionalAuthority = new CollectionAuthority({ store: new MemoryStore(completeRecords()), catalog, dataDir: tempDir(),
     now: () => NOW, maxAgeMs: 1, monitorClient: unsafeConditionalMonitor, pricingContracts });
@@ -467,7 +470,7 @@ async function testNodeClientContract() {
     fetchImpl: async (url, options) => {
       monitorCalls.push({ url, options });
       return fakeResponse(200, {
-        accepted: true, revision: 'sha256:' + 'b'.repeat(64), productCount: 689, activeTargetCount: 0,
+        accepted: true, revision: 'sha256:' + 'b'.repeat(64), productCount: 719, activeTargetCount: 0,
         ownershipPolicy: { schema: 'tcg.collection-ownership-policy/v1', consumerStatus: 'CONDITIONAL', eligibleForAction: false },
         requestedMonitorEnabled: true, effectiveMonitorEnabled: false,
       });
@@ -481,7 +484,7 @@ async function testNodeClientContract() {
 
   const unsafeMonitorClient = new CollectionAuthorityClient({ token: 'client-token', attempts: 1,
     fetchImpl: async () => fakeResponse(200, {
-      accepted: true, revision: 'sha256:' + 'c'.repeat(64), productCount: 689, activeTargetCount: 1,
+      accepted: true, revision: 'sha256:' + 'c'.repeat(64), productCount: 719, activeTargetCount: 1,
       ownershipPolicy: { schema: 'tcg.collection-ownership-policy/v1', consumerStatus: 'CONDITIONAL', eligibleForAction: false },
       requestedMonitorEnabled: true, effectiveMonitorEnabled: false,
     }) });
@@ -499,5 +502,5 @@ async function testNodeClientContract() {
   await testRetriesAndMalformedGist();
   await testHttpAuthAndRedaction();
   await testNodeClientContract();
-  console.log('Collection authority tests passed (7 lanes / 689 ProductRefs)');
+  console.log('Collection authority tests passed (7 lanes / 719 ProductRefs)');
 })().catch((error) => { console.error(error); process.exit(1); });

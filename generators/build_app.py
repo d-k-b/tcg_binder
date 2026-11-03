@@ -38,6 +38,7 @@ _openai_client_paths=[
     os.path.join(ROOT,"browser-extension","identify-bridge.js"),
 ]
 OPENAI_BROWSER_CLIENTS="\n".join(open(path,encoding="utf-8").read() for path in _openai_client_paths)
+PACK_ART_GOAL_JS=open(os.path.join(ROOT,"node-app","lib","pack-art-goal.js"),encoding="utf-8").read()
 if "</script" in OPENAI_BROWSER_CLIENTS.lower():
     raise ValueError("embedded OpenAI browser client contains a closing script tag")
 USER_EMAIL="dustyn@blasig.us"
@@ -327,6 +328,7 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 .wrapperarts[open]>summary::before{transform:rotate(90deg)}
 .wrapperart-title{flex:1}.wrapperart-summary{font-size:10px;font-weight:650;color:var(--muted);text-align:right}
 .wrapperart-note{font-size:10px;color:var(--muted);margin:6px 5px 8px}
+.rowdet>.wrapperart-note{grid-column:1/-1;width:100%}
 .wrapperart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
 .wrapperart-card{position:relative;min-width:0;display:grid;gap:5px;border:1px solid var(--line);
   border-radius:9px;padding:7px;background:var(--card);color:var(--ink)}
@@ -824,6 +826,7 @@ header.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,va
 </script>
 <script>
 const DATA = /*__DATA__*/;
+/*__PACK_ART_GOAL_JS__*/
 const WRAPPER_ART_CATALOG = /*__WRAPPER_ART__*/;
 const KEY = "mtgBinder_v1";
 
@@ -1017,7 +1020,7 @@ function normalizeWrapperArts(input){
   for(const[key,value]of Object.entries(input)){
     const match=/^packs\|wrapper-art\|([A-Z0-9][A-Z0-9-]{1,31})$/i.exec(String(key));
     const quantity=value===true?1:Math.max(0,Math.min(100000,Math.floor(Number(value)||0)));
-    if(quantity>0&&match)out['packs|wrapper-art|'+match[1].toUpperCase()]=quantity;
+    if(match&&(quantity>0||(typeof value==='number'&&value===0)))out['packs|wrapper-art|'+match[1].toUpperCase()]=quantity;
   }
   return out;
 }
@@ -1128,6 +1131,22 @@ function noteMonitorCollectionChange(){
 
 function isChecked(k){ return !!state.checks[k]; }
 function wrapperArtQuantity(artId){return Math.max(0,Number(state.wrapperArts[wrapperArtKey(artId)]||0));}
+let packArtProjectionKey=null,packArtProjectionValue=null;
+function packArtProjection(){
+  const key=JSON.stringify([state.wrapperArts,state.orderedWrapperArts]);
+  if(key!==packArtProjectionKey){packArtProjectionValue=TcgPackArtGoal.buildPackArtRequirements(DATA,state);packArtProjectionKey=key;}
+  return packArtProjectionValue;
+}
+function itemArtGoals(cl,it){
+  if(cl!=='packs')return [];
+  const view=packArtProjection();
+  return (it.pricingProducts||[]).map(record=>view.products[record.ref.productId]).filter(Boolean);
+}
+function artGoalProgress(items){
+  const rows=items.flatMap(it=>itemArtGoals('packs',it));
+  return {done:rows.reduce((n,row)=>n+row.creditedOwned,0),total:rows.reduce((n,row)=>n+(row.target||0),0),
+    partial:rows.some(row=>row.consumerStatus==='CONDITIONAL'),unknown:rows.filter(row=>row.artCount===null).length};
+}
 function orderedWrapperArtQuantity(artId){return Math.max(0,Number(state.orderedWrapperArts[wrapperArtKey(artId)]||0));}
 function orderedQuantity(key){return Math.max(0,Number(state.ordered[key]||0));}
 function slotQuantity(cl,it,si){return (isChecked(keyFor(cl,it,si))?1:0)+
@@ -1140,10 +1159,12 @@ function ownedForGroup(cl,it,g){const checked=checkedInGroup(cl,it,g);
 function orderedForGroup(cl,it,g){return usesDistinctVariants(cl)?
   g.items.reduce((n,{si})=>n+orderedForSlot(cl,it,si),0):orderedQuantity(groupKeyFor(cl,it,g.k||g.n));}
 function itemComplete(cl,it){const required=groupedSlots(it).filter(g=>groupTarget(g)>0);
+  if(cl==='packs'){const goals=itemArtGoals(cl,it);return goals.length>0&&goals.every(row=>row.complete);}
   if(usesDistinctVariants(cl))return it.slots.some(slotRequired)&&it.slots.every((sl,si)=>
     !slotRequired(sl)||slotQuantity(cl,it,si)>=1);
   return required.length>0&&required.every(g=>ownedForGroup(cl,it,g)>=groupTarget(g));}
 function itemCovered(cl,it){const required=groupedSlots(it).filter(g=>groupTarget(g)>0);
+  if(cl==='packs'){const goals=itemArtGoals(cl,it);return goals.length>0&&goals.every(row=>row.covered);}
   if(usesDistinctVariants(cl))return it.slots.some(slotRequired)&&it.slots.every((sl,si)=>
     !slotRequired(sl)||slotQuantity(cl,it,si)+orderedForSlot(cl,it,si)>=1);
   return required.length>0&&required.every(g=>ownedForGroup(cl,it,g)+orderedForGroup(cl,it,g)>=groupTarget(g));}
@@ -1297,7 +1318,7 @@ function setVariantChecked(cl,it,si,checked){
 }
 function changeWrapperArtQuantity(artId,delta,focusSide){
   const key=wrapperArtKey(artId),current=wrapperArtQuantity(artId),next=Math.max(0,current+delta);
-  if(next>0)state.wrapperArts[key]=next;else delete state.wrapperArts[key];
+  state.wrapperArts[key]=next; // Explicit zero retains physical-review evidence.
   save();driveTouch();updateAll();restoreWrapperFocus(key,focusSide);
 }
 function changeOrderedWrapperArtQuantity(artId,delta,focusSide){
@@ -1313,6 +1334,7 @@ function receiveWrapperArt(artId,focusSide){
 }
 
 function clProgress(cl){
+  if(cl.id==='packs')return artGoalProgress(cl.eras.flatMap(era=>era.items));
   let done=0,total=0;
   cl.eras.forEach((e,ei)=>e.items.forEach((it,ii)=>it.slots.forEach((sl,si)=>{
     if(!slotRequired(sl))return; total++; if(usesDistinctVariants(cl.id)?slotQuantity(cl.id,it,si)>=1:isChecked(keyFor(cl.id,it,si))) done++;
@@ -1320,17 +1342,18 @@ function clProgress(cl){
   return {done,total};
 }
 function eraProgress(cl,ei){
+  if(cl.id==='packs')return artGoalProgress(cl.eras[ei].items);
   let done=0,total=0;
   cl.eras[ei].items.forEach((it,ii)=>it.slots.forEach((sl,si)=>{
     if(!slotRequired(sl))return; total++; if(usesDistinctVariants(cl.id)?slotQuantity(cl.id,it,si)>=1:isChecked(keyFor(cl.id,it,si)))done++;}));
   return {done,total};
 }
 function overall(){
-  let done=0,total=0;
+  let done=0,total=0,partial=false;
   DATA.checklists.forEach(cl=>{const definition=customDefinitionFor(cl.id);
     if(definition&&definition.lifecycle==='draft'&&definition.authoring&&definition.authoring.revisesCollectionId)return;
-    const p=clProgress(cl);done+=p.done;total+=p.total;});
-  return {done,total};
+    const p=clProgress(cl);done+=p.done;total+=p.total;partial=partial||!!p.partial;});
+  return {done,total,partial};
 }
 const pct=(d,t)=>t?Math.round(d/t*100):0;
 
@@ -1345,12 +1368,12 @@ function renderTabs(){
     if(cl.id===active){
       const n=document.getElementById('clName'), q=document.getElementById('clPct');
       if(n) n.textContent=cl.title;
-      if(q) q.textContent=pc+'%';
+      if(q) q.textContent=pc+'%'+(p.partial?' · partial':'');
     }
     const d=document.createElement('div'); d.className='clitem'+(cl.id===active?' on':'');
-    d.innerHTML=`<div class="clitop"><span>${cl.title}${cl.custom&&cl.lifecycle==='draft'?' · Local draft':''}</span><span class="tpct">${pc}%</span></div>
+    d.innerHTML=`<div class="clitop"><span>${cl.title}${cl.custom&&cl.lifecycle==='draft'?' · Local draft':''}</span><span class="tpct">${pc}%${p.partial?' · partial':''}</span></div>
       <div class="tbar"><i style="width:${pc}%"></i></div>
-      <div class="clisub">${p.done} / ${p.total} collected</div>`;
+      <div class="clisub">${p.done} / ${p.total} ${cl.id==='packs'?'known artwork-copy targets':'collected'}${p.partial?' · inventory/catalog review pending':''}</div>`;
     d.onclick=()=>{ ghSyncIfDirty(); active=cl.id; state.ui.active=active; save();
       window.scrollTo(0,0); renderTabs(); renderContent(); };
     menu.appendChild(d);
@@ -2212,7 +2235,8 @@ function buildCollectionSnapshot(){
   }))));
   if(!count)throw new Error('Collection snapshot has no pricing products');
   if(count>COLLECTION_MAX_PRODUCTS)throw new Error('Collection snapshot exceeds '+COLLECTION_MAX_PRODUCTS+' products');
-  return {schema:COLLECTION_SNAPSHOT_SCHEMA,namespace:COLLECTION_NAMESPACE,products};
+  return {schema:COLLECTION_SNAPSHOT_SCHEMA,namespace:COLLECTION_NAMESPACE,products,
+    packArtRequirements:packArtProjection()};
 }
 function monitorStableJson(value){
   if(Array.isArray(value))return '['+value.map(monitorStableJson).join(',')+']';
@@ -2961,14 +2985,15 @@ function renderWrapperArtChecklist(cl,it,wrapperSet){
   const transientKey=detailKey(cl.id,it)+'|wrapper-art';
   details.open=openWrapperDetails.has(transientKey);
   const summary=document.createElement('summary');
-  const title=document.createElement('span');title.className='wrapperart-title';title.textContent='Wrapper artwork (optional)';
+  const title=document.createElement('span');title.className='wrapperart-title';title.textContent='Required wrapper artwork · 2 of each';
   const progress=document.createElement('span');progress.className='wrapperart-summary';
   const paintProgress=()=>{const owned=wrapperArtOwnedCount(wrapperSet),total=wrapperSet.artworks.length,copies=wrapperArtCopyCount(wrapperSet),
     ordered=wrapperArtOrderedCount(wrapperSet);
-    progress.textContent=owned+' / '+total+' fronts · '+copies+' '+(copies===1?'copy':'copies')+(ordered?' · '+ordered+' ordered':'');};
+    const credited=(wrapperSet.artworks||[]).reduce((n,art)=>n+Math.min(2,wrapperArtQuantity(art.id)),0);
+    progress.textContent=credited+' / '+(total*2)+' required copies · '+owned+' / '+total+' fronts'+(ordered?' · '+ordered+' ordered':'');};
   paintProgress();summary.appendChild(title);summary.appendChild(progress);details.appendChild(summary);
   const note=document.createElement('div');note.className='wrapperart-note';
-  note.textContent='Optional loose-wrapper inventory only — it does not affect pack targets or collection completion.';
+  note.textContent='Goal: two sealed loose copies of each front. Physical pack totals stay separate and are not added again. Unreviewed fronts are unknown, not zero.';
   details.appendChild(note);
   const grid=document.createElement('div');grid.className='wrapperart-grid';
   (wrapperSet.artworks||[]).forEach(art=>{
@@ -2991,7 +3016,8 @@ function renderWrapperArtChecklist(cl,it,wrapperSet){
     minus.dataset.qtyAction='minus';
     minus.setAttribute('aria-label','Remove one '+wrapperSet.setName+' '+art.label+' wrapper');
     minus.onclick=()=>changeWrapperArtQuantity(art.id,-1,'minus');
-    const num=document.createElement('span');num.className='variantqtynum'+(owned>0?' met':'');num.textContent=owned;
+    const reviewed=Object.prototype.hasOwnProperty.call(state.wrapperArts,wrapperArtKey(art.id));
+    const num=document.createElement('span');num.className='variantqtynum'+(owned>=2?' met':'');num.textContent=(reviewed?owned:'?')+'/2';
     num.setAttribute('aria-label',owned+' copies owned of '+wrapperSet.setName+' '+art.label+' wrapper');
     const plus=document.createElement('button');plus.type='button';plus.className='variantqtybtn plus';plus.textContent='+';
     plus.dataset.qtyAction='plus';
@@ -3007,6 +3033,8 @@ function renderWrapperArtChecklist(cl,it,wrapperSet){
     manage.appendChild(orderedCtrl);head.appendChild(label);head.appendChild(manage);
     const status=wrapperArtStatusLabel(art),statusEl=document.createElement('span');
     statusEl.className='wrapperart-status '+status.kind;statusEl.textContent=status.text;
+    if(!reviewed){const review=document.createElement('button');review.type='button';review.className='pbtn ghost';
+      review.textContent='Confirm none owned';review.onclick=()=>changeWrapperArtQuantity(art.id,0,'plus');card.appendChild(review);}
     card.appendChild(media);card.appendChild(head);card.appendChild(statusEl);grid.appendChild(card);
   });
   details.appendChild(grid);
@@ -3046,7 +3074,7 @@ function renderContent(){
     const h=document.createElement('div'); h.className='era-h';
     h.innerHTML=`<span class="chev">▼</span><h3>${era.name}</h3>
       <div class="ebar${ep.total?'':' bonus'}"><i style="width:${epc}%"></i></div>`+
-      `<span class="ecount${ep.total?'':' bonus'}">${ep.total?(ep.done+'/'+ep.total):'BONUS'}</span>`;
+      `<span class="ecount${ep.total?'':' bonus'}">${ep.total?(ep.done+'/'+ep.total)+(ep.partial?' · partial':''):(cl.id==='packs'?'ART REVIEW':'BONUS')}</span>`;
     h.onclick=()=>{state.ui.closed[cl.id+'|'+ei]=!closed;save();renderContent();};
     card.appendChild(h);
     const body=document.createElement('div'); body.className='era-b';
@@ -3140,15 +3168,15 @@ function renderContent(){
         minus.dataset.qtyAction='minus';
         minus.disabled=owned===0;minus.setAttribute('aria-label','Remove one '+(goal?'':'bonus ')+quantityNoun(g.n,1)+' from '+it.name);
         minus.onclick=()=>changeQuantity(cl.id,it,g,-1,'minus');
-        const physicallyComplete=distinct?itemComplete(cl.id,it):(goal&&owned>=target),covered=goal&&!physicallyComplete&&
+        const physicallyComplete=cl.id==='packs'?itemComplete(cl.id,it):distinct?itemComplete(cl.id,it):(goal&&owned>=target),covered=cl.id!=='packs'&&goal&&!physicallyComplete&&
           (distinct?itemCovered(cl.id,it):owned+ordered>=target);
         const num=document.createElement('button');num.type='button';num.className='qtynum'+
           (physicallyComplete?' met':(covered?' covered':(!goal&&owned>0?' owned':'')));
-        num.textContent=owned;num.title=(distinct?(owned+' total copies · '+completeVariants+'/'+target+' variants complete'):
+        num.textContent=owned;num.title=cl.id==='packs'?'Physical pack inventory only; completion requires two of each wrapper front':(distinct?(owned+' total copies · '+completeVariants+'/'+target+' variants complete'):
           (goal?(owned+' owned · goal '+target):(owned+' owned · bonus inventory · not part of completion')))+
           (ordered?' · '+ordered+' ordered':'');
         num.setAttribute('aria-label',owned+' '+quantityNoun(g.n,owned)+' owned and '+ordered+' ordered for '+it.name+'; '+
-          (distinct?(completeVariants+' of '+target+' distinct variants complete.'):
+          (cl.id==='packs'?'physical inventory only; see two-per-artwork goal in details.':distinct?(completeVariants+' of '+target+' distinct variants complete.'):
           (goal?('goal '+target+'.'):('bonus inventory, not part of completion.')))+' Focus to adjust.');
         const plus=document.createElement('button');plus.type='button';plus.className='qtybtn plus';plus.textContent='+';
         plus.dataset.qtyAction='plus';
@@ -3253,6 +3281,16 @@ function renderContent(){
             source.textContent='Open catalog evidence: '+externalSource.sourceTitle;source.style.cssText='display:block;margin-top:6px;color:var(--lpurple);font-weight:700';copy.appendChild(source);}
           det.appendChild(copy);
         }
+        if(cl.id==='packs'){
+          const goals=itemArtGoals(cl.id,it);
+          const goalNote=document.createElement('div');goalNote.className='wrapperart-note';
+          goalNote.textContent=goals.map(row=>{
+            const product=(it.pricingProducts||[]).find(record=>record.ref.productId===row.productId);
+            return product.label+': '+(row.artCount===null?'artwork count unverified — goal remains incomplete':
+              row.creditedOwned+'/'+row.target+' known artwork-copy targets'+(row.unreviewedFronts?' · '+row.unreviewedFronts+' fronts need physical review':''));
+          }).join('. ');
+          det.appendChild(goalNote);
+        }
         if(wrapperArtSet)det.appendChild(renderWrapperArtChecklist(cl,it,wrapperArtSet));
         if(namedVariants.length){
           const variants=document.createElement('div');variants.className='variantlist';
@@ -3323,8 +3361,8 @@ function renderContent(){
 function updateAll(){ renderTabs(); renderContent(); updateOverall(); syncStickyTop(); paintPricingBatch(); }
 function updateOverall(){
   const o=overall(); const p=pct(o.done,o.total);
-  document.getElementById('ovPct').textContent=p+'%';
-  document.getElementById('ovNum').textContent=o.done+' / '+o.total;
+  document.getElementById('ovPct').textContent=p+'%'+(o.partial?' · partial':'');
+  document.getElementById('ovNum').textContent=o.done+' / '+o.total+(o.partial?' known targets':'');
   const arc=document.getElementById('ringArc'); const C=2*Math.PI*16;
   arc.setAttribute('stroke-dasharray',C); arc.setAttribute('stroke-dashoffset', C*(1-o.done/(o.total||1)));
 }
@@ -4033,6 +4071,7 @@ ghBoot();
 import datetime
 BUILD = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 out = (HTML.replace("/*__DATA__*/", DATA)
+       .replace("/*__PACK_ART_GOAL_JS__*/",PACK_ART_GOAL_JS)
        .replace("/*__WRAPPER_ART__*/", WRAPPER_ART)
        .replace("/*__OPENAI_BROWSER_CLIENTS__*/", OPENAI_BROWSER_CLIENTS)
        .replace("__BUILD__", BUILD))

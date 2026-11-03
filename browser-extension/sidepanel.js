@@ -13,7 +13,7 @@ const VENDORED_PROVIDER_VERSION = '2.42.0';
 const COLLECTION_CHANNEL = 'tcg-collection/v1';
 const COLLECTION_SNAPSHOT_SCHEMA = 'tcg.collection-snapshot/v2';
 const COLLECTION_RESULT_SCHEMA = 'tcg.collection-decoration-result/v2';
-const AUTHORITY_PRODUCT_COUNT = 689;
+const AUTHORITY_PRODUCT_COUNT = 719;
 const COLLECTION_REQUEST_TIMEOUT_MS = 10000;
 const MONITOR_REQUEST_TIMEOUT_MS = 10000;
 const MONITOR_DEBOUNCE_MS = 900;
@@ -939,6 +939,10 @@ async function decorateCollectionPage() {
     stage = authorityClient ? 'requesting-collection-authority-snapshot' : 'requesting-dashboard-snapshot';
     const validated = validateCollectionSnapshot(await requestCollectionSnapshot());
     snapshot = validated.snapshot;
+    if(snapshot.packArtRequirements){
+      throw collectionError('COLLECTION_ART_DECORATION_UNSUPPORTED',
+        'Per-artwork goals are active. The current page-decoration provider cannot prove exact fronts; use Tracker artwork review instead.');
+    }
     if (validated.policy.reviewOnly || validated.policy.mayInferOwnership === false) {
       throw collectionError('COLLECTION_SNAPSHOT_CONDITIONAL', 'Collection Authority returned review-only ownership state.');
     }

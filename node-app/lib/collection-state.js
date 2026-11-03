@@ -94,6 +94,7 @@ function createCatalog(catalog) {
         for (const product of item.pricingProducts || []) {
           if (!product.ref || !product.ref.productId) continue;
           const entry = {
+            packArtCatalog: catalog,
             checklist,
             item,
             product,
@@ -244,6 +245,8 @@ function describe(stateInput, entry) {
     ordered: orderedGroupQuantity(state, entry, group),
     remaining: Math.max(0, target - groupQuantity(state, entry, group) - orderedGroupQuantity(state, entry, group)),
     progressMode: entry.checklist.progressMode || 'quantity',
+    packArtRequirement: entry.checklist.id === 'packs' && entry.packArtCatalog.packArtGoal
+      ? require('./pack-art-goal').buildPackArtRequirements(entry.packArtCatalog,state).products[entry.ref.productId] : null,
   };
 }
 
@@ -260,6 +263,16 @@ function setQuantities(stateInput, entry, { owned, ordered } = {}) {
     while (orderedGroupQuantity(state, entry) > ordered) mutateOrderedGroup(state, entry, -1);
   }
   return state;
+}
+
+function setArtworkQuantities(stateInput,entry,{artworkId,owned,ordered}={}) {
+  const next=emptyState(stateInput);
+  const goal=describe(next,entry).packArtRequirement;
+  if(!goal||!goal.artworks.some(art=>art.artworkId===artworkId))throw new Error('Unknown exact artwork for ProductRef');
+  const key='packs|wrapper-art|'+artworkId;
+  if(owned!==undefined){assertQuantity(owned,'owned');next.wrapperArts[key]=owned;}
+  if(ordered!==undefined){assertQuantity(ordered,'ordered');next.orderedWrapperArts[key]=ordered;}
+  return next;
 }
 
 function receive(stateInput, entry, count = 1) {
@@ -311,5 +324,5 @@ function resolveProduct(index, query, checklistId) {
 module.exports = {
   norm, contentHash, keyFor, groupKeyFor, slotExtraKeyFor, groupSlots,
   emptyState, createCatalog, findProducts, resolveProduct, describe,
-  setQuantities, receive,
+  setQuantities, setArtworkQuantities, receive,
 };

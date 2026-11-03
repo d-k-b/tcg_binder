@@ -1,0 +1,20 @@
+{
+  "schema": "tcg.pack-art-goal/v1",
+  "approvedOn": "2026-11-03",
+  "game": "mtg",
+  "language": "en",
+  "unit": "pack",
+  "copiesPerArtwork": 2,
+  "scope": "all-authentic-full-retail-and-event-boosters",
+  "includedTypes": ["booster", "draft_booster", "set_booster", "play_booster", "collector_booster", "jumpstart_booster", "theme_booster", "beyond_booster", "epilogue_booster", "mystery_booster"],
+  "includedSpecialties": ["VIP", "special editions", "faction packs", "other verified full retail/event booster types"],
+  "separateNotRequired": ["Collector sample packs", "promotional packs", "prize packs", "Welcome boosters"],
+  "identity": "exact set, booster type, edition, language, and visible loose-wrapper front",
+  "notArtworkVariants": ["hidden randomized Jumpstart themes", "outer cardboard sleeves", "box artwork", "back-print or crimp differences without distinct front artwork"],
+  "sealedDisplaySatisfiesLoosePack": false,
+  "artworkOwnershipAddsPhysicalInventory": false,
+  "inferArtworkFromAggregatePackQuantity": false,
+  "unverifiedArtCount": "unknown-never-assume-one",
+  "unquantifiedOwnership": "conditional-never-assume-zero-or-complete",
+  "otherChecklistGoals": "unchanged"
+}

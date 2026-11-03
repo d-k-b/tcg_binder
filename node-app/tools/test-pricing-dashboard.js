@@ -114,6 +114,7 @@ function createContext(search, initialData = { checklists: [] }, options = {}) {
     console, window, location: { search }, URL, URLSearchParams, Map, Date, localStorage, TCGPricingRestClient,
     setTimeout, clearTimeout,
     contentHash: hash, normalizeMonitorPreferences,
+    packArtProjection:()=>require('../lib/pack-art-goal').buildPackArtRequirements(initialData,{}),
     state: { monitorPreferences: JSON.parse(JSON.stringify(monitorDefaults)) },
     renderContent: () => {},
     closeMenus: () => {},
@@ -185,8 +186,8 @@ const product = {
   const snapshotEntries = Object.entries(snapshot.products);
   assert.strictEqual(snapshot.schema, 'tcg.collection-snapshot/v2');
   assert.strictEqual(snapshot.namespace, 'collection-tracker');
-  assert.strictEqual(snapshotEntries.length, 689, 'snapshot must atomically include all 689 Tracker products');
-  assert.strictEqual(new Set(snapshotEntries.map(([productId]) => productId)).size, 689, 'snapshot ProductRefs must be unique');
+  assert.strictEqual(snapshotEntries.length, 719, 'snapshot must atomically include all 719 Tracker products');
+  assert.strictEqual(new Set(snapshotEntries.map(([productId]) => productId)).size, 719, 'snapshot ProductRefs must be unique');
   assert.deepStrictEqual(snapshot.products['mtg:cmr:commander-legends:collector-booster:display:en'], {
     product: {
       schema: 'tcg.product/v1',
@@ -217,7 +218,8 @@ const product = {
       productId + ' must carry a full ProductRef');
     assert.ok(Number.isInteger(entry.target) && Number.isInteger(entry.owned) && Number.isInteger(entry.ordered) && Number.isInteger(entry.missing));
   });
-  assert.deepStrictEqual(Object.keys(snapshot).sort(), ['namespace', 'products', 'schema']);
+  assert.deepStrictEqual(Object.keys(snapshot).sort(), ['namespace', 'packArtRequirements', 'products', 'schema']);
+  assert.equal(snapshot.packArtRequirements.schema,'tcg.pack-art-requirements/v1');
   const snapshotJson = JSON.stringify(snapshot);
   assert.doesNotMatch(snapshotJson, /checklist\|v2|ghp_|"(?:checks|extras|legacyChecksV1|legacyChecks|keyVersion|github|gist|gistId|apiToken|capability|watch|valuation|pricingStates|price)"\s*:/i,
     'collection snapshots must contain ProductRefs and ownership counts only');
@@ -238,8 +240,8 @@ const product = {
     'generatedAt alone must not change the deterministic monitor revision');
   assert.ok(/^[0-9a-f]{16}$/.test(firstSubscription.revision), 'monitor revision must be a stable content hash');
   assert.ok(!Number.isNaN(Date.parse(firstSubscription.generatedAt)), 'monitor bundle must carry a valid generatedAt timestamp');
-  assert.strictEqual(Object.keys(firstSubscription.collection.products).length, 689,
-    'monitor subscription must atomically carry all 689 collection ProductRefs');
+  assert.strictEqual(Object.keys(firstSubscription.collection.products).length, 719,
+    'monitor subscription must atomically carry all 719 collection ProductRefs');
   assert.ok(firstSubscription.collection.products['mtg:cmr:commander-legends:collector-booster:display:en'],
     'monitor subscription must include the exact Commander Legends Collector display ProductRef');
   assert.deepStrictEqual(firstSubscription.collection, snapshot,
@@ -387,7 +389,7 @@ const product = {
 
   const statusRequest = { channel: 'tcg-collection-monitor/v1', type: 'monitorSyncStatus', requestId: 'status-1', status: {
     schema: 'tcg.collection-monitor-sync-status/v1', state: 'synced', revision: preferenceChangedSubscription.revision,
-    productCount: 689, activeTargetCount: 321, monitorConfigured: true,
+    productCount: 719, activeTargetCount: 321, monitorConfigured: true,
     syncedAt: '2026-08-09T12:00:01.000Z', message: 'Monitor accepted the current collection.', errorCode: null,
   } };
   const postedBeforeStatus = snapshotBridge.posted.length;
@@ -1052,7 +1054,7 @@ const product = {
   assert.match(html, /data-monitor-source="ebay"/, 'monitoring UI must expose the contract source choices');
   assert.match(html, /@media\(max-width:480px\)[\s\S]*\.monitor-grid\{grid-template-columns:1fr\}/,
     'monitoring preferences must collapse to one column at narrow side-panel widths');
-  console.log('pricing dashboard tests: exact bridges, deterministic 689-product subscription, fail-closed monitor source health, sanitized reload-safe device cache, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
+  console.log('pricing dashboard tests: exact bridges, deterministic 719-product subscription, fail-closed monitor source health, sanitized reload-safe device cache, adaptive evidence-based freshness, explicit full-browser comps, Market pending, Buy Now/watch isolation, and provisional auction presentation passing');
 })().catch(error => {
   console.error(error);
   process.exit(1);

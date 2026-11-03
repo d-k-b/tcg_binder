@@ -1,5 +1,46 @@
 # TCG Sealed Collecting Binder — Project Handoff
 
+## Approved pack-art goal override — November 3, 2026
+
+**Implementation update (November 3, user-approved rollout):** the canonical
+generator/core source now implements a required two-per-front overlay with unknown
+versus reviewed-zero ownership, additive full-pack types, and unchanged physical
+inventory. Catalog count is719 (30 added pack products); known art coverage is378
+fronts /756 copy targets, explicitly partial. See
+`docs/PACK_ART_GOAL_MIGRATION.md`. Full Tracker tests pass. Authority1.4.0 is live:
+719 products read back authoritatively, all689 pre-migration physical quantities
+were preserved, and two pending exact Jumpstart receipts were applied idempotently.
+Publication and extension reload must be verified before claiming full activation.
+The old audit-only status below is historical, not the current source implementation.
+The provider must preserve the versioned overlay before monitor
+sync can replace the legacy subscription; provider deployment remains separately
+unapproved. Never call all-time artwork coverage complete.
+
+Dustyn now requires **two sealed loose packs of every visible wrapper-art front,
+for every full retail/event MTG booster type**. This includes Draft, Set, Play,
+Collector, Jumpstart (standalone and set-attached), Theme, Beyond, Epilogue,
+Mystery, VIP/special editions and faction packs. Collector samples, promotional/
+prize packs and Welcome boosters remain separate, not required. Existing English
+scope, box/display goals and Lorcana goals are unchanged. Hidden Jumpstart card
+themes are not wrapper fronts. See `data/mtg_pack_art_goal.json`.
+
+**Partial catalog, not an all-time completion claim:** legacy consumers implement
+the older two-per-type / optional-art model documented below. Do not interpret
+their aggregate pack completion as completion of this new goal. The saved two-hour
+review prompt applies the new rule and labels pack-art coverage partial until
+trustworthy per-front counts and complete product/art catalogs exist. No old
+quantities are doubled or erased.
+Previously applied physical packs and wrapper fronts remain unchanged. Pending
+confirmed Jumpstart receipts use exact canonical rows and revision-checked
+Authority operations. Each confirmed art copy is one of the new two-copy goal,
+never automatically complete.
+
+The original isolated audit/model was a pre-implementation checkpoint. The current
+generator/core implementation keeps unknown counts and unquantified ownership
+explicit and isolates types/editions. The goal alone is not deployment permission;
+the subsequent human approval governs the scoped Tracker publication and reload.
+Provider deployment and unrelated production changes remain separate.
+
 Everything needed to pick this up and keep building. Written for a fresh agent/dev
 with no prior context.
 

@@ -117,15 +117,15 @@ assert.deepStrictEqual(audit.aggregateBeforeReceive, [1, 1, 0, 0, 0],
 assert.deepStrictEqual(audit.aggregateAfterReceive, {
   owned: [0, 1, 0, 0, 0], ordered: [1, 0, 0, 0, 0],
 }, 'aggregate receive must transfer one exact incoming variant without cross-crediting another');
-assert.deepStrictEqual(audit.packOrdered, { owned: 0, ordered: 2, complete: false, covered: true },
-  'a two-pack target may be covered by two incoming copies without becoming complete');
-assert.deepStrictEqual(audit.packReceived, { owned: 2, ordered: 0, complete: true },
-  'receiving both pack copies must complete the physical two-pack target');
+assert.deepStrictEqual(audit.packOrdered, { owned: 0, ordered: 2, complete: false, covered: false },
+  'aggregate incoming packs do not prove exact artwork coverage');
+assert.deepStrictEqual(audit.packReceived, { owned: 2, ordered: 0, complete: false },
+  'receiving physical packs does not infer their artwork');
 assert.strictEqual(audit.wrapper.key, 'packs|wrapper-art|4ED-1');
 assert.deepStrictEqual({ owned: audit.wrapper.owned, ordered: audit.wrapper.ordered }, { owned: 1, ordered: 1 },
   'wrapper receipt must preserve another incoming copy on the exact art ID');
-assert.deepStrictEqual(audit.wrapper.progress, audit.wrapper.progressBefore,
-  'wrapper ordering and receipt must remain outside required progress');
+assert.strictEqual(audit.wrapper.progress.done-audit.wrapper.progressBefore.done,1,
+  'an exact wrapper receipt credits one physical artwork copy');
 assert.strictEqual(Object.values(audit.restoredOrdered).reduce((sum, value) => sum + value, 0), 2,
   'ordered product quantities must persist separately');
 assert.strictEqual(Object.values(audit.restoredOrderedWrapperArts).reduce((sum, value) => sum + value, 0), 1,

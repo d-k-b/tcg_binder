@@ -10,7 +10,7 @@ const EXT = path.join(ROOT, 'browser-extension');
 const manifest = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
 
 assert.strictEqual(manifest.manifest_version, 3, 'extension must use Manifest V3');
-assert.strictEqual(manifest.version, '1.6.6', 'the ordered snapshot and order-operation contract must bump the tracker extension version');
+assert.strictEqual(manifest.version, '1.7.0', 'the ordered snapshot and order-operation contract must bump the tracker extension version');
 assert.strictEqual(manifest.side_panel.default_path, 'sidepanel.html');
 assert.deepStrictEqual(manifest.permissions.slice().sort(), ['sidePanel', 'storage']);
 assert.deepStrictEqual(manifest.host_permissions, ['https://api.openai.com/*', 'https://gogo.tail903ec0.ts.net/*', 'http://127.0.0.1:3102/*'],
@@ -147,10 +147,10 @@ assert.match(panelJs, /COLLECTION_SNAPSHOT_SCHEMA\s*=\s*'tcg\.collection-snapsho
   'the Tracker must require the canonical ProductRef collection snapshot');
 assert.match(panelJs, /COLLECTION_RESULT_SCHEMA\s*=\s*'tcg\.collection-decoration-result\/v2'/,
   'the Tracker must require the corrected canonical result schema');
-assert.match(panelJs, /AUTHORITY_PRODUCT_COUNT\s*=\s*689/,
+assert.match(panelJs, /AUTHORITY_PRODUCT_COUNT\s*=\s*719/,
   'the Tracker must reject Authority snapshots that omit the 689th canonical ProductRef');
-assert.match(authorityClientJs, /options\.productCount\) \? options\.productCount : 689/,
-  'the Collection Authority client default must require all 689 canonical products');
+assert.match(authorityClientJs, /options\.productCount\) \? options\.productCount : 719/,
+  'the Collection Authority client default must require all 719 canonical products');
 assert.match(panelJs, /decorateCollectionPage\(validated\.providerSnapshot, \{ observe: true, userInitiated: true \}\)/,
   'page decoration must be a direct user-initiated provider call');
 assert.strictEqual((panelJs.match(/userInitiated:\s*true/g) || []).length, 2,
@@ -223,12 +223,12 @@ for (const checklist of binder.checklists || []) {
     }
   }
 }
-assert.strictEqual(Object.keys(catalogProducts).length, 689, 'all canonical Tracker ProductRefs must fit one page-decoration request');
+assert.strictEqual(Object.keys(catalogProducts).length, 719, 'all canonical Tracker ProductRefs must fit one page-decoration request');
 assert.ok(catalogProducts['mtg:cmr:commander-legends:collector-booster:display:en'],
   'the complete extension snapshot must include the required Commander Legends Collector Booster Display ProductRef');
 assert.ok(contracts.validateCollectionSnapshot({
   schema: 'tcg.collection-snapshot/v2', namespace: 'collection-tracker', products: catalogProducts
-}).ok, 'the exact provider contract must accept all 689 full canonical ProductRefs atomically');
+}).ok, 'the exact provider contract must accept all 719 full canonical ProductRefs atomically');
 const firstProductId = Object.keys(catalogProducts)[0];
 const mismatched = JSON.parse(JSON.stringify(catalogProducts[firstProductId]));
 mismatched.product.productId = 'mtg:bad:mismatched-product:booster:pack:en';

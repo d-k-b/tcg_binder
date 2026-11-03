@@ -64,14 +64,14 @@ const conditionalOwnershipPolicy = {
 };
 const conditionalMonitorResponse = {
   apiVersion: 1, engineVersion: '2.43.69', schema: 'tcg.collection-monitor-sync-result/v1', accepted: true,
-  revision: VERIFIED_MONITOR_REVISION, productCount: 689, activeTargetCount: 0,
+  revision: VERIFIED_MONITOR_REVISION, productCount: 719, activeTargetCount: 0,
   requestedMonitorEnabled: true, effectiveMonitorEnabled: false,
   ownershipPolicy: conditionalOwnershipPolicy, authorityCache: monitorCache
 };
-const conditionalValidation = authorityApi.validateMonitorSyncResponse(conditionalMonitorResponse, { productCount: 689 });
+const conditionalValidation = authorityApi.validateMonitorSyncResponse(conditionalMonitorResponse, { productCount: 719 });
 assert.strictEqual(conditionalValidation.conditional, true);
 assert.strictEqual(authorityApi.validateMonitorSyncResponse(conditionalMonitorResponse).conditional, true,
-  'the Authority client default must require the complete 689-product catalog');
+  'the Authority client default must require the complete 719-product catalog');
 assert.throws(() => authorityApi.validateMonitorSyncResponse({ ...conditionalMonitorResponse, productCount: 688 }),
   error => error.code === 'INVALID_MONITOR_RESPONSE',
   'the Authority client default must reject the superseded 688-product catalog');
@@ -87,7 +87,7 @@ for (const unsafe of [
   { activeTargetCount: 1 },
   { productCount: 688 }
 ]) {
-  assert.throws(() => authorityApi.validateMonitorSyncResponse({ ...conditionalMonitorResponse, ...unsafe }, { productCount: 689 }),
+  assert.throws(() => authorityApi.validateMonitorSyncResponse({ ...conditionalMonitorResponse, ...unsafe }, { productCount: 719 }),
     error => ['MONITOR_POLICY_NOT_ENFORCED', 'INVALID_MONITOR_RESPONSE'].includes(error.code),
     'conditional monitor response must fail closed when any safety invariant changes');
 }
@@ -98,11 +98,11 @@ const authoritativeOwnershipPolicy = {
 assert.strictEqual(authorityApi.validateMonitorSyncResponse({
   ...conditionalMonitorResponse, activeTargetCount: 12, effectiveMonitorEnabled: true,
   ownershipPolicy: authoritativeOwnershipPolicy
-}, { productCount: 689 }).conditional, false, 'authoritative monitor behavior must remain enabled');
+}, { productCount: 719 }).conditional, false, 'authoritative monitor behavior must remain enabled');
 assert.strictEqual(authorityApi.validateMonitorSyncResponse({
   apiVersion: 1, schema: 'tcg.collection-monitor-sync-result/v1', accepted: true,
-  revision: 'sha256:' + HASH, productCount: 689, activeTargetCount: 12, authorityCache: monitorCache
-}, { productCount: 689 }).conditional, false, 'legacy authoritative responses without the additive policy must remain compatible');
+  revision: 'sha256:' + HASH, productCount: 719, activeTargetCount: 12, authorityCache: monitorCache
+}, { productCount: 719 }).conditional, false, 'legacy authoritative responses without the additive policy must remain compatible');
 
 (async () => {
   const calls = [];
@@ -116,7 +116,7 @@ assert.strictEqual(authorityApi.validateMonitorSyncResponse({
       product, status: 'target', target: 1, owned: 0, ordered: 1, missing: 0, requirement: 'required'
     }
   };
-  for (let index = 1; index < 689; index += 1) {
+  for (let index = 1; index < 719; index += 1) {
     const productId = `mtg:fix:fixture-${index}:booster:display:en`;
     completeProducts[productId] = {
       product: {

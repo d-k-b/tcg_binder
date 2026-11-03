@@ -26,6 +26,7 @@ function usage() {
   node bin/tcg-collection.js show <productId-or-query> [--lane <checklist>] [--json]
   node bin/tcg-collection.js set <productId-or-query> [--lane <checklist>] [--owned <n>] [--ordered <n>] [--apply] [--json]
   node bin/tcg-collection.js receive <productId-or-query> [--lane <checklist>] [--count <n>] [--apply] [--json]
+  node bin/tcg-collection.js art-review <productId> --artwork <id> [--owned <n>] [--ordered <n>] [--apply] [--json]
 
 Mutations are previews until --apply is supplied. GITHUB_TOKEN with only the
 gist scope must be present in the process environment for show/set/receive.
@@ -67,6 +68,9 @@ function write(value, json) {
     'Owned: ' + value.owned + ' | Ordered: ' + value.ordered + ' | Target: ' + value.target + ' | Remaining: ' + value.remaining,
     value.mode ? 'Mode: ' + value.mode : null,
     value.note || null,
+    value.packArtRequirement ? ('Artwork goal: '+(value.packArtRequirement.target===null?'count unverified':
+      value.packArtRequirement.creditedOwned+'/'+value.packArtRequirement.target+' known artwork copies')+
+      '; physical counts above are inventory, not artwork completion.') : null,
   ].filter(Boolean).join('\n') + '\n');
 }
 
@@ -98,10 +102,14 @@ async function run() {
   const entry = state.resolveProduct(index, query, lane);
   const { remote, data } = await remoteState(entry);
   if (command === 'show') return write({ ...state.describe(data, entry), revision: remote.revision }, options.json);
-  if (command !== 'set' && command !== 'receive') throw new Error('Unknown command: ' + command + '\n\n' + usage());
+  if (!['set','receive','art-review'].includes(command)) throw new Error('Unknown command: ' + command + '\n\n' + usage());
 
   let next;
-  if (command === 'set') {
+  if (command === 'art-review') {
+    if(!options.artwork||(options.owned===undefined&&options.ordered===undefined))throw new Error('art-review requires --artwork and --owned and/or --ordered');
+    next=state.setArtworkQuantities(data,entry,{artworkId:options.artwork,
+      owned:asInteger(options.owned,'owned'),ordered:asInteger(options.ordered,'ordered')});
+  } else if (command === 'set') {
     if (options.owned === undefined && options.ordered === undefined) {
       throw new Error('set requires --owned and/or --ordered');
     }

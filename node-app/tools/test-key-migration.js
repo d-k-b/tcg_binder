@@ -71,10 +71,10 @@ ok(JSON.stringify(result.state.monitorPreferences) === JSON.stringify({
   dailyDigest:{enabled:true,time:'07:00',timezone:'America/Chicago'}
 }) && result.state.monitorPreferencesUpdatedAt === null,
   'migrates older saved state to the exact non-secret monitoring defaults');
-ok(result.allKeys.length === 955 && new Set(result.allKeys).size === 955,
-  'all 955 required and bonus inventory keys are unique');
-ok(result.requiredKeys.length === 915 && new Set(result.requiredKeys).size === 915,
-  'keeps the collection goal at 915 required targets');
+ok(result.allKeys.length === 1015 && new Set(result.allKeys).size === 1015,
+  'all 1015 required and bonus inventory keys are unique');
+ok(result.requiredKeys.length === 975 && new Set(result.requiredKeys).size === 975,
+  'keeps the collection goal at 975 required targets');
 ok(Object.keys(result.state.wrapperArts).length === 0,
   'loads older saved state into an empty, separate wrapper-art namespace');
 ok(Object.keys(result.state.ordered).length === 0 && Object.keys(result.state.orderedWrapperArts).length === 0,
@@ -89,8 +89,8 @@ ok(result.productImages.length === 33 &&
 ok(result.productImages.every(image => !image.url.includes('cards.scryfall.io/art_crop')),
   'never presents fallback card art as a sealed-product image');
 const pricingIds = result.pricingProducts.map(product => product.ref.productId);
-ok(result.pricingProducts.length === 689 && new Set(pricingIds).size === 689,
-  'generates one unique ProductRef identity for each of the 689 actual products and groups');
+ok(result.pricingProducts.length === 719 && new Set(pricingIds).size === 719,
+  'generates one unique ProductRef identity for each of the 719 actual products and groups');
 ok(result.pricingProducts.every(product => pricingContracts.validateProductRef(product.ref).ok),
   'validates every generated identity against the vendored ProductRef v1 contract');
 ok(result.pricingProducts.filter(product => product.checklist === 'prerelease').length === 148 &&
@@ -126,8 +126,8 @@ ok(wrapperArtAudit.packMatch === '4ED' && wrapperArtAudit.collectorMatch === nul
   'attaches wrapper art only to its matching Packs row, never another checklist');
 ok(wrapperArtAudit.regular2xm === '2XM' && wrapperArtAudit.vip2xm === null,
   'attaches 2XM art to the regular Draft row but not the same-code VIP row');
-ok(JSON.stringify(wrapperArtAudit.progressBefore) === JSON.stringify(wrapperArtAudit.progressAfter),
-  'keeps wrapper-art ownership outside required pack and overall completion');
+ok(wrapperArtAudit.progressAfter.done-wrapperArtAudit.progressBefore.done===2,
+  'credits at most two copies of one front toward required artwork progress');
 
 const monitorPreferencesAudit = JSON.parse(vm.runInContext(`JSON.stringify((() => {
   const normalized=normalizeMonitorPreferences({enabled:false,maxMarketRatio:.75,minimumConfidence:'high',
@@ -272,7 +272,8 @@ ok(productAudit.packMode === 'group_variants' &&
    JSON.stringify(productAudit.znrVariants) === JSON.stringify([
      {name:'Draft Booster Pack',group:'Draft',target:2},
      {name:'Set Booster Pack',group:'Set',target:2},
-     {name:'Collector Booster Pack',group:'Collector',target:2}]) && productAudit.explicitPackLabels,
+     {name:'Collector Booster Pack',group:'Collector',target:2},
+     {name:'Theme Booster Pack',group:'Theme',target:2}]) && productAudit.explicitPackLabels,
   'names every booster pack type and exposes multi-type rows as variants');
 ok(JSON.stringify(productAudit.mbsVariants) === JSON.stringify([
      {name:'Booster Pack',group:'Booster',target:2},
@@ -403,10 +404,10 @@ const packVariantQuantities = JSON.parse(vm.runInContext(`JSON.stringify((() => 
   changeQuantity(cl.id,item,collector,1);
   return {missing,complete:itemComplete(cl.id,item),owned:groups.map(g=>ownedForGroup(cl.id,item,g))};
 })())`, context));
-ok(JSON.stringify(packVariantQuantities.missing.owned) === JSON.stringify([3,2,1]) &&
+ok(JSON.stringify(packVariantQuantities.missing.owned) === JSON.stringify([3,2,1,0]) &&
    packVariantQuantities.missing.total === 6 && !packVariantQuantities.missing.complete &&
-   packVariantQuantities.complete && JSON.stringify(packVariantQuantities.owned) === JSON.stringify([3,2,2]),
-  'tracks named booster pack type quantities independently and completes each type at two');
+   !packVariantQuantities.complete && JSON.stringify(packVariantQuantities.owned) === JSON.stringify([3,2,2,0]),
+  'tracks physical pack types independently without claiming artwork completion');
 
 const focusEvents = [];
 context.document = {

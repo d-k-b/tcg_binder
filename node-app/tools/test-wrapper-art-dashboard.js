@@ -41,12 +41,12 @@ assert.ok(byCode['2XM'].artworks.every(art => art.imageStatus === 'pending_image
 const packs = binder.checklists.find(checklist => checklist.id === 'packs');
 const packItems = packs.eras.flatMap(era => era.items);
 const packCodes = new Set(packItems.map(item => item.code));
-assert.deepStrictEqual(catalog.sets.filter(set => !packCodes.has(set.setCode)).map(set => set.setCode), ['UNH', 'UST', 'UMA'],
-  'only the three cataloged regular products absent from the ownership model need wrapper-only rows');
+assert.deepStrictEqual(catalog.sets.filter(set => !packCodes.has(set.setCode)).map(set => set.setCode), [],
+  'all regular artwork sets now have exact pack inventory rows');
 assert.strictEqual(binder.checklists.flatMap(checklist => checklist.eras.flatMap(era => era.items.flatMap(item => item.slots)))
-  .filter(slot => slot.r !== false).length, 915, 'wrapper art must not alter required targets');
+  .filter(slot => slot.r !== false).length, 975, 'wrapper art must not alter required targets');
 assert.strictEqual(binder.checklists.flatMap(checklist => checklist.eras.flatMap(era => era.items.flatMap(item => item.slots))).length,
-  955, 'wrapper art must not alter inventory slots');
+  1015, 'wrapper art must not alter inventory slots');
 
 assert.match(html, /const WRAPPER_ART_CATALOG = \{"schema":"mtg-booster-wrapper-art-catalog\/v1"/,
   'generated dashboard must embed the reviewed catalog');
@@ -54,9 +54,9 @@ assert.match(html, /\['booster','draft','play'\]\.includes/,
   'catalog attachment must require a regular pack lane and exclude same-code VIP/Collector rows');
 assert.match(html, /packs\.eras\.push\(\{name:'Wrapper-Art Inventory Only'/,
   'the dashboard must expose all catalog fronts without adding ownership slots for UNH, UST, or UMA');
-assert.match(html, /Wrapper artwork \(optional\)/);
-assert.match(html, /fronts ·/);
-assert.match(html, /Optional loose-wrapper inventory only — it does not affect pack targets or collection completion/);
+assert.match(html, /Required wrapper artwork · 2 of each/);
+assert.match(html, /required copies ·/);
+assert.match(html, /Goal: two sealed loose copies of each front/);
 assert.match(html, /img\.dataset\.wrapperSrc=art\.imageUrl/,
   'wrapper thumbnails must remain source-less until their nested drawer opens');
 assert.match(html, /img\.onerror=\(\)=>\{img\.remove\(\);fallback\.hidden=false;\}/,

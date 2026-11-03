@@ -222,9 +222,42 @@ def pack_items(rows, era=None):
                 # historical generic MBS booster progress cannot claim them.
                 slots.append({"l":label+" copy "+str(copy+1),"g":group,
                               "k":group,"c":extra["color"],"legacy":None})
+        # Full retail/event pack types are required independently. Existing
+        # slots and positional recovery keys must never move or be repurposed.
+        for group in boxes.BOX_PRODUCTS.get(s, ()):
+            if group not in SPECIALTY_BONUS_PRODUCTS: continue
+            label=PRODUCT_LABEL_BY_GROUP[group]+" Pack"
+            tags.append({"t":group,"c":BOX_TYPE[group]})
+            variants.append({"name":label,"group":group,"target":2})
+            for copy in range(2):
+                slots.append({"l":label+" copy "+str(copy+1),"g":group,
+                              "k":group,"c":BOX_TYPE[group],"legacy":None})
         out.append({"name":s,"code":code,"note":note,"est":est,"value":None,
                     "tags":tags,"variants":variants,"slots":slots})
     return out
+
+def pack_eras():
+    eras=build("packs","","",packs.ERAS,pack_items)["eras"]
+    # Additive rows have no historical positional keys. Standalone Jumpstart
+    # is a distinct product, never inferred from the same year's main set.
+    specialty=[]
+    for name,rows in boxes.ERAS:
+        if not name.startswith("Jumpstart Boxes"): continue
+        for s,code,group,val,est,note in rows:
+            label=PRODUCT_LABEL_BY_GROUP[group]+" Pack"
+            specialty.append({"name":s,"code":code,"note":note,
+                "est":False,"value":None,"tags":[{"t":group,"c":BOX_TYPE[group]}],
+                "variants":[{"name":label,"group":group,"target":2}],
+                "slots":[{"l":label+" copy "+str(i+1),"g":group,"k":group,
+                          "c":BOX_TYPE[group],"legacy":None} for i in range(2)]})
+    eras.append({"name":"Standalone Jumpstart packs", "items":specialty})
+    regular=[]
+    for s,code in (("Unhinged","UNH"),("Unstable","UST"),("Ultimate Masters","UMA")):
+        item=pack_items([(s,code,1,-1,-1,False,"Regular sealed retail booster")])[0]
+        for slot in item["slots"]: slot["legacy"]=None
+        regular.append(item)
+    eras.append({"name":"Additional regular retail boosters", "items":regular})
+    return eras
 
 def prerel_items(rows, era=None):
     out=[]
@@ -451,10 +484,11 @@ data = {
     "sub":"The goal is one preferred non-Collector randomized booster display per set or materially distinct edition, 1993–2026. "
           "Other non-Collector display types are grouped into focused bonus sections: track any quantity, but they do not affect completion.",
     "eras":box_eras()},
-   dict(build("packs","MTG Booster Packs",
-         "Two of every booster pack, for every set — one pair per pack type that set was sold in. "
-         "Open details on sets with multiple pack types to adjust each named type independently. Optional wrapper artwork checklists live inside matching row details and do not affect completion.",
-         packs.ERAS, pack_items), progressMode="group_variants"),
+   {"id":"packs","title":"MTG Booster Packs",
+    "sub":"Two sealed loose copies of every visible wrapper front, for every full retail/event booster type. "
+          "Draft, Set, Play, Collector, Jumpstart, Theme and special editions are separate. "
+          "Artwork coverage is partial where counts or physical fronts remain unverified. Samples/promos stay separate.",
+    "eras":pack_eras(),"progressMode":"group_variants"},
    dict(build("prerelease","MTG Prerelease Packs",
          "One of every distinct sealed prerelease pack or kit variant. Named guild, clan, faction, color, character, and college versions each count once; duplicate copies are tracked but do not increase completion. "
          "Retail kits begin with Return to Ravnica (2012), with Mirrodin Besieged faction packs as a verified exception.",
@@ -474,6 +508,10 @@ data = {
 }
 image_count=attach_product_images(data["checklists"])
 pricing_product_count=attach_pricing_products(data["checklists"])
+with open(os.path.join(DATA_DIR,"mtg_pack_art_goal.json"),encoding="utf-8") as goal_file:
+    data["packArtGoal"]=json.load(goal_file)
+with open(os.path.join(DATA_DIR,"booster_wrapper_art_catalog.json"),encoding="utf-8") as artwork_file:
+    data["packArtCatalog"]=json.load(artwork_file)
 
 targets=[os.path.join(DATA_DIR,"binder_data.json")]
 node_data=os.path.join(ROOT,"node-app","data")

@@ -7,7 +7,7 @@ const state = require('./collection-state');
 const snapshotContract = require('./collection-snapshot');
 const { CollectionDerivedCache } = require('./collection-derived-cache');
 
-const SERVICE_VERSION = '1.3.0';
+const SERVICE_VERSION = '1.4.0';
 const OPTIONAL_OBJECT_FIELDS = Object.freeze([
   'extras', 'ordered', 'wrapperArts', 'orderedWrapperArts', 'legacyChecksV1',
 ]);
@@ -535,6 +535,7 @@ class CollectionAuthority {
       schema: response.snapshot.schema,
       namespace: response.snapshot.namespace,
       products: response.snapshot.products,
+      packArtRequirements: response.snapshot.packArtRequirements,
     };
     const revisionPolicy = { ...ownershipPolicy };
     delete revisionPolicy.verifiedAt;
@@ -557,6 +558,13 @@ class CollectionAuthority {
     const checked = this.pricingContracts.validateMonitorSubscription(subscription);
     if (!checked || checked.ok !== true) {
       throw new AuthorityError('MONITOR_PREFERENCES_INVALID', 'Monitor preferences did not pass Pricing Analyzer validation', 422);
+    }
+    if (collection.packArtRequirements &&
+        snapshotContract.stableJson(checked.value.collection.packArtRequirements) !==
+        snapshotContract.stableJson(collection.packArtRequirements)) {
+      throw new AuthorityError('MONITOR_PACK_ART_UNSUPPORTED',
+        'Monitor does not retain the required per-artwork goal; existing subscription was not replaced',503,
+        {retryable:false});
     }
     const validatedSubscription = { ...checked.value, ownershipPolicy };
     if (!cachedSubscription) cachedSubscription = this.derivedCache.putMonitorSubscription(cacheKey, validatedSubscription);

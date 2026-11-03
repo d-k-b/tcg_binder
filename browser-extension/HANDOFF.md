@@ -1,5 +1,14 @@
 # Browser extension handoff
 
+## 1.7.0 required pack-art goals
+
+Collection Authority1.4.0 and this extension require719 exact products. Physical
+owned/ordered counts stay unchanged; `packArtRequirements` is a separate versioned
+two-per-front goal. The client preserves it. Page decoration fails closed until a
+provider can establish exact-front badges; monitor sync also refuses a validator
+that drops the overlay. See `docs/PACK_ART_GOAL_MIGRATION.md`. Host permissions and
+credentials are unchanged. Unknown art counts remain partial, not one-front goals.
+
 This document is the working contract for the **extension workstream**. Use the
 root [`HANDOFF.md`](../HANDOFF.md) for collecting rules, dashboard internals, data
 generation, and GitHub Pages deployment.
